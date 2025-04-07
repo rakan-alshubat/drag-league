@@ -1,0 +1,37 @@
+{
+  "name": "my-frontend-portfolio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
+    "@fontsource/roboto": "^5.0.8",
+    "@kurkle/color": "^0.3.4",
+    "@mui/icons-material": "^5.11.9",
+    "@mui/material": "^5.16.7",
+    "@mui/x-charts": "^7.23.6",
+    "@next/font": "13.1.6",
+    "eslint": "8.34.0",
+    "eslint-config-next": "13.1.6",
+    "fs": "^0.0.1-security",
+    "next": "13.1.6",
+    "react": "^17.0.0 || ^18.0.0 || ^19.0.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-confetti": "^6.2.3",
+    "react-dom": "^17.0.0 || ^18.0.0 || ^19.0.0",
+    "react-use": "^17.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.11.5"
+  },
+  "peerDependencies": {
+    "react": "^17.0.0 || ^18.0.0 || ^19.0.0",
+    "react-dom": "^17.0.0 || ^18.0.0 || ^19.0.0"
+  }
+}
