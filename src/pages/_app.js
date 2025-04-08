@@ -21,7 +21,7 @@ export default function MyApp(props) {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <div>
-          <Component {...pageProps} />.
+          <Component {...pageProps} />
         </div>
       </ThemeProvider>
     </CacheProvider>
