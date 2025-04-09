@@ -1,8 +1,15 @@
+import { withAuthenticator } from "@aws-amplify/ui-react"
+import { defaultTheme, ThemeProvider } from "@aws-amplify/ui-react"
 
-export default function Home() {
+function Home(signOut, user) {
   return (
-    <>
-      Hello World!
-    </>
-  )
+    <div>
+      <h1>Welcome {user.username} </h1>
+      <button onClick={signOut}>Sign Out</button>
+    </div>
+  );
 }
+
+export default withAuthenticator(Home, {
+  variation: 'modal',
+});
