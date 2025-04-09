@@ -7,7 +7,7 @@ import { CacheProvider } from '@emotion/react';
 import theme from '../styles/theme'
 import createEmotionCache from '../styles/createEmotionCache';
 import { Amplify } from 'aws-amplify';
-import awsmobile from '../aws-exports'
+import awsmobile from '@/aws-exports';
 
 // Client-side cache, shared for the whole session of the user in the browser.
 const clientSideEmotionCache = createEmotionCache();
