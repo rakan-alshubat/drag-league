@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react'
-import { useWindowSize } from 'react-use'
 import { useRouter } from "next/router";
 import { Authenticator, useAuthenticator } from "@aws-amplify/ui-react"
 import LoadingWheel from "@/files/LoadingWheel";
@@ -19,10 +18,9 @@ function AuthenticatorApp(){
 }
 
 export default function AuthenticatorPage(){
-    const { width, height } = useWindowSize()
 
     return (
-        <SignInBox sx={{width:width, height:height}}>
+        <SignInBox sx={{width:'100vw', height:'100vh'}}>
             <Authenticator >
                 <AuthenticatorApp />
             </Authenticator>
