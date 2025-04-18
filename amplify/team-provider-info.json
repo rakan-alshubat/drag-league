@@ -1,0 +1,20 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-dragleague-dev-041d3-authRole",
+      "UnauthRoleArn": "arn:aws:iam::476053155797:role/amplify-dragleague-dev-041d3-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::476053155797:role/amplify-dragleague-dev-041d3-authRole",
+      "Region": "us-west-2",
+      "DeploymentBucketName": "amplify-dragleague-dev-041d3-deployment",
+      "UnauthRoleName": "amplify-dragleague-dev-041d3-unauthRole",
+      "StackName": "amplify-dragleague-dev-041d3",
+      "StackId": "arn:aws:cloudformation:us-west-2:476053155797:stack/amplify-dragleague-dev-041d3/bed6aa80-14de-11f0-a98d-02a699fe4fed",
+      "AmplifyAppId": "d2n5a39gdnwk1t"
+    },
+    "categories": {
+      "auth": {
+        "dragleaguedf3b00a0": {}
+      }
+    }
+  }
+}

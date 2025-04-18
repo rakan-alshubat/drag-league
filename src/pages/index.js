@@ -1,8 +1,14 @@
+import { Button } from "@mui/material";
 
 export default function Home() {
   return (
     <>
-      Hello World!
+        <Button href="/Player">
+          Player
+        </Button>
+        <Button href="/SignIn">
+          sign in
+        </Button>
     </>
-  )
-}
+  );
+} 
