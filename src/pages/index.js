@@ -1,15 +1,14 @@
-import { withAuthenticator } from "@aws-amplify/ui-react"
-import { defaultTheme, ThemeProvider } from "@aws-amplify/ui-react"
+import { Button } from "@mui/material";
 
-function Home(signOut, user) {
+export default function Home() {
   return (
-    <div>
-      <h1>Welcome {user.username} </h1>
-      <button onClick={signOut}>Sign Out</button>
-    </div>
+    <>
+        <Button href="/Player">
+          Player
+        </Button>
+        <Button href="/SignIn">
+          sign in
+        </Button>
+    </>
   );
-}
-
-export default withAuthenticator(Home, {
-  variation: 'modal',
-});
+} 
