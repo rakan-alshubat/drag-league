@@ -254,6 +254,20 @@
         }
       }
     },
+    "apidragleague": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": "https://s3.amazonaws.com/amplify-dragleague-dev-041d3-deployment/amplify-cfn-templates/api/cloudformation-template.json",
+        "Parameters": {
+          "AppSyncApiName": "dragleague",
+          "DynamoDBBillingMode": "PAY_PER_REQUEST",
+          "DynamoDBEnableServerSideEncryption": false,
+          "S3DeploymentBucket": "amplify-dragleague-dev-041d3-deployment",
+          "S3DeploymentRootKey": "amplify-appsync-files/9de7cd21a8703155876d8a173902674bb84743c1",
+          "env": "dev"
+        }
+      }
+    },
     "UpdateRolesWithIDPFunction": {
       "DependsOn": [
         "AuthRole",

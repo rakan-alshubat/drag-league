@@ -14,6 +14,9 @@
     "categories": {
       "auth": {
         "dragleaguedf3b00a0": {}
+      },
+      "api": {
+        "dragleague": {}
       }
     }
   }

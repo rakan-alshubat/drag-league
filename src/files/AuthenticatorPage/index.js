@@ -11,7 +11,7 @@ function AuthenticatorApp(){
 
     useEffect(() => {
         if(route === 'authenticated'){
-            router.replace('/player')
+            router.replace('/Player')
         }
     }, [route, router]);
     return <LoadingWheel />
