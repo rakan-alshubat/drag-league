@@ -42,7 +42,7 @@
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-dragleague-dev-041d3-deployment/amplify-cfn-templates/auth/dragleaguedf3b00a0-cloudformation-template.json",
         "logicalId": "authdragleaguedf3b00a0"
       },
-      "lastPushTimeStamp": "2025-04-09T01:15:59.603Z",
+      "lastPushTimeStamp": "2025-08-15T23:57:21.162Z",
       "output": {
         "UserPoolId": "us-west-2_QBH0rzmGc",
         "AppClientIDWeb": "5cg734p8i07ld7j6uliepvv595",

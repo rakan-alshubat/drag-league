@@ -3,10 +3,10 @@ import { Button } from "@mui/material";
 export default function Home() {
   return (
     <>
-        <Button href="/Player">
+        <Button href="/player">
           Player
         </Button>
-        <Button href="/SignIn">
+        <Button href="/signin">
           sign in
         </Button>
     </>

@@ -11,7 +11,7 @@ function AuthenticatorApp(){
 
     useEffect(() => {
         if(route === 'authenticated'){
-            router.replace('/Player')
+            router.replace('/player')
         }
     }, [route, router]);
     return <LoadingWheel />
@@ -21,7 +21,8 @@ export default function AuthenticatorPage(){
 
     return (
         <SignInBox sx={{width:'100vw', height:'100vh'}}>
-            <Authenticator >
+            <Authenticator
+                signUpAttributes={['email', 'preferred_username']}>
                 <AuthenticatorApp />
             </Authenticator>
         </SignInBox>

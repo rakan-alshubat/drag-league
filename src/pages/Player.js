@@ -4,7 +4,7 @@ import { getCurrentUser, signOut } from "aws-amplify/auth";
 import LoadingWheel from "@/files/LoadingWheel";
 import { Button } from "@mui/material";
 
-export default function Player(){
+export default function player(){
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -12,9 +12,10 @@ export default function Player(){
     getCurrentUser()
       .then(user => {
         setLoading(false)
+        console.log(user)
       })
       .catch(() => {
-        router.push('/SignIn')
+        router.push('/signin')
       });
   }, []);
 
