@@ -1,5 +1,5 @@
 import AuthenticatorPage from '@/files/AuthenticatorPage'
-export default function signin(){
+export default function SignIn(){
     return (
         <AuthenticatorPage />
     )

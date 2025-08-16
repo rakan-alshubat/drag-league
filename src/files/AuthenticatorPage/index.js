@@ -21,8 +21,7 @@ export default function AuthenticatorPage(){
 
     return (
         <SignInBox sx={{width:'100vw', height:'100vh'}}>
-            <Authenticator
-                signUpAttributes={['email', 'preferred_username']}>
+            <Authenticator>
                 <AuthenticatorApp />
             </Authenticator>
         </SignInBox>
