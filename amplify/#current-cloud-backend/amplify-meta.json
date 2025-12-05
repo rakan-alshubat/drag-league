@@ -12,37 +12,61 @@
       "AmplifyAppId": "d2n5a39gdnwk1t"
     }
   },
-  "auth": {
-    "dragleaguedf3b00a0": {
-      "service": "Cognito",
+  "api": {
+    "dragLeagueDev": {
+      "service": "AppSync",
       "providerPlugin": "awscloudformation",
       "dependsOn": [],
+      "output": {
+        "authConfig": {
+          "defaultAuthentication": {
+            "authenticationType": "API_KEY",
+            "apiKeyConfig": {
+              "apiKeyExpirationDays": 365,
+              "apiKeyExpirationDate": "2026-11-19T00:25:08.717Z",
+              "description": "drage-league-dev-api-key"
+            }
+          },
+          "additionalAuthenticationProviders": []
+        },
+        "GraphQLAPIIdOutput": "2ybkbnj6r5awxfzhkfgnp672yy",
+        "GraphQLAPIEndpointOutput": "https://gem3uulxvvg5bhgsd6o4boikta.appsync-api.us-west-2.amazonaws.com/graphql",
+        "GraphQLAPIKeyOutput": "da2-ithxhemcqrhnzff5egowclyy6m"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-dragleague-dev-041d3-deployment/amplify-cfn-templates/api/cloudformation-template.json",
+        "logicalId": "apidragLeagueDev"
+      },
+      "lastPushTimeStamp": "2025-12-04T18:57:17.413Z",
+      "lastPushDirHash": "rE0GVi4oQfyxGv7oOJFd6nVteQs="
+    }
+  },
+  "auth": {
+    "dragleaguedf3b00a0": {
       "customAuth": false,
+      "dependsOn": [],
       "frontendAuthConfig": {
-        "socialProviders": [],
-        "usernameAttributes": [
-          "EMAIL"
-        ],
-        "signupAttributes": [
-          "EMAIL"
+        "mfaConfiguration": "OFF",
+        "mfaTypes": [
+          "SMS"
         ],
         "passwordProtectionSettings": {
           "passwordPolicyMinLength": 8,
           "passwordPolicyCharacters": []
         },
-        "mfaConfiguration": "OFF",
-        "mfaTypes": [
-          "SMS"
+        "signupAttributes": [
+          "EMAIL"
+        ],
+        "socialProviders": [],
+        "usernameAttributes": [
+          "EMAIL"
         ],
         "verificationMechanisms": [
           "EMAIL"
         ]
       },
-      "providerMetadata": {
-        "s3TemplateURL": "https://s3.amazonaws.com/amplify-dragleague-dev-041d3-deployment/amplify-cfn-templates/auth/dragleaguedf3b00a0-cloudformation-template.json",
-        "logicalId": "authdragleaguedf3b00a0"
-      },
-      "lastPushTimeStamp": "2025-08-16T02:34:39.500Z",
+      "providerPlugin": "awscloudformation",
+      "service": "Cognito",
       "output": {
         "UserPoolId": "us-west-2_QBH0rzmGc",
         "AppClientIDWeb": "5cg734p8i07ld7j6uliepvv595",
@@ -52,34 +76,11 @@
         "IdentityPoolName": "dragleaguedf3b00a0_identitypool_df3b00a0__dev",
         "UserPoolName": "dragleaguedf3b00a0_userpool_df3b00a0"
       },
-      "lastPushDirHash": "NnGhYFisS4uQq3fDUhcWtZNSdJE="
-    }
-  },
-  "api": {
-    "dragleague": {
-      "service": "AppSync",
-      "providerPlugin": "awscloudformation",
-      "dependsOn": [],
-      "output": {
-        "authConfig": {
-          "defaultAuthentication": {
-            "authenticationType": "API_KEY",
-            "apiKeyConfig": {
-              "apiKeyExpirationDays": 7
-            }
-          },
-          "additionalAuthenticationProviders": []
-        },
-        "GraphQLAPIIdOutput": "eyme7p67bfgkzbfvaatnxscuqy",
-        "GraphQLAPIEndpointOutput": "https://gkookzkszjhivfilriytho6nbm.appsync-api.us-west-2.amazonaws.com/graphql",
-        "GraphQLAPIKeyOutput": "da2-f6o3qyzstzezrj2pr22pcqbege"
-      },
+      "lastPushTimeStamp": "2025-12-04T18:57:15.881Z",
       "providerMetadata": {
-        "s3TemplateURL": "https://s3.amazonaws.com/amplify-dragleague-dev-041d3-deployment/amplify-cfn-templates/api/cloudformation-template.json",
-        "logicalId": "apidragleague"
-      },
-      "lastPushTimeStamp": "2025-08-16T02:34:40.776Z",
-      "lastPushDirHash": "KWjQxLF/b/hXzN5DcbTZh7fw13M="
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-dragleague-dev-041d3-deployment/amplify-cfn-templates/auth/dragleaguedf3b00a0-cloudformation-template.json",
+        "logicalId": "authdragleaguedf3b00a0"
+      }
     }
   }
 }

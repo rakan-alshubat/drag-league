@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "serviceConfiguration": {
+    "apiName": "dragLeagueDev",
+    "serviceName": "AppSync",
+    "defaultAuthType": {
+      "mode": "API_KEY",
+      "expirationTime": 365,
+      "apiKeyExpirationDate": "2026-11-19T00:25:08.717Z",
+      "keyDescription": "drage-league-dev-api-key"
+    }
+  }
+}

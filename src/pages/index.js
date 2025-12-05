@@ -1,14 +1,5 @@
-import { Button } from "@mui/material";
+import HomePage from "@/files/HomePage";
 
 export default function Home() {
-  return (
-    <>
-        <Button href="/Player">
-          Player
-        </Button>
-        <Button href="/SignIn">
-          sign in
-        </Button>
-    </>
-  );
+    return <HomePage />;
 } 

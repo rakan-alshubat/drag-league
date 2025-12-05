@@ -1,13 +1,15 @@
 {
   "api": {
-    "dragleague": {
+    "dragLeagueDev": {
       "dependsOn": [],
       "output": {
         "authConfig": {
           "additionalAuthenticationProviders": [],
           "defaultAuthentication": {
             "apiKeyConfig": {
-              "apiKeyExpirationDays": 7
+              "apiKeyExpirationDate": "2026-11-19T00:25:08.717Z",
+              "apiKeyExpirationDays": 365,
+              "description": "drage-league-dev-api-key"
             },
             "authenticationType": "API_KEY"
           }
