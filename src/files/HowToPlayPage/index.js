@@ -38,10 +38,10 @@ export default function HowToPlayPage() {
                 <StepContent>
                     <StepDescription>
                         Start by creating your own league or accepting an invitation to join an existing one. 
-                        As a league creator, you'll set up all the rules and settings.
+                        As a league creator, you&apos;ll set up all the rules and settings.
                     </StepDescription>
                     <StepList>
-                        <li><strong>Create a League:</strong> Click "Create League" and fill in the details</li>
+                        <li><strong>Create a League:</strong> Click &ldquo;Create League&rdquo; and fill in the details</li>
                         <li><strong>Set the Number of Queens:</strong> Choose how many contestants are competing</li>
                         <li><strong>Configure Scoring:</strong> Assign point values for each elimination placement</li>
                         <li><strong>Add Bonus Categories:</strong> Optional special predictions for extra points</li>
@@ -62,12 +62,12 @@ export default function HowToPlayPage() {
                 </StepHeader>
                 <StepContent>
                     <StepDescription>
-                        Once your league is created, invite friends to compete against you. They'll receive an email invitation with instructions to join.
+                        Once your league is created, invite friends to compete against you. They&apos;ll receive an email invitation with instructions to join.
                     </StepDescription>
                     <StepList>
-                        <li>Go to your league page and click "Invite Player"</li>
+                        <li>Go to your league page and click &ldquo;Invite Player&rdquo;</li>
                         <li>Enter their name and email address</li>
-                        <li>They'll receive an invitation email with a link to join</li>
+                        <li>They&apos;ll receive an invitation email with a link to join</li>
                         <li>New players will need to create an account before joining</li>
                     </StepList>
                 </StepContent>
@@ -83,7 +83,7 @@ export default function HowToPlayPage() {
                         This is where the strategy comes in! Predict the elimination order of all the queens, from first eliminated to winner.
                     </StepDescription>
                     <StepList>
-                        <li><strong>Drag and Drop:</strong> Arrange queens in the order you think they'll be eliminated</li>
+                        <li><strong>Drag and Drop:</strong> Arrange queens in the order you think they&apos;ll be eliminated</li>
                         <li><strong>First Position = First Out:</strong> The queen at the top will be eliminated first</li>
                         <li><strong>Last Position = Winner:</strong> The queen at the bottom wins the season</li>
                         <li><strong>Set Your Display Name:</strong> Choose how you appear in the league</li>
@@ -97,7 +97,7 @@ export default function HowToPlayPage() {
                     </ExampleBox>
                     <HighlightBox>
                         <HighlightText>
-                            🎯 Strategy: Consider each queen's strengths, track record, and edit style when making your predictions!
+                            🎯 Strategy: Consider each queen&apos;s strengths, track record, and edit style when making your predictions!
                         </HighlightText>
                     </HighlightBox>
                 </StepContent>
@@ -110,7 +110,7 @@ export default function HowToPlayPage() {
                 </StepHeader>
                 <StepContent>
                     <StepDescription>
-                        Throughout the season, predict which queen will win each week's main challenge. This doesn't affect your main score but adds extra competition!
+                        Throughout the season, predict which queen will win each week&apos;s main challenge. This doesn&apos;t affect your main score but adds extra competition!
                     </StepDescription>
                     <StepList>
                         <li>Submit your weekly winner prediction before each episode</li>
@@ -131,8 +131,8 @@ export default function HowToPlayPage() {
                         As the season progresses and episodes air, the league admin updates the results. Watch your score grow as your predictions come true!
                     </StepDescription>
                     <StepList>
-                        <li><strong>Player Rankings Tab:</strong> See the leaderboard and everyone's current scores</li>
-                        <li><strong>Player Submissions Tab:</strong> View everyone's predictions and weekly picks</li>
+                        <li><strong>Player Rankings Tab:</strong> See the leaderboard and everyone&apos;s current scores</li>
+                        <li><strong>Player Submissions Tab:</strong> View everyone&apos;s predictions and weekly picks</li>
                         <li><strong>Season Info Tab:</strong> Track which queens have been eliminated and who won challenges</li>
                         <li><strong>Real-time Updates:</strong> Scores update automatically as results are entered</li>
                     </StepList>
@@ -161,7 +161,7 @@ export default function HowToPlayPage() {
                     <ExampleBox>
                         <ExampleTitle>Bonus Category Examples:</ExampleTitle>
                         <ExampleText>
-                            "Who will win Miss Congeniality?" (3 points) • "How many queens will lip sync more than once?" (5 points) • "Will there be a double shantay?" (2 points)
+                            &ldquo;Who will win Miss Congeniality?&rdquo; (3 points) • &ldquo;How many queens will lip sync more than once?&rdquo; (5 points) • &ldquo;Will there be a double shantay?&rdquo; (2 points)
                         </ExampleText>
                     </ExampleBox>
                 </StepContent>

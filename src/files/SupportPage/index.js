@@ -67,7 +67,7 @@ export default function SupportPage() {
                     <li>Get real-time support from community members</li>
                     <li>Share your league strategies and tips</li>
                     <li>Stay updated on new features and updates</li>
-                    <li>Connect with other RuPaul's Drag Race fans</li>
+                    <li>Connect with other RuPaul&apos;s Drag Race fans</li>
                 </FeatureList>
             </SupportSection>
 
@@ -79,7 +79,7 @@ export default function SupportPage() {
                     Support the Project
                 </SectionTitle>
                 <SectionDescription>
-                    Drag League is a passion project created for the RuPaul's Drag Race community. 
+                    Drag League is a passion project created for the RuPaul&apos;s Drag Race community. 
                     If you enjoy using the platform and want to support its development and maintenance, 
                     consider buying us a coffee! Your support helps keep the servers running and enables 
                     us to add new features.
@@ -153,7 +153,7 @@ export default function SupportPage() {
                     Contact Us
                 </SectionTitle>
                 <SectionDescription>
-                    Have questions, feedback, or just want to say hi? We'd love to hear from you! 
+                    Have questions, feedback, or just want to say hi? We&apos;d love to hear from you! 
                     Reach out through Discord for the fastest response, send us an email, or check 
                     our FAQ page for answers to common questions.
                 </SectionDescription>
@@ -186,7 +186,7 @@ export default function SupportPage() {
                     </StyledButton>
                 </ButtonGroup>
                 <FeatureList>
-                    <li><strong>Email:</strong> drag.league1@gmail.com - We'll respond within 24-48 hours</li>
+                    <li><strong>Email:</strong> drag.league1@gmail.com - We&apos;ll respond within 24-48 hours</li>
                     <li><strong>Discord:</strong> Join our server for immediate community support</li>
                     <li><strong>FAQ:</strong> Check our frequently asked questions first</li>
                     <li><strong>Feature Requests:</strong> Share your ideas on Discord or via email</li>

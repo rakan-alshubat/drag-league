@@ -115,7 +115,7 @@ export default function HomePage() {
                     How It Works
                 </Typography>
                 <Typography variant="h6" paragraph sx={{ color: '#FFD700', fontWeight: 500 }}>
-                    Fantasy leagues for RuPaul's Drag Race fans
+                    Fantasy leagues for RuPaul&apos;s Drag Race fans
                 </Typography>
 
                 <FeatureGrid>
