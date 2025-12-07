@@ -23,11 +23,11 @@ export default function SupportPage() {
     const router = useRouter();
 
     const handleDiscordClick = () => {
-        window.open('https://discord.gg/your-invite-link', '_blank');
+        window.open('https://discord.gg/6APgPgT4', '_blank');
     };
 
     const handleBuyMeCoffeeClick = () => {
-        window.open('https://www.buymeacoffee.com/your-username', '_blank');
+        window.open('https://www.buymeacoffee.com/dragleague', '_blank');
     };
 
     return (
