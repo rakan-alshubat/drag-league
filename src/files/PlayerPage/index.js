@@ -8,7 +8,7 @@ import { getUsers} from "@/graphql/queries";
 import { createUsers } from '@/graphql/mutations';
 import ErrorPopup from "../ErrorPopUp";
 import { onCreateUsers, onUpdateUsers, onDeleteUsers } from '@/graphql/subscriptions';
-import { Box, Typography, Tabs, Tab, Button } from '@mui/material';
+import { Box, Typography, Button } from '@mui/material';
 import { 
     WelcomeBanner, 
     WelcomeText, 
@@ -23,24 +23,12 @@ export default function PlayerPage() {
     const [errorPopup, setErrorPopup] = useState(false);
     const router = useRouter();
     const client = generateClient()
-    const [tabValue, setTabValue] = useState(0);
 
     const [userID, setUserID] = useState('');
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [leagues, setLeagues] = useState([]);
-    const [followedLeagues, setFollowedLeagues] = useState([]);
     const [pendingLeagues, setPendingLeagues] = useState([]);
-
-    const handleTabChange = (event, newValue) => {
-        setTabValue(newValue);
-    };
-
-    const TabPanel = ({ children, value, index }) => (
-        <Box hidden={value !== index}>
-            {value === index && children}
-        </Box>
-    );
     
     useEffect(() => {
         getCurrentUser()
@@ -68,7 +56,6 @@ export default function PlayerPage() {
                             setName(results.data.getUsers.name || '');
                             setEmail(results.data.getUsers.email || '');
                             setLeagues(results.data.getUsers.leagues || []); 
-                            setFollowedLeagues(results.data.getUsers.followedLeagues || []);
                             setPendingLeagues(results.data.getUsers.pendingLeagues || []);
                         }
 
@@ -96,7 +83,6 @@ export default function PlayerPage() {
                     setName(updated.name || '');
                     setEmail(updated.email || '');
                     setLeagues(updated.leagues || []);
-                    setFollowedLeagues(updated.followedLeagues || []);
                     setPendingLeagues(updated.pendingLeagues || []);
                 }
             },
@@ -111,7 +97,6 @@ export default function PlayerPage() {
                     setName(created.name || '');
                     setEmail(created.email || '');
                     setLeagues(created.leagues || []);
-                    setFollowedLeagues(created.followedLeagues || []);
                     setPendingLeagues(created.pendingLeagues || []);
                 }
             },
@@ -158,66 +143,44 @@ export default function PlayerPage() {
             </WelcomeBanner>
 
             <ContentContainer>
-                <Box>
-                    <Tabs value={tabValue} onChange={handleTabChange} centered>
-                        <Tab label="My Leagues" />
-                        <Tab label="Followed Leagues" />
-                    </Tabs>
+                <LeagueSection>
+                    <Typography variant="h6">Leagues</Typography>
+                    <LeagueList>
+                        {sortedLeagues(leagues).map((league) => (
+                            <LeagueLink key={league.id} onClick={() => router.push(`/League/${league.id}`)}>
+                                {league.name}
+                            </LeagueLink>
+                        ))}
+                    </LeagueList>
 
-                    <TabPanel value={tabValue} index={0}>
-                        <LeagueSection>
-                            <Typography variant="h6">Leagues</Typography>
-                            <LeagueList>
-                                {sortedLeagues(leagues).map((league) => (
-                                    <LeagueLink key={league.id} onClick={() => router.push(`/League/${league.id}`)}>
-                                        {league.name}
-                                    </LeagueLink>
-                                ))}
-                            </LeagueList>
+                    <Typography variant="h6" sx={{ mt: 3 }}>Pending Leagues</Typography>
+                    <LeagueList>
+                        {sortedLeagues(pendingLeagues).map((league) => (
+                            <LeagueLink key={league.id} onClick={() => router.push(`/League/${league.id}`)}>
+                                {league.name}
+                            </LeagueLink>
+                        ))}
+                    </LeagueList>
+                </LeagueSection>
 
-                            <Typography variant="h6" sx={{ mt: 3 }}>Pending Leagues</Typography>
-                            <LeagueList>
-                                {sortedLeagues(pendingLeagues).map((league) => (
-                                    <LeagueLink key={league.id} onClick={() => router.push(`/League/${league.id}`)}>
-                                        {league.name}
-                                    </LeagueLink>
-                                ))}
-                            </LeagueList>
-                        </LeagueSection>
-                    </TabPanel>
-
-                    <TabPanel value={tabValue} index={1}>
-                        <LeagueSection>
-                            <Typography variant="h6">Leagues</Typography>
-                            <LeagueList>
-                                {sortedLeagues(followedLeagues).map((league) => (
-                                    <LeagueLink key={league.id} onClick={() => router.push(`/League/${league.id}`)}>
-                                        {league.name}
-                                    </LeagueLink>
-                                ))}
-                            </LeagueList>
-                        </LeagueSection>
-                    </TabPanel>
-
-                    <ButtonContainer>
-                        <Button
-                            variant="contained"
-                            onClick={() => { router.push('/CreateLeague'); }}
-                        >
-                            Create League
-                        </Button>
-                        <Button
-                            variant="contained"
-                            onClick={() => {
-                                // open popup showing the three-way (search) version
-                                setSwapPopupVersion('three');
-                                setShowSwapPopup(true);
-                            }}
-                        >
-                            Search Leagues
-                        </Button>
-                    </ButtonContainer>
-                </Box>
+                <ButtonContainer>
+                    <Button
+                        variant="contained"
+                        onClick={() => { router.push('/CreateLeague'); }}
+                    >
+                        Create League
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={() => {
+                            // open popup showing the three-way (search) version
+                            setSwapPopupVersion('three');
+                            setShowSwapPopup(true);
+                        }}
+                    >
+                        Search Leagues
+                    </Button>
+                </ButtonContainer>
             </ContentContainer>
 
             <ErrorPopup

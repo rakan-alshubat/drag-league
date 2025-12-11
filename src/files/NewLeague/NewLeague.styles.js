@@ -150,3 +150,56 @@ export const RowItem = styled(Box)(({ theme }) => ({
     overflowWrap: 'break-word',
     wordBreak: 'break-word',
 }));
+
+export const DividerContainer = styled(Box)(({ theme }) => ({
+    marginTop: theme.spacing(2),
+    marginBottom: theme.spacing(2),
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(2),
+}));
+
+export const DividerLine = styled(Box)(({ theme }) => ({
+    flex: 1,
+    height: '1px',
+    background: '#9B30FF',
+}));
+
+export const DividerText = styled(Typography)(({ theme }) => ({
+    color: '#9B30FF',
+    fontWeight: 'bold',
+}));
+
+export const InviteLinkContainer = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1),
+    alignItems: 'center',
+}));
+
+export const InviteLinkLabel = styled(Typography)(({ theme }) => ({
+    color: '#666',
+}));
+
+export const InviteLinkRow = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    gap: theme.spacing(1),
+    width: '100%',
+    alignItems: 'center',
+    [theme.breakpoints.down('sm')]: {
+        flexDirection: 'column',
+    },
+}));
+
+export const CopyLinkButton = styled(Button)(({ theme }) => ({
+    background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)',
+    color: 'white',
+    fontWeight: 'bold',
+    whiteSpace: 'nowrap',
+    '&:hover': {
+        background: 'linear-gradient(135deg, #FF1493 20%, #9B30FF 120%)',
+    },
+    [theme.breakpoints.down('sm')]: {
+        width: '100%',
+    },
+}));

@@ -139,6 +139,7 @@ export const getPlayer = /* GraphQL */ `
         updatedAt
         __typename
       }
+      plEmail
       plName
       plStatus
       plLipSyncAssassin
@@ -162,6 +163,7 @@ export const listPlayers = /* GraphQL */ `
     listPlayers(filter: $filter, limit: $limit, nextToken: $nextToken) {
       items {
         leagueId
+        plEmail
         plName
         plStatus
         plLipSyncAssassin
@@ -196,6 +198,7 @@ export const playersByLeagueId = /* GraphQL */ `
     ) {
       items {
         leagueId
+        plEmail
         plName
         plStatus
         plLipSyncAssassin

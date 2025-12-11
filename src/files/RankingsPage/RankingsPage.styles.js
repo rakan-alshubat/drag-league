@@ -8,6 +8,10 @@ export const CreationTitleBox = styled(Typography)(({ theme }) => ({
     marginBottom: theme.spacing(4),
     fontSize: '2rem',
     fontWeight: 'bold',
+    background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 50%, #FFD700 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
     [theme.breakpoints.down('sm')]: {
         fontSize: '1.6rem',
         marginBottom: theme.spacing(3),
@@ -17,7 +21,7 @@ export const CreationTitleBox = styled(Typography)(({ theme }) => ({
 export const FormContainer = styled(Box)(({ theme }) => ({
     display: 'flex',
     flexDirection: 'column',
-    maxWidth: '600px',
+    maxWidth: '800px',
     margin: '0 auto',
     padding: theme.spacing(2),
     position: 'relative',
@@ -43,6 +47,7 @@ export const SectionTitle = styled(Typography)(({ theme }) => ({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     flex: '0 0 auto',
+    color: theme.palette.primary.main,
     [theme.breakpoints.down('sm')]: {
         fontSize: '1.1rem',
         whiteSpace: 'normal',
@@ -179,18 +184,24 @@ export const SectionWrapper = styled(Box)(({ theme }) => ({
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing(1.5),
-    // alternating backgrounds for sibling sections
+    // alternating backgrounds with theme colors
     '&:nth-of-type(odd)': {
-        backgroundColor: theme.palette.action.hover, // subtle alternate
+        backgroundColor: 'rgba(255, 20, 147, 0.05)', // Hot pink subtle
+        borderLeft: `4px solid ${theme.palette.primary.main}`,
     },
     '&:nth-of-type(even)': {
-        backgroundColor: 'grey',
+        backgroundColor: 'rgba(255, 215, 0, 0.05)', // Gold subtle
+        borderLeft: '4px solid #FFD700',
     },
     // ensure inputs inside have full width
     '& .MuiTextField-root, & .MuiSelect-root': {
         width: '100%',
     },
     margin: 0,
+    transition: 'all 0.2s ease',
+    '&:hover': {
+        boxShadow: '0 2px 8px rgba(255, 20, 147, 0.15)',
+    },
 }));
 
 export const ExplanationText = styled(Typography)(({ theme }) => ({
@@ -201,22 +212,18 @@ export const ExplanationText = styled(Typography)(({ theme }) => ({
 }));
 
 export const DescriptionBox = styled(Box)(({ theme }) => ({
-    maxWidth: '900px',
-    width: '100%',
+    width: '800px',
     margin: '0 auto',
-    backgroundColor: theme.palette.background.paper,
-    padding: theme.spacing(3),
-    borderRadius: theme.shape?.borderRadius || theme.spacing(1),
-    boxShadow: theme.shadows[3],
+    background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.08) 0%, rgba(255, 215, 0, 0.08) 100%)',
+    padding: theme.spacing(2),
+    borderRadius: theme.spacing(1),
+    boxShadow: '0 2px 8px rgba(255, 20, 147, 0.1)',
     textAlign: 'center',
-    marginBottom: theme.spacing(3),
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing(2),
+    marginBottom: theme.spacing(2),
+    border: '1px solid rgba(255, 20, 147, 0.2)',
     [theme.breakpoints.down('sm')]: {
+        width: '100%',
         padding: theme.spacing(2),
-        marginBottom: theme.spacing(2),
     },
 }));
 
@@ -248,4 +255,19 @@ export const ErrorAlert = styled(Alert)(({ theme }) => ({
         marginRight: theme.spacing(1)
     },
     wordBreak: 'break-word'
+}));
+
+export const StyledLink = styled('a')(({ theme }) => ({
+    color: '#FF1493',
+    fontWeight: 600,
+    textDecoration: 'none',
+    position: 'relative',
+    transition: 'all 0.3s ease',
+    '&:hover': {
+        color: '#C71585',
+        textDecoration: 'underline',
+    },
+    '&:visited': {
+        color: '#FF1493',
+    },
 }));

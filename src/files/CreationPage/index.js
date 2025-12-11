@@ -47,7 +47,6 @@ export default function CreationPage(){
     const [bonusCategories, setBonusCategories] = useState('');
     const [categoryData, setCategoryData] = useState({});
     const [lipSyncPoints, setLipSyncPoints] = useState('');
-    const [deadlineEnabled, setDeadlineEnabled] = useState(false);
     const [deadline, setDeadline] = useState('');
     const [rankingDeadline, setRankingDeadline] = useState('');
     const [adminEmail, setAdminEmail] = useState('');
@@ -166,10 +165,10 @@ export default function CreationPage(){
         }if(Object.keys(queenNames).length < queensNumber){
             setQueenNamesError(true);
             hasError = true;
-        }if(deadlineEnabled && !deadline){
+        }if(pointValue > 0 && !deadline){
             setDeadlineError(true);
             hasError = true;
-        }    if(deadlineEnabled && deadline && rankingDeadline){
+        }if(pointValue > 0 && deadline && rankingDeadline){
             const rankingDate = new Date(rankingDeadline);
             const pointsDate = new Date(deadline);
             if(rankingDate >= pointsDate){
@@ -484,59 +483,42 @@ export default function CreationPage(){
             </SectionWrapper>
 
             {pointValue > 0 && (<SectionWrapper>
-                <TitleRow>
-                    <InputGroupWithCheckbox>
-                        <CheckboxLabel
-                            control={<StyledCheckbox />}
-                            label="Set weekly Maxi Challenge Deadline (optional)"
-                            onChange={(e) => {
-                                const checked = e.target.checked;
-                                setDeadlineEnabled(checked);
-                                if (!checked) {
-                                    setDeadline('')
-                                    setDeadlineError(false);
-                                }
-                            }}
-                        />
-                    </InputGroupWithCheckbox>
-                    {deadlineError && (
-                        <ErrorAlert severity="error">Missing Maxi Challenge Deadline, or you can uncheck the box.</ErrorAlert>
-                    )}
-                </TitleRow>
-                <ExplanationText>
-                    Select a set date and time for players to submit their weekly Maxi Challenge predictions. if not set, you as the admin will manually submit the weekly results of the episode to close the submissions. <br/> <br/>
-                    Ideally, the deadline for player submissions should be before the episode airs and after the ranking deadline by a day or two. <br/> <br/>
-                </ExplanationText>
-                {deadlineEnabled && (
-                    <FormSection>
-                        <SectionTitle>Deadline (date & time)</SectionTitle>
-                        {deadlineMatchError && (
-                            <ErrorAlert severity="error">Points deadline must be after ranking deadline</ErrorAlert>
+                <FormSection>
+                    <TitleRow>
+                        <SectionTitle>Set Maxi Challenge Deadline</SectionTitle>
+                        {deadlineError && (
+                            <ErrorAlert severity="error">Missing Maxi Challenge Deadline.</ErrorAlert>
                         )}
-                        <StyledTextField
-                            type="datetime-local"
-                            value={deadline}
-                            onChange={(e) => {
-                                setDeadline(e.target.value)
-                                if(rankingDeadline){
-                                    const rankingDate = new Date(rankingDeadline);
-                                    const pointsDate = new Date(e.target.value);
-                                    if(rankingDate >= pointsDate){
-                                        setDeadlineMatchError(true);
-                                    } else {
-                                        setDeadlineMatchError(false);
-                                    }
+                    </TitleRow>
+                    <ExplanationText>
+                        Select a set date and time for players to submit their weekly Maxi Challenge predictions. Ideally, the deadline for player submissions should be before the episode airs and after the ranking deadline by a day or two.
+                    </ExplanationText>
+                    {deadlineMatchError && (
+                        <ErrorAlert severity="error">Points deadline must be after ranking deadline</ErrorAlert>
+                    )}
+                    <StyledTextField
+                        type="datetime-local"
+                        value={deadline}
+                        onChange={(e) => {
+                            setDeadline(e.target.value)
+                            if(rankingDeadline){
+                                const rankingDate = new Date(rankingDeadline);
+                                const pointsDate = new Date(e.target.value);
+                                if(rankingDate >= pointsDate){
+                                    setDeadlineMatchError(true);
                                 } else {
                                     setDeadlineMatchError(false);
                                 }
-                                if(e.target.value){
-                                    setDeadlineError(false);
-                                }
-                            }}
-                            InputLabelProps={{ shrink: true }}
-                        />
-                    </FormSection>
-                )}
+                            } else {
+                                setDeadlineMatchError(false);
+                            }
+                            if(e.target.value){
+                                setDeadlineError(false);
+                            }
+                        }}
+                        InputLabelProps={{ shrink: true }}
+                    />
+                </FormSection>
             </SectionWrapper>
             )}
 

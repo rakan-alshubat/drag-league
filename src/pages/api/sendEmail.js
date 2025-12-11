@@ -1,13 +1,9 @@
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import sgMail from '@sendgrid/mail';
 
-// Configure SES client with credentials from environment variables
-const ses = new SESClient({ 
-    region: process.env.AWS_REGION || 'us-west-2',
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    }
-});
+// Configure SendGrid with API key from environment variables
+if (process.env.SENDGRID_API_KEY) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 export default async function handler(req, res) {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -17,63 +13,77 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Missing required fields: to, subject, html/text" });
     }
 
-    // Check if AWS credentials are configured
-    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-        console.error('AWS credentials not configured');
+    // Check if SendGrid API key is configured
+    if (!process.env.SENDGRID_API_KEY) {
+        console.error('SendGrid API key not configured');
         return res.status(500).json({ 
-            error: "AWS credentials not configured. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables." 
+            error: "SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable." 
+        });
+    }
+
+    // Check if from email is configured
+    if (!process.env.SENDGRID_FROM_EMAIL) {
+        console.error('SendGrid from email not configured');
+        return res.status(500).json({ 
+            error: "Sender email not configured. Please set SENDGRID_FROM_EMAIL environment variable." 
         });
     }
 
     const toAddresses = Array.isArray(to) ? to : [to];
 
-    const params = {
-        Destination: { ToAddresses: toAddresses },
-        Message: {
-            Subject: { Charset: "UTF-8", Data: subject },
-            Body: {
-                Html: html ? { Charset: "UTF-8", Data: html } : undefined,
-                Text: text ? { Charset: "UTF-8", Data: text } : undefined,
-            },
+    // Configure sender with optional custom name
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL;
+    const fromName = process.env.SENDGRID_FROM_NAME || 'Drag League';
+    
+    const msg = {
+        to: toAddresses,
+        from: {
+            email: fromEmail,
+            name: fromName
         },
-        Source: process.env.SES_FROM_EMAIL || 'drag.league1@gmail.com', // must be a verified SES identity
-        // Add reply-to address if configured
-        ReplyToAddresses: process.env.SES_REPLY_TO_EMAIL ? [process.env.SES_REPLY_TO_EMAIL] : undefined,
+        subject: subject,
+        text: text || '',
+        html: html || '',
+        replyTo: process.env.SENDGRID_REPLY_TO_EMAIL || undefined,
     };
 
     try {
-        console.log('Attempting to send email via SES...');
+        console.log('Attempting to send email via SendGrid...');
         console.log('To:', toAddresses);
-        console.log('From:', params.Source);
+        console.log('From:', msg.from);
         console.log('Subject:', subject);
         
-        const result = await ses.send(new SendEmailCommand(params));
-        console.log('Email sent successfully:', result);
+        const result = await sgMail.send(msg);
+        console.log('Email sent successfully via SendGrid');
+        console.log('Status Code:', result[0]?.statusCode);
         
-        return res.status(200).json({ ok: true, messageId: result.MessageId });
+        return res.status(200).json({ 
+            ok: true, 
+            statusCode: result[0]?.statusCode,
+            message: 'Email sent successfully' 
+        });
     } catch (err) {
-        console.error("SES send error details:", {
-            name: err.name,
+        console.error("SendGrid send error details:", {
             message: err.message,
-            code: err.$metadata?.httpStatusCode,
-            requestId: err.$metadata?.requestId,
+            code: err.code,
+            response: err.response?.body,
         });
         
         // Provide helpful error messages
         let errorMessage = err?.message || "Send failed";
         
-        if (err.name === 'MessageRejected' || err.message?.includes('Email address is not verified')) {
-            errorMessage = `Email address not verified in AWS SES. Please verify '${params.Source}' in the AWS SES console.`;
-        } else if (err.name === 'InvalidParameterValue') {
-            errorMessage = 'Invalid email parameters. Check that email addresses are valid.';
-        } else if (err.name === 'CredentialsProviderError' || err.message?.includes('credentials')) {
-            errorMessage = 'AWS credentials error. Check your AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.';
+        if (err.code === 403) {
+            errorMessage = 'SendGrid API key is invalid or does not have permission to send emails.';
+        } else if (err.code === 401) {
+            errorMessage = 'SendGrid authentication failed. Check your API key.';
+        } else if (err.response?.body?.errors) {
+            errorMessage = err.response.body.errors.map(e => e.message).join(', ');
         }
         
         return res.status(500).json({ 
             error: errorMessage,
-            code: err.name,
-            details: process.env.NODE_ENV === 'development' ? err.message : undefined
+            code: err.code,
+            details: process.env.NODE_ENV === 'development' ? err.response?.body : undefined
         });
     }
 }

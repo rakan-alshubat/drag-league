@@ -38,6 +38,7 @@ type League @model {
 type Player @model {
   leagueId: ID! @index(name: "byLeague", sortKeyFields: [])
   league: League @belongsTo(fields: ["leagueId"])
+  plEmail: String!
   plName: String
   plStatus: String
   plLipSyncAssassin: String

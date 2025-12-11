@@ -1,7 +1,9 @@
 import { getCurrentUser } from "@aws-amplify/auth";
 import { generateClient } from 'aws-amplify/api'
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { updatePlayer, updateLeague } from "@/graphql/mutations";
+import { filterPipeCharacter } from "@/helpers/filterPipeChar";
 import LoadingWheel from "@/files/LoadingWheel";
 import { FormContainer,
     FormSection,
@@ -16,6 +18,7 @@ import { FormContainer,
     ExplanationText,
     DescriptionBox,
     DescriptionText,
+    StyledLink,
     TitleRow,} from "./RankingsPage.styles";
 import { MenuItem } from "@mui/material";
 import { useEffect, useState, useRef } from "react";
@@ -25,6 +28,7 @@ export default function RankingsPage(props){
     const League = props.leagueInfo?.leagueInfo ?? props.leagueInfo ?? null;
     const User = props.userInfo?.userInfo ?? props.userInfo ?? null;
     const Player = props.playersInfo?.playersInfo ?? props.playersInfo ?? null;
+    const isEditMode = props.isEditMode || false;
 
     const [queenNames, setQueenNames] = useState({});
     const [displayName, setDisplayName] = useState('');
@@ -69,13 +73,78 @@ export default function RankingsPage(props){
             };
         });
     };
-    // Keep optionalRows and showOptionalBonusSection in sync with League data
+    // Keep optionalRows in sync with League data (skip in edit mode with saved bonuses)
     useEffect(() => {
-        const raw = League?.lgBonusPoints ?? [];
-        const parsed = parseBonusPoints(raw);
-        setOptionalRows(parsed);
-        setShowOptionalBonusSection(Array.isArray(raw) ? raw.length > 0 : Boolean(raw));
-    }, [League?.lgBonusPoints]);
+        if (!isEditMode || !Player?.plBonuses) {
+            const raw = League?.lgBonusPoints ?? [];
+            const parsed = parseBonusPoints(raw);
+            setOptionalRows(parsed);
+            setShowOptionalBonusSection(Array.isArray(raw) ? raw.length > 0 : Boolean(raw));
+        }
+    }, [League?.lgBonusPoints, isEditMode, Player?.plBonuses]);
+
+    // Show lip sync assassin section if points value is greater than 0
+    useEffect(() => {
+        const points = League?.lgLipSyncPoints || 0;
+
+        setShowOptionalSection(points > 0);
+    }, [League?.lgLipSyncPoints]);
+
+    // Pre-populate display name for first-time submissions
+    useEffect(() => {
+        const hasNoRankings = !Player?.plRankings || !Array.isArray(Player.plRankings) || Player.plRankings.length === 0;
+        if (!isEditMode && hasNoRankings) {
+            if (User?.name) {
+
+                setDisplayName(User.name);
+            }
+        }
+    }, [isEditMode, Player?.plRankings, User?.name]);
+
+    // Populate form in edit mode
+    useEffect(() => {
+        if (isEditMode && Player?.plRankings && Array.isArray(Player.plRankings) && Player.plRankings.length > 0) {
+
+            // Set display name
+            if (Player.plName) {
+                setDisplayName(Player.plName);
+            }
+            
+            // Populate queen rankings
+            const rankingsObj = {};
+            Player.plRankings.forEach((queenName, index) => {
+                rankingsObj[index] = queenName;
+            });
+            setQueenNames(rankingsObj);
+            
+            // Populate lip sync assassin if exists
+            if (Player.plLipSyncAssassin) {
+                setOptionalQueen(Player.plLipSyncAssassin);
+            }
+            
+            // Populate bonus categories if they exist
+            if (Player.plBonuses && Array.isArray(Player.plBonuses) && Player.plBonuses.length > 0) {
+                const bonusArr = Player.plBonuses;
+                const raw = League?.lgBonusPoints ?? [];
+                const parsed = parseBonusPoints(raw);
+
+                // Extract answer from "category|answer" format
+                const updatedRows = parsed.map((row, idx) => {
+                    const savedItem = bonusArr[idx] || '';
+                    const parts = savedItem.split('|');
+                    const answer = parts.length > 1 ? parts[1] : '';
+                    
+                    return {
+                        ...row,
+                        value: answer
+                    };
+                });
+
+                setOptionalRows(updatedRows);
+            }
+        }
+    }, [isEditMode, Player, League?.lgBonusPoints]);
+
     const checkForErrors = () => {
         let hasError = false;
         setAttemptedSubmit(true);
@@ -148,47 +217,63 @@ export default function RankingsPage(props){
 
         setLoading(true);
 
-        // build payload
-        const rankingsArray = Array.from({ length: lgQueenNames.length }, (_, i) => queenNames[i] || '');
-        const bonusValues = (optionalRows || []).map(r => {
-            const category = (r.title || '').toString().trim();
-            const answer = (r.value ?? '').toString().trim();
-            return `${category}|${answer}`;
-        });
+        try {
+            // build payload
+            const rankingsArray = Array.from({ length: lgQueenNames.length }, (_, i) => queenNames[i] || '');
+            const bonusValues = (optionalRows || []).map(r => {
+                const category = (r.title || '').toString().trim();
+                const answer = (r.value ?? '').toString().trim();
+                return `${category}|${answer}`;
+            });
 
-        const input = {
-            // prefer existing player id if provided, otherwise try to derive from current user + league
-            id: Player?.id || User?.id || null,
-            plName: displayName.trim(),
-            plStatus: Player?.plStatus || '',
-            plLipSyncAssassin: optionalQueen || '',
-            plRankings: rankingsArray,
-            plBonuses: bonusValues,
-            leagueId: League?.id || null,
-        };
-
-        const updatePlayerWithInput = await client.graphql({
-            query: updatePlayer,
-            variables: { input }
-        });
-        console.log('Player rankings submitted:', updatePlayerWithInput);
-        
-        // Add history entry to league
-        const currentHistory = League?.lgHistory || [];
-        const historyEntry = new Date().toISOString() + '. ' + displayName.trim() + ' submitted their rankings';
-        
-        await client.graphql({
-            query: updateLeague,
-            variables: { 
-                input: { 
-                    id: League?.id, 
-                    lgHistory: [...currentHistory, historyEntry]
-                } 
+            // Use the player's actual ID from the database
+            if (!Player?.id) {
+                console.error('Player ID is missing:', Player);
+                alert('Error: Player information is missing. Please try refreshing the page.');
+                setLoading(false);
+                return;
             }
-        });
 
-        setLoading(false);
-        router.push('/League/' + League?.id);
+            const input = {
+                id: Player.id,
+                plEmail: Player.plEmail || User?.id || '',
+                plName: displayName.trim(),
+                plStatus: Player.plStatus || 'Player',
+                plLipSyncAssassin: optionalQueen || '',
+                plRankings: rankingsArray,
+                plBonuses: bonusValues,
+                leagueId: League?.id || null,
+            };
+
+            const updatePlayerWithInput = await client.graphql({
+                query: updatePlayer,
+                variables: { input }
+            });
+
+            // Add history entry to league
+            const currentHistory = League?.lgHistory || [];
+            const historyEntry = new Date().toISOString() + '. ' + displayName.trim() + ' submitted their rankings';
+            
+            await client.graphql({
+                query: updateLeague,
+                variables: { 
+                    input: { 
+                        id: League?.id, 
+                        lgHistory: [...currentHistory, historyEntry]
+                    } 
+                }
+            });
+
+            setLoading(false);
+            router.push('/League/' + League?.id);
+        } catch (error) {
+            console.error('Error submitting rankings:', error);
+            console.error('Error details:', error?.errors, error?.message);
+            setLoading(false);
+            
+            // Show user-friendly error message
+            alert('Unable to submit your rankings. Please check your internet connection and try again.');
+        }
     };
 
     const [optionalRows, setOptionalRows] = useState(() => parseBonusPoints(League?.lgBonusPoints || []));
@@ -212,7 +297,7 @@ export default function RankingsPage(props){
     const renderRowDropdown = (row, rowIndex) => {
         const isMissing = attemptedSubmit && missingOptionalRowIndices.includes(rowIndex);
         const missingStyle = isMissing ? { border: '2px solid rgba(220,20,60,0.85)', backgroundColor: '#fff3f3', borderRadius: 4 } : undefined;
-        // debug the incoming row and normalized type
+
         const t = (row.type || 'queens').toString().toLowerCase().trim();
         switch (t) {
         case 'number':
@@ -223,7 +308,7 @@ export default function RankingsPage(props){
                     displayEmpty
                     style={{ width: '100%', ...missingStyle }}
                 >
-                    <MenuItem value="" disabled>Pick number</MenuItem>
+                    <MenuItem value="" disabled>Select a number</MenuItem>
                     {numbers.map(n => <MenuItem key={`${row.id}-num-${n}`} value={n}>{n}</MenuItem>)}
                 </StyledSelect>
             );
@@ -235,7 +320,7 @@ export default function RankingsPage(props){
                     displayEmpty
                     style={{ width: '100%', ...missingStyle }}
                 >
-                    <MenuItem value="" disabled>Pick</MenuItem>
+                    <MenuItem value="" disabled>Select Yes or No</MenuItem>
                     <MenuItem key={`${row.id}-yes`} value="yes">Yes</MenuItem>
                     <MenuItem key={`${row.id}-no`} value="no">No</MenuItem>
                 </StyledSelect>
@@ -250,7 +335,7 @@ export default function RankingsPage(props){
                     displayEmpty
                     style={{ width: '100%', ...missingStyle }}
                 >
-                    <MenuItem value="" disabled>Pick queen</MenuItem>
+                    <MenuItem value="" disabled>Select a Queen</MenuItem>
                     {lgQueenNames.map((queen, i) => (
                         <MenuItem key={`${row.id}-queen-${i}`} value={queen}>{queen}</MenuItem>
                     ))}
@@ -267,20 +352,31 @@ export default function RankingsPage(props){
 
     return(
         <FormContainer>
-            <CreationTitleBox>{League?.lgName}</CreationTitleBox>
+            <CreationTitleBox>{isEditMode ? `Edit Rankings - ${League?.lgName}` : League?.lgName}</CreationTitleBox>
             <DescriptionBox>
                 <DescriptionText>
-                    {League?.lgDescription}
+                    {isEditMode ? 
+                        'Update your rankings below. You can change your queen elimination order, lip sync assassin pick, and bonus category predictions.' :
+                        League?.lgDescription
+                    }
                 </DescriptionText>
             </DescriptionBox>
+
+            {!isEditMode && (
+                <DescriptionBox>
+                    <DescriptionText>
+                        First league? Not sure how the points work? Visit the <Link href="/HowToPlay" passHref legacyBehavior><StyledLink>How To Play</StyledLink></Link> page for more information.
+                    </DescriptionText>
+                </DescriptionBox>
+            )}
 
             <SectionWrapper>
                 <FormSection>
                     <TitleRow>
                         <SectionTitle>Your Name</SectionTitle>
                     </TitleRow>
-                    <ExplanationText>This is the name you will use inside this league (displayed to others).</ExplanationText>
-                    <StyledTextField label="Name"
+                    <ExplanationText>This is the display name you&apos;ll use for this league. Other players will see this name.</ExplanationText>
+                    <StyledTextField label="Display Name"
                         value={displayName}
                         onChange={(e) => {
                             const filtered = filterPipeCharacter(e.target.value);
@@ -298,8 +394,18 @@ export default function RankingsPage(props){
                 {lgQueenNames.length > 0 && (
                     <FormSection>
                         <TitleRow>
-                            <SectionTitle>Queen Ranking</SectionTitle>
+                            <SectionTitle>Queen Rankings</SectionTitle>
                         </TitleRow>
+                        <ExplanationText>
+                            Rank all the queens from most likely to win (1st place) to least likely. <strong>Points are based on accuracy!</strong>
+                            <br /><br />
+                            <strong>How Ranking Points Work:</strong>
+                            <br />
+                            • <strong>Exact match:</strong> You get the full points (equal to the number of queens this season). For example, if there are {lgQueenNames.length} queens and you correctly predict a queen&apos;s exact position, you earn {lgQueenNames.length} points!
+                            <br />
+                            • <strong>Close match:</strong> For each position you&apos;re off by, you lose 1 point. So if you&apos;re 1 spot off, you get {Math.max(0, lgQueenNames.length - 1)} points; 2 spots off gets {Math.max(0, lgQueenNames.length - 2)} points, and so on.
+                            <br />
+                        </ExplanationText>
                         {Array.from({ length: lgQueenNames.length }, (_, index) => {
                             const currentVal = queenNames[index] || '';
                             const isMissing = attemptedSubmit && missingQueenIndices.includes(index)
@@ -398,9 +504,12 @@ export default function RankingsPage(props){
                             <SectionTitle>Lip Sync Assassin</SectionTitle>
                         </TitleRow>
                         <ExplanationText>
-                            Pick the queen you think will be the lip sync assassin of the season.
+                            Pick the queen you think will win the most Lip Syncs For Your Life (or for the win) this season. The queen with the most lip sync wins becomes the Lip Sync Assassin!
                         </ExplanationText>
-                        <div style={{ width: '100%', marginTop: 8 }}>
+                        <div style={{ marginTop: 8, marginBottom: 4, fontSize: 13, color: '#444', fontWeight: 500 }}>
+                            Points: {League?.lgLipSyncPoints || 0}
+                        </div>
+                        <div style={{ width: '100%' }}>
                             <StyledSelect
                                 value={optionalQueen}
                                 onChange={(e) => {
@@ -411,7 +520,7 @@ export default function RankingsPage(props){
                                 displayEmpty
                                 style={{ width: '100%', ...(attemptedSubmit && optionalQueenError ? { border: '2px solid rgba(220,20,60,0.85)', backgroundColor: '#fff3f3', borderRadius: 4 } : {}) }}
                             >
-                                <MenuItem value="" disabled>Queens</MenuItem>
+                                <MenuItem value="" disabled>Select a Queen</MenuItem>
                                 {lgQueenNames.map((queen, i) => (
                                     <MenuItem key={`optional-${queen}-${i}`} value={queen}>
                                         {queen}
@@ -427,10 +536,10 @@ export default function RankingsPage(props){
                 <SectionWrapper>
                     <FormSection>
                         <TitleRow>
-                            <SectionTitle>Bonus rules</SectionTitle>
+                            <SectionTitle>Bonus Rules</SectionTitle>
                         </TitleRow>
                         <ExplanationText>
-                            Select your choices for the bonus point categories below.
+                            Make your predictions for these bonus categories to earn extra points! Choose wisely.
                         </ExplanationText>
 
                         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -455,7 +564,7 @@ export default function RankingsPage(props){
             <SubmitContainer>
                 <CancelButton
                     variant="outlined"
-                    onClick={() => router.push('/Player')}
+                    onClick={() => router.push(`/League/${League?.id}`)}
                     type="button"
                 >
                     Cancel
@@ -466,7 +575,7 @@ export default function RankingsPage(props){
                     onClick={handleSubmitChange}
                     onChange={handleSubmitChange} // included per request (buttons also accept onChange)
                 >
-                    Submit Rankings
+                    {isEditMode ? 'Update Rankings' : 'Submit Rankings'}
                 </SubmitButton>
             </SubmitContainer>
         </FormContainer>

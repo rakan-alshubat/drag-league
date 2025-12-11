@@ -150,3 +150,31 @@ export const HighlightText = styled(Typography)(({ theme }) => ({
     color: theme.palette.text.primary,
     fontWeight: 600,
 }));
+
+export const CoffeeButton = styled(Button)(({ theme }) => ({
+    backgroundColor: '#FFDD00',
+    color: '#000000',
+    padding: '14px 32px',
+    fontSize: '1.05rem',
+    fontWeight: 700,
+    borderRadius: '50px',
+    textTransform: 'none',
+    boxShadow: '0 6px 20px rgba(255, 221, 0, 0.4)',
+    transition: 'all 0.3s ease',
+    '&:hover': {
+        backgroundColor: '#FFED4E',
+        transform: 'translateY(-4px) scale(1.03)',
+        boxShadow: '0 10px 30px rgba(255, 221, 0, 0.5)',
+    },
+    [theme.breakpoints.down('sm')]: {
+        padding: '10px 24px',
+        fontSize: '0.95rem',
+        width: '100%',
+    },
+}));
+
+export const StyledIcon = styled('span')(({ theme }) => ({
+    marginRight: theme.spacing(1),
+    display: 'inline-flex',
+    alignItems: 'center',
+}));

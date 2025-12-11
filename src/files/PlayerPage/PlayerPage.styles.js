@@ -125,3 +125,97 @@ export const ButtonContainer = styled(Box)(({ theme }) => ({
         gap: theme.spacing(1.5),
     },
 }));
+
+export const EmptyState = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing(6, 3),
+    textAlign: 'center',
+    minHeight: '300px',
+    background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.03) 0%, rgba(255, 215, 0, 0.03) 100%)',
+    borderRadius: theme.spacing(2),
+    border: `2px dashed ${theme.palette.primary.light}`,
+    [theme.breakpoints.down('sm')]: {
+        padding: theme.spacing(4, 2),
+        minHeight: '250px',
+    },
+}));
+
+export const EmptyStateIcon = styled(Box)(({ theme }) => ({
+    fontSize: '4rem',
+    marginBottom: theme.spacing(2),
+    opacity: 0.6,
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '3rem',
+    },
+}));
+
+export const EmptyStateTitle = styled(Typography)(({ theme }) => ({
+    fontSize: '1.5rem',
+    fontWeight: 700,
+    color: theme.palette.primary.main,
+    marginBottom: theme.spacing(1),
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '1.25rem',
+    },
+}));
+
+export const EmptyStateDescription = styled(Typography)(({ theme }) => ({
+    fontSize: '1rem',
+    color: theme.palette.text.secondary,
+    marginBottom: theme.spacing(3),
+    maxWidth: '400px',
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '0.9rem',
+    },
+}));
+
+export const SearchResultCard = styled(Box)(({ theme }) => ({
+    padding: theme.spacing(2),
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: theme.spacing(1),
+    marginBottom: theme.spacing(2),
+    transition: 'all 0.2s ease',
+    cursor: 'pointer',
+    '&:hover': {
+        borderColor: theme.palette.primary.main,
+        boxShadow: '0 4px 12px rgba(255, 20, 147, 0.15)',
+        transform: 'translateY(-2px)',
+    },
+    [theme.breakpoints.down('sm')]: {
+        padding: theme.spacing(1.5),
+    },
+}));
+
+export const SearchResultTitle = styled(Typography)(({ theme }) => ({
+    fontWeight: 600,
+    fontSize: '1.1rem',
+    color: theme.palette.text.primary,
+    marginBottom: theme.spacing(0.5),
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '1rem',
+    },
+}));
+
+export const SearchResultDescription = styled(Typography)(({ theme }) => ({
+    fontSize: '0.9rem',
+    color: theme.palette.text.secondary,
+    marginBottom: theme.spacing(1),
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '0.85rem',
+    },
+}));
+
+export const SearchResultMeta = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    gap: theme.spacing(2),
+    fontSize: '0.85rem',
+    color: theme.palette.text.secondary,
+    [theme.breakpoints.down('sm')]: {
+        flexDirection: 'column',
+        gap: theme.spacing(0.5),
+        fontSize: '0.8rem',
+    },
+}));

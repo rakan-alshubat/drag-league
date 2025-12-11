@@ -13,11 +13,12 @@ export default function Rank(){
     const [leagueData, setLeagueData] = useState(null);
     const [playersData, setPlayersData] = useState(null);
     const [leagueNotStarted, setLeagueNotStarted] = useState(true);
+    const [isEditMode, setIsEditMode] = useState(false);
     
     
     const router = useRouter();
     const client = generateClient()
-    const { id } = router.query;
+    const { id, edit } = router.query; // Get both id and edit query params
 
     useEffect(() => {
         if (!router.isReady) return; 
@@ -49,10 +50,23 @@ export default function Rank(){
                             const players = playersResults?.data?.playersByLeagueId?.items
                                                         ?? playersResults?.data?.playersByLeagueId
                                                         ?? [];
-                            setPlayersData(players);
+                            
+                            // Find the current user's player record
+                            const currentUserEmail = user.signInDetails.loginId.toLowerCase();
+                            const currentPlayer = players.find(p => p.plEmail === currentUserEmail);
+                            console.log('Current player found:', currentPlayer);
+                            
+                            setPlayersData(currentPlayer);
                             if(leagueResults.data.getLeague.lgFinished === 'not started'){
                                 setLeagueNotStarted(true);
                             }
+                            
+                            // Check if we're in edit mode (user has already submitted)
+                            const hasRankings = currentPlayer?.plRankings && Array.isArray(currentPlayer.plRankings) && currentPlayer.plRankings.length > 0;
+                            if (edit === 'true' && hasRankings) {
+                                setIsEditMode(true);
+                            }
+                            
                             setLoading(false);
                         }else{
                             router.push('/SignIn')
@@ -79,7 +93,12 @@ export default function Rank(){
 
     if(leagueNotStarted){
         return (
-            <RankingsPage leagueInfo={leagueData} userInfo={userData} playersInfo={playersData} />
+            <RankingsPage 
+                leagueInfo={leagueData} 
+                userInfo={userData} 
+                playersInfo={playersData} 
+                isEditMode={isEditMode}
+            />
         )
     }else{
         router.push(`/League/${id}`)

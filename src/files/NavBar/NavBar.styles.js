@@ -134,4 +134,32 @@ export const Divider = styled(Box)(({ theme }) => ({
     background: 'linear-gradient(180deg, #FF1493 0%, #FFD700 100%)',
     borderRadius: '2px',
     boxShadow: '0 0 10px rgba(255, 20, 147, 0.5)',
+    [theme.breakpoints.down('md')]: {
+        width: '100%',
+        height: '2px',
+        margin: theme.spacing(2, 0),
+    },
+}));
+
+export const MobileMenuButton = styled(Button)(({ theme }) => ({
+    minWidth: 'auto',
+    padding: theme.spacing(1),
+    borderRadius: 8,
+    color: '#FFD700',
+    transition: 'all 0.3s ease',
+    '&:hover': {
+        backgroundColor: 'rgba(255, 20, 147, 0.2)',
+        color: '#FF69B4',
+    },
+}));
+
+export const MobileNavLinks = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(1.5),
+    alignItems: 'stretch',
+    '& button': {
+        width: '100%',
+        justifyContent: 'flex-start',
+    },
 }));

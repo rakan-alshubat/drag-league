@@ -238,3 +238,127 @@ export const CTAButton = styled(Button)(({ theme }) => ({
         maxWidth: '300px',
     },
 }));
+
+// New components for updated version
+export const SectionDivider = styled(Box)(({ theme }) => ({
+    height: '4px',
+    background: 'linear-gradient(90deg, transparent 0%, #FF1493 20%, #9B30FF 50%, #FFD700 80%, transparent 100%)',
+    margin: theme.spacing(8, 0),
+    borderRadius: '2px',
+    [theme.breakpoints.down('sm')]: {
+        margin: theme.spacing(5, 0),
+        height: '3px',
+    },
+}));
+
+export const AdminBadge = styled('span')(({ theme }) => ({
+    display: 'inline-block',
+    background: 'linear-gradient(135deg, #FF6B35 0%, #FF1493 100%)',
+    color: 'white',
+    padding: '4px 12px',
+    borderRadius: '20px',
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    marginLeft: theme.spacing(2),
+    verticalAlign: 'middle',
+    letterSpacing: '0.5px',
+    boxShadow: '0 2px 8px rgba(255, 107, 53, 0.3)',
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '0.65rem',
+        padding: '3px 10px',
+        marginLeft: theme.spacing(1),
+    },
+}));
+
+export const FeatureGrid = styled(Box)(({ theme }) => ({
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: theme.spacing(3),
+    marginTop: theme.spacing(3),
+    [theme.breakpoints.down('sm')]: {
+        gridTemplateColumns: '1fr',
+        gap: theme.spacing(2),
+    },
+}));
+
+export const FeatureCard = styled(Box)(({ theme }) => ({
+    padding: theme.spacing(3),
+    borderRadius: theme.spacing(2),
+    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 245, 248, 0.9) 100%)',
+    border: '2px solid rgba(255, 20, 147, 0.2)',
+    textAlign: 'center',
+    transition: 'all 0.3s ease',
+    '&:hover': {
+        transform: 'translateY(-5px)',
+        boxShadow: '0 8px 20px rgba(255, 20, 147, 0.2)',
+        border: '2px solid rgba(255, 20, 147, 0.4)',
+    },
+    [theme.breakpoints.down('sm')]: {
+        padding: theme.spacing(2),
+    },
+}));
+
+export const FeatureIcon = styled(Typography)(({ theme }) => ({
+    fontSize: '3rem',
+    marginBottom: theme.spacing(1),
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '2.5rem',
+    },
+}));
+
+export const InfoBanner = styled(Box)(({ theme }) => ({
+    background: 'linear-gradient(135deg, rgba(0, 149, 255, 0.1) 0%, rgba(0, 206, 209, 0.1) 100%)',
+    padding: theme.spacing(2, 3),
+    borderRadius: theme.spacing(1.5),
+    marginTop: theme.spacing(3),
+    border: '2px solid rgba(0, 149, 255, 0.3)',
+    fontSize: '1rem',
+    color: theme.palette.text.secondary,
+    fontWeight: 500,
+    [theme.breakpoints.down('sm')]: {
+        padding: theme.spacing(1.5, 2),
+        fontSize: '0.95rem',
+    },
+}));
+
+export const StepDescriptionWithMargin = styled(Typography)(({ theme }) => ({
+    fontSize: '1.1rem',
+    lineHeight: 1.8,
+    color: theme.palette.text.primary,
+    marginTop: theme.spacing(3),
+    marginBottom: theme.spacing(2),
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '1rem',
+        lineHeight: 1.7,
+    },
+}));
+
+export const CTADescription = styled(Typography)(({ theme }) => ({
+    fontSize: '1.1rem',
+    lineHeight: 1.8,
+    color: 'white',
+    marginBottom: theme.spacing(2.5),
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '1rem',
+        lineHeight: 1.7,
+    },
+}));
+
+export const DemoBox = styled(Box)(({ theme }) => ({
+    background: 'linear-gradient(90deg, #FFD700 0%, #FFB6D9 100%)',
+    borderRadius: 2,
+    px: 3,
+    py: 2,
+    boxShadow: '0 2px 8px rgba(255, 20, 147, 0.08)',
+    mb: 1,
+    maxWidth: 520,
+    textAlign: 'center',
+}));
+
+export const DemoBigBox = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    mb: 4,
+    mt: -3
+}));

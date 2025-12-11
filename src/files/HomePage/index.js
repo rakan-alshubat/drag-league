@@ -130,7 +130,7 @@ export default function HomePage() {
 
                     <FeatureCard>
                         <Typography variant="h5" gutterBottom fontWeight={600} color="primary">
-                            👑 Rank Queens
+                            🏁 Rank Queens
                         </Typography>
                         <Typography sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
                             Predict the elimination order and earn points based on your accuracy

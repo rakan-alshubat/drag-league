@@ -6,6 +6,8 @@ import { useRouter } from "next/router";
 import { getUsers, getLeague, playersByLeagueId} from "@/graphql/queries";
 import LoadingWheel from "@/files/LoadingWheel";
 import ErrorPopup from "@/files/ErrorPopUp";
+import PopUp from "@/files/PopUp";
+import { Box, Typography } from '@mui/material';
 import { useEffect, useState, useRef } from "react";
 import {
     onCreatePlayer,
@@ -27,6 +29,9 @@ export default function League(){
     const [leagueData, setLeagueData] = useState(null);
     const [playersData, setPlayersData] = useState(null);
     const [leagueNotStarted, setLeagueNotStarted] = useState(false);
+    const [isPrivate, setIsPrivate] = useState(false);
+    const [isPlayerOrAdmin, setIsPlayerOrAdmin] = useState(false);
+    const [showRequestPopup, setShowRequestPopup] = useState(false);
     
     const router = useRouter();
     const client = generateClient()
@@ -58,13 +63,44 @@ export default function League(){
                                 query: playersByLeagueId,
                                 variables: { leagueId: id }
                             })
-                            console.log('Fetched players data:', playersResults);
+                            console.log('Raw players results:', playersResults);
                             const players = playersResults?.data?.playersByLeagueId?.items
                             ?? playersResults?.data?.playersByLeagueId
                             ?? [];
+                            console.log('Parsed players array:', players);
+                            console.log('Number of players:', players.length);
                             setPlayersData(players);
-                            console.log('League Finished Status:', players);
-                            if(leagueResults.data.getLeague.lgFinished === 'not started'){
+
+                            const league = leagueResults.data.getLeague;
+                            const userEmail = user.signInDetails.loginId.toLowerCase();
+                            
+                            // Check if league is private
+                            const leagueIsPrivate = !league.lgPublic;
+                            setIsPrivate(leagueIsPrivate);
+
+                            // Check if user is a player or admin in this league
+                            const userPlayer = players.find(p => p.plEmail === userEmail);
+                            const userIsAdmin = league.lgAdmin?.includes(userEmail);
+                            const isAuthorized = userIsAdmin || userPlayer;
+                            setIsPlayerOrAdmin(!!isAuthorized);
+
+                            console.log('Privacy check:', { leagueIsPrivate, isAuthorized, userIsAdmin, hasPlayer: !!userPlayer });
+
+                            // If private and user is not authorized
+                            if (leagueIsPrivate && !isAuthorized) {
+                                // Check if league has started
+                                if (league.lgFinished === 'not started') {
+                                    // Show request to join popup
+                                    setShowRequestPopup(true);
+                                } else {
+                                    // League already started, just redirect
+                                    setLoading(false);
+                                    return;
+                                }
+                            }
+
+                            console.log('League Finished Status:', league.lgFinished);
+                            if(league.lgFinished === 'not started'){
                                 setLeagueNotStarted(true);
                             }
                         }else{
@@ -94,6 +130,14 @@ export default function League(){
             });
     }, [router.isReady, id]);
 
+    // Update leagueNotStarted when leagueData changes
+    useEffect(() => {
+        if (leagueData) {
+            console.log('League data updated, lgFinished:', leagueData.lgFinished);
+            setLeagueNotStarted(leagueData.lgFinished === 'not started');
+        }
+    }, [leagueData]);
+
     useEffect(() => {
         return () => {
             if (timeoutRef.current) {
@@ -102,6 +146,11 @@ export default function League(){
             }
         };
     }, []);
+
+    const handleRequestClose = () => {
+        setShowRequestPopup(false);
+        router.push('/Player');
+    };
 
     useEffect(() => {
         if (!router.isReady) return;
@@ -226,6 +275,129 @@ export default function League(){
         return (
             <LoadingWheel />
         )
+    }
+
+    // Private league - user not authorized
+    if (isPrivate && !isPlayerOrAdmin) {
+        if (leagueData?.lgFinished === 'not started') {
+            // League hasn't started - show request popup
+            return (
+                <>
+                    <Box
+                        sx={{
+                            position: 'fixed',
+                            inset: 0,
+                            backdropFilter: 'blur(10px)',
+                            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 9999
+                        }}
+                    >
+                        <Box
+                            sx={{
+                                backgroundColor: 'white',
+                                padding: 4,
+                                borderRadius: 2,
+                                maxWidth: 500,
+                                textAlign: 'center',
+                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
+                            }}
+                        >
+                            <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#FF1493' }}>
+                                🔒 Private League
+                            </Typography>
+                            <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
+                                This league is private. Would you like to request to join?
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                                <button
+                                    onClick={handleRequestClose}
+                                    style={{
+                                        padding: '10px 24px',
+                                        borderRadius: 8,
+                                        border: '2px solid #FF1493',
+                                        backgroundColor: 'white',
+                                        color: '#FF1493',
+                                        cursor: 'pointer',
+                                        fontWeight: 600
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        // Will use the NewLeague component's request to join function
+                                        setShowRequestPopup(false);
+                                        setLeagueNotStarted(true);
+                                    }}
+                                    style={{
+                                        padding: '10px 24px',
+                                        borderRadius: 8,
+                                        border: 'none',
+                                        backgroundColor: '#FF1493',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        fontWeight: 600
+                                    }}
+                                >
+                                    Request to Join
+                                </button>
+                            </Box>
+                        </Box>
+                    </Box>
+                </>
+            );
+        } else {
+            // League already started - show message and redirect
+            return (
+                <Box
+                    sx={{
+                        position: 'fixed',
+                        inset: 0,
+                        backdropFilter: 'blur(10px)',
+                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 9999
+                    }}
+                >
+                    <Box
+                        sx={{
+                            backgroundColor: 'white',
+                            padding: 4,
+                            borderRadius: 2,
+                            maxWidth: 500,
+                            textAlign: 'center',
+                            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
+                        }}
+                    >
+                        <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#FF1493' }}>
+                            🔒 Private League
+                        </Typography>
+                        <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
+                            This league is private and has already started. Only players and admins can view it.
+                        </Typography>
+                        <button
+                            onClick={() => router.push('/Player')}
+                            style={{
+                                padding: '10px 24px',
+                                borderRadius: 8,
+                                border: 'none',
+                                backgroundColor: '#FF1493',
+                                color: 'white',
+                                cursor: 'pointer',
+                                fontWeight: 600
+                            }}
+                        >
+                            Back to My Leagues
+                        </button>
+                    </Box>
+                </Box>
+            );
+        }
     }
 
     <ErrorPopup

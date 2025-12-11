@@ -26,47 +26,76 @@ export const Root = styled('div')(({ theme }) => ({
 
 export const Title = styled(Typography)(({ theme }) => ({
     margin: 0,
-    marginBottom: 12,
-    fontSize: '1.25rem',
-    fontWeight: 600,
+    marginBottom: 16,
+    fontSize: '1.5rem',
+    fontWeight: 700,
+    background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
     [theme.breakpoints.down('sm')]: {
-        fontSize: '1.1rem',
+        fontSize: '1.3rem',
     },
 }));
 
 export const List = styled('div')(() => ({
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
+    gap: 12,
 }));
 
 export const StyledAccordion = styled(Accordion)(({ theme }) => ({
-    border: `1px solid ${theme?.palette?.divider ?? '#e6e6e6'}`,
-    borderRadius: 6,
+    border: `2px solid ${theme?.palette?.divider ?? '#e6e6e6'}`,
+    borderRadius: 8,
     background: theme?.palette?.background?.paper ?? '#fff',
     overflow: 'hidden',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    transition: 'all 0.2s ease',
     '&.Mui-expanded': {
         margin: 'initial',
+        boxShadow: '0 4px 12px rgba(255, 20, 147, 0.15)',
+        borderColor: '#FFB6D9',
+    },
+    '&:hover': {
+        borderColor: '#FFB6D9',
+        boxShadow: '0 4px 12px rgba(255, 20, 147, 0.1)',
+    },
+    '&:before': {
+        display: 'none',
     },
 }));
 
-export const StyledSummary = styled(AccordionSummary)(() => ({
-    padding: '12px 16px',
-    minHeight: 48,
+export const StyledSummary = styled(AccordionSummary)(({ theme }) => ({
+    padding: '14px 20px',
+    minHeight: 56,
+    transition: 'background 0.2s ease',
     '&.Mui-expanded': {
-        minHeight: 48,
+        minHeight: 56,
+        background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.03) 0%, rgba(155, 48, 255, 0.03) 100%)',
+    },
+    '&:hover': {
+        background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.05) 0%, rgba(155, 48, 255, 0.05) 100%)',
+    },
+    '& .MuiAccordionSummary-expandIconWrapper': {
+        color: '#FF1493',
+        transition: 'transform 0.3s ease, color 0.2s ease',
+    },
+    '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': {
+        color: '#9B30FF',
     },
 }));
 
 export const SummaryText = styled(Typography)(() => ({
     fontWeight: 600,
+    fontSize: '1.05rem',
+    color: '#333',
 }));
 
 export const StyledDetails = styled(AccordionDetails)(({ theme }) => ({
-    padding: '12px 16px',
-    borderTop: `1px solid ${theme?.palette?.divider ?? '#f4f4f4'}`,
-    background: theme?.palette?.action?.hover ?? '#fafafa',
+    padding: '16px 20px',
+    borderTop: `2px solid ${theme?.palette?.divider ?? '#f4f4f4'}`,
+    background: 'linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(255, 245, 248, 1) 100%)',
     color: theme?.palette?.text?.primary ?? '#333',
-    fontSize: '0.95rem',
+    fontSize: '1rem',
 }));
 // ...existing code...

@@ -7,7 +7,8 @@ export default function LoadingWheel(){
         <LoadingWheelBox sx={{width:'100vw', height:'100vh'}}>
             <CircularProgress 
                 size={150}
-                sx={{color:'black'}}
+                thickness={4}
+                sx={{color:'#FFD700'}}
             />
         </LoadingWheelBox>
     )

@@ -11,15 +11,18 @@ import {
 export default function PlayerRankings(props) {
 
     const data = useMemo(() => {
-        const players = props.playersData || [];   
+        const players = props.playersData || [];
         const gameData = props.leagueData || {};
-
-        return players.map((p) => ({
-            id: p.id || p.playerId || p.name,
-            name: p.plName || "",
-            points: calculatePoints(p, gameData) || 0,
-        }));
-    }, [props.players, props.gameData]);
+        return players.map((p) => {
+            let pts = calculatePoints(p, gameData);
+            if (typeof pts !== 'number' || isNaN(pts)) pts = 0;
+            return {
+                id: p.id || p.playerId || p.name,
+                name: p.plName || "",
+                points: pts,
+            };
+        });
+    }, [props.playersData, props.leagueData]);
 
     const allPointsAreZero = useMemo(() => {
         if (!Array.isArray(data) || data.length === 0) return true;

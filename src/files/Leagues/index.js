@@ -24,7 +24,7 @@ const DEADLINE_CHECK_INTERVAL_MS = 60000; // Check deadline every 60 seconds
 
 export default function Leagues( userData, leagueData ) {
     const [tabIndex, setTabIndex] = useState(0);
-    const tabs = ["Player Rankings", "Player Submissions", "Season Info", "League Settings", "History"];
+    const tabs = ["Player Rankings", "Player Submissions", "Season Info", "History", "League Settings"];
 
     const [showSwapPopup, setShowSwapPopup] = useState(false);
     const [swapPopupVersion, setSwapPopupVersion] = useState('');
@@ -168,11 +168,11 @@ export default function Leagues( userData, leagueData ) {
                 </Panel>
 
                 <Panel role="tabpanel" hidden={tabIndex !== 3} aria-hidden={tabIndex !== 3}>
-                    {tabIndex === 3 && <LeagueSettings userData={User} leagueData={League} playersData={Player} />}
+                    {tabIndex === 3 && <History leagueData={League} />}
                 </Panel>
 
                 <Panel role="tabpanel" hidden={tabIndex !== 4} aria-hidden={tabIndex !== 4}>
-                    {tabIndex === 4 && <History leagueData={League} />}
+                    {tabIndex === 4 && <LeagueSettings userData={User} leagueData={League} playersData={Player} />}
                 </Panel>
             </MainContent>
 

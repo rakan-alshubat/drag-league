@@ -30,25 +30,49 @@ function formatDate(isoString) {
 export default function History({ leagueData }) {
     const League = leagueData?.leagueData || leagueData;
     const history = League?.lgHistory || [];
+    
+    // Reverse the history array to show latest entries first
+    const reversedHistory = [...history].reverse();
 
     return (
         <Root>
             <Title variant="h5">{League?.lgName} - History</Title>
             <HistoryList>
-                {history.length === 0 ? (
+                {reversedHistory.length === 0 ? (
                     <Box sx={{ textAlign: 'center', mt: 4, color: '#666' }}>
                         <Typography variant="body1">No history available yet</Typography>
                     </Box>
                 ) : (
-                    history.map((entry, index) => {
+                    reversedHistory.map((entry, index) => {
                         const parts = entry.split('. ');
                         const dateStr = parts[0];
                         const actionText = parts.slice(1).join('. ');
                         
+                        // Check if this is an admin edit
+                        const isAdminEdit = actionText.startsWith('[ADMIN EDIT]');
+                        const displayText = isAdminEdit ? actionText.replace('[ADMIN EDIT] ', '') : actionText;
+                        
                         return (
-                            <HistoryItem key={index}>
-                                <HistoryDate>{formatDate(dateStr)}</HistoryDate>
-                                <HistoryText>{actionText}</HistoryText>
+                            <HistoryItem key={index} isAdminEdit={isAdminEdit}>
+                                <HistoryDate isAdminEdit={isAdminEdit}>{formatDate(dateStr)}</HistoryDate>
+                                <HistoryText isAdminEdit={isAdminEdit}>
+                                    {isAdminEdit && (
+                                        <Box component="span" sx={{ 
+                                            display: 'inline-block',
+                                            background: 'linear-gradient(135deg, #FF6B35 0%, #FF1493 100%)',
+                                            color: 'white',
+                                            padding: '2px 8px',
+                                            borderRadius: '4px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 700,
+                                            marginRight: '8px',
+                                            verticalAlign: 'middle'
+                                        }}>
+                                            ADMIN EDIT
+                                        </Box>
+                                    )}
+                                    {displayText}
+                                </HistoryText>
                             </HistoryItem>
                         );
                     })

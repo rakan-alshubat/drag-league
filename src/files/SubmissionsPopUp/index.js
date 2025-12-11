@@ -1,39 +1,44 @@
-// ...existing code...
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import Button from "@mui/material/Button";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import Chip from "@mui/material/Chip";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { generateClient } from 'aws-amplify/api';
 import { updatePlayer, updateLeague } from "@/graphql/mutations";
-import { 
-    dialogPaper, 
-    section as sectionStyle, 
-    sectionText, 
-    sectionHeader, 
-    sectionTitle, 
-    sectionTitleSmall, 
-    row as rowStyle, 
-    select, 
-    list, 
-    listItem 
+import {
+    StyledDialog,
+    StyledDialogTitle,
+    StyledDialogContent,
+    StyledDialogActions,
+    Section,
+    SectionTitle,
+    SectionDesc,
+    SectionHeader,
+    FinalRankingRow,
+    PositionLabel,
+    SubmitButton,
+    CancelButton,
+    AddButton,
+    DeleteIconButton,
+    BonusCategoryLabel,
+    ChipWrapper,
+    ErrorText,
+    FlexContainer,
+    FlexRow,
 } from "./SubmissionsPopUp.styles";
 
 function makeRow(id) {
-    if (id != null) return { id: String(id), value: "" };
+    if (id != null) return { id: String(id), values: [] };
     const uid = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
-    return { id: uid, value: "" };
+    return { id: uid, values: [] };
 }
 
 function getOrdinal(n) {
@@ -53,50 +58,50 @@ export default function SubmissionsPopup({
     leagueData = null,
     userData = null
 }) {
-    // state declarations (mimic CreationPage ordering/style)
     const isOpen = !!open;
     const [version, setVersion] = useState(initialVersion || "Submissions");
 
-    const [submissionRows, setSubmissionRows] = useState(() => [{ ...makeRow(), disabled: false }]);
-    const [sections, setSections] = useState([
-        { key: "Maxi Challenge Winner", title: "Maxi Challenge Winner", rows: [makeRow()] },
-        { key: "Lip Sync Winner", title: "Lip Sync Winner", rows: [makeRow()] },
-        { key: "Eliminated Queen", title: "Eliminated Queen", rows: [makeRow()] },
-    ]);
-
+    // Weekly Picks State (unchanged - already good)
+    const [submissionRows, setSubmissionRows] = useState(() => [{ ...makeRow(), disabled: false, value: "" }]);
     const [firstSwap, setFirstSwap] = useState("");
     const [secondSwap, setSecondSwap] = useState("");
     const [swappedResult, setSwappedResult] = useState([]);
-    const [swapsEnabled] = useState(true);
+    
+    // Weekly Results State (redesigned with multi-select)
+    const [challengeWinners, setChallengeWinners] = useState([]);
+    const [lipSyncWinners, setLipSyncWinners] = useState([]);
+    const [eliminatedQueens, setEliminatedQueens] = useState([]);
     
     const [errorMessage, setErrorMessage] = useState('');
     
+    // Final Episode State (redesigned with multi-select)
     const [isFinalEpisode, setIsFinalEpisode] = useState(false);
     const [finalRankingRows, setFinalRankingRows] = useState(() => ([
-        { ...makeRow(), value: "" },
-        { ...makeRow(), value: "" }
+        { ...makeRow() },
+        { ...makeRow() }
     ]));
     const [bonusCategoryRows, setBonusCategoryRows] = useState([]);
 
-    const [threeRows, setThreeRows] = useState(() => ([
-        { ...makeRow(), value: "", disabled: false },
-        { ...makeRow(), value: "", disabled: false },
-        { ...makeRow(), value: "", disabled: false }
-    ]));
-
-    // reset when opened or version changes
+    // Reset when opened or version changes
     useEffect(() => {
         if (!isOpen) return;
         setVersion(initialVersion || "Submissions");
-        setSubmissionRows([{ ...makeRow(), disabled: false }]);
+        setSubmissionRows([{ ...makeRow(), disabled: false, value: "" }]);
         setFirstSwap("");
         setSecondSwap("");
         setSwappedResult([]);
         setErrorMessage('');
         setIsFinalEpisode(false);
+        
+        // Reset weekly results state
+        setChallengeWinners([]);
+        setLipSyncWinners([]);
+        setEliminatedQueens([]);
+        
+        // Reset final episode state
         setFinalRankingRows([
-            { ...makeRow(), value: "" },
-            { ...makeRow(), value: "" }
+            { ...makeRow() },
+            { ...makeRow() }
         ]);
         
         // Initialize bonus category rows from leagueData
@@ -118,17 +123,6 @@ export default function SubmissionsPopup({
         } else {
             setBonusCategoryRows([]);
         }
-        
-        setSections([
-            { key: "Maxi Challenge Winner", title: "Maxi Challenge Winner", rows: [makeRow()] },
-            { key: "Lip Sync Winner", title: "Lip Sync Winner", rows: [makeRow()] },
-            { key: "Eliminated Queen", title: "Eliminated Queen", rows: [makeRow()] },
-        ]);
-        setThreeRows([
-            { ...makeRow(), value: "", disabled: false },
-            { ...makeRow(), value: "", disabled: false },
-            { ...makeRow(), value: "", disabled: false }
-        ]);
     }, [isOpen, initialVersion, leagueData]);
 
     // compute swappedResult when two distinct picks are present
@@ -225,28 +219,6 @@ export default function SubmissionsPopup({
         });
     };
 
-    const addRowToSection = (sectionKey) => {
-        setSections(prev => prev.map(s => {
-            if (s.key !== sectionKey) return s;
-            return { ...s, rows: [...s.rows, makeRow()] };
-        }));
-    };
-
-    const deleteRowFromSection = (sectionKey, rowId) => {
-        setSections(prev => prev.map(s => {
-            if (s.key !== sectionKey) return s;
-            const rows = s.rows.filter(r => r.id !== rowId);
-            return { ...s, rows };
-        }));
-    };
-
-    const updateSectionValue = (sectionKey, rowId, value) => {
-        setSections(prev => prev.map(s => {
-            if (s.key !== sectionKey) return s;
-            return { ...s, rows: s.rows.map(r => r.id === rowId ? { ...r, value } : r) };
-        }));
-    };
-    
     const addFinalRankingRow = () => {
         setFinalRankingRows(prev => [...prev, { ...makeRow(), value: "" }]);
     };
@@ -255,13 +227,13 @@ export default function SubmissionsPopup({
         setFinalRankingRows(prev => prev.filter(r => r.id !== rowId));
     };
     
-    const updateFinalRankingValue = (rowId, value) => {
-        setFinalRankingRows(prev => prev.map(r => r.id === rowId ? { ...r, value } : r));
+    const updateFinalRankingValue = (rowId, values) => {
+        setFinalRankingRows(prev => prev.map(r => r.id === rowId ? { ...r, values } : r));
     };
 
-    const updateBonusCategoryValue = (id, value) => {
+    const updateBonusCategoryValue = (id, values) => {
         setBonusCategoryRows(prev => prev.map(row => 
-            row.id === id ? { ...row, value } : row
+            row.id === id ? { ...row, values } : row
         ));
     };
 
@@ -380,9 +352,12 @@ export default function SubmissionsPopup({
         }
 
         // Handle final episode
-        if (version === "Weekly Results" && isFinalEpisode && leagueData?.id && Player && Array.isArray(Player)) {
+        if (version === "Weekly Results" && isFinalEpisode && leagueData?.id) {
             try {
-                const rankings = finalRankingRows.map(r => (r.value || "").trim()).filter(Boolean);
+                // Get all rankings from finalRankingRows - each row can have multiple values (ties)
+                const rankings = finalRankingRows
+                    .flatMap(r => r.values || [])
+                    .filter(Boolean);
                 
                 // Add rankings to lgEliminatedPlayers in reverse order (last to first)
                 const currentEliminated = leagueData.lgEliminatedPlayers || [];
@@ -400,26 +375,27 @@ export default function SubmissionsPopup({
                     }
                 });
                 
-                const updatePromises = Player.map(async (player) => {
-                    const playerEmail = player.id.toLowerCase();
-                    const submission = submissionMap[playerEmail] || '';
-                    const updatedWinners = [...(player.plWinners || []), submission];
-                    
-                    const playerResult = await client.graphql({
-                        query: updatePlayer,
-                        variables: {
-                            input: {
-                                id: player.id,
-                                leagueId: player.leagueId,
-                                plWinners: updatedWinners
+                const allPlayers = leagueData.players || [];
+                if (Array.isArray(allPlayers)) {
+                    const updatePromises = allPlayers.map(async (player) => {
+                        const playerEmail = player.id.toLowerCase();
+                        const submission = submissionMap[playerEmail] || '';
+                        const updatedWinners = [...(player.plWinners || []), submission];
+                        
+                        return await client.graphql({
+                            query: updatePlayer,
+                            variables: {
+                                input: {
+                                    id: player.id,
+                                    leagueId: player.leagueId,
+                                    plWinners: updatedWinners
+                                }
                             }
-                        }
+                        });
                     });
-                    console.log('Player final episode updated:', playerResult);
-                    return playerResult;
-                });
-                
-                await Promise.all(updatePromises);
+                    
+                    await Promise.all(updatePromises);
+                }
                 
                 // Add 1st place to lgChallengeWinners
                 const currentChallengeWinners = leagueData.lgChallengeWinners || [];
@@ -434,18 +410,19 @@ export default function SubmissionsPopup({
                     const parts = bonusStr.split('|');
                     const bonusRow = bonusCategoryRows[idx];
                     
-                    // Only update if we haven't already added a result (check if it has 4 parts already)
-                    if (bonusRow && bonusRow.value && bonusRow.value.trim() !== '' && parts.length === 3) {
-                        // Append result: name|points|type|result
-                        return `${parts[0]}|${parts[1]}|${parts[2]}|${bonusRow.value}`;
+                    // Check if we have values (multi-select support)
+                    if (bonusRow && bonusRow.values && bonusRow.values.length > 0 && parts.length === 3) {
+                        // Join multiple values with pipe for multi-select
+                        const result = bonusRow.values.join('|');
+                        return `${parts[0]}|${parts[1]}|${parts[2]}|${result}`;
                     }
                     // If result already exists or no new result submitted, keep as is
                     return bonusStr;
                 });
                 
                 const currentHistory = leagueData.lgHistory || [];
-                const bonusHistoryPart = bonusCategoryRows.filter(r => r.value).length > 0
-                    ? '. Bonus results: ' + bonusCategoryRows.filter(r => r.value).map(r => `${r.name}: ${r.value}`).join(', ')
+                const bonusHistoryPart = bonusCategoryRows.filter(r => r.values && r.values.length > 0).length > 0
+                    ? '. Bonus results: ' + bonusCategoryRows.filter(r => r.values && r.values.length > 0).map(r => `${r.name}: ${r.values.join(', ')}`).join(', ')
                     : '';
                 const historyEntry = new Date().toISOString() + '. Final episode results submitted. Winner: ' + firstPlace + bonusHistoryPart;
                 
@@ -476,44 +453,28 @@ export default function SubmissionsPopup({
             return;
         }
 
-        // three / sections mode
-        const result = {};
-        const hasBlankRows = [];
-        
-        sections.forEach(s => {
-            const allVals = (s.rows || []).map(r => (r.value || "").trim());
-            const filledVals = allVals.filter(Boolean);
-            
-            // Check if there are any blank rows
-            if (allVals.length > filledVals.length) {
-                hasBlankRows.push(s.title);
-            }
-            
-            result[s.key] = filledVals.join("|");
-        });
-        
-        // Show error if there are blank rows but still proceed with update
-        if (hasBlankRows.length > 0) {
-            setErrorMessage(`Please delete the blank rows in: ${hasBlankRows.join(', ')}`);
-        }
-        
-        // Update league with weekly results
-        if (leagueData?.id && version === "Weekly Results") {
+        // Handle regular weekly results (non-final episode)
+        if (leagueData?.id && version === "Weekly Results" && !isFinalEpisode) {
             try {
-                const leagueUpdates = {};
-                
                 // Get current arrays from league data
                 const currentChallengeWinners = leagueData.lgChallengeWinners || [];
                 const currentLipSyncWinners = leagueData.lgLipSyncWinners || [];
                 const currentEliminatedPlayers = leagueData.lgEliminatedPlayers || [];
                 
-                // Add new entries to the arrays (add blank string if empty)
-                leagueUpdates.lgChallengeWinners = [...currentChallengeWinners, result["Maxi Challenge Winner"] || ""];
-                leagueUpdates.lgLipSyncWinners = [...currentLipSyncWinners, result["Lip Sync Winner"] || ""];
-                leagueUpdates.lgEliminatedPlayers = [...currentEliminatedPlayers, result["Eliminated Queen"] || ""];
+                // Join multi-selected values with pipes
+                const challengeWinnersStr = challengeWinners.join('|') || "";
+                const lipSyncWinnersStr = lipSyncWinners.join('|') || "";
+                const eliminatedQueensStr = eliminatedQueens.join('|') || "";
+                
+                // Add new entries to the arrays
+                const leagueUpdates = {
+                    lgChallengeWinners: [...currentChallengeWinners, challengeWinnersStr],
+                    lgLipSyncWinners: [...currentLipSyncWinners, lipSyncWinnersStr],
+                    lgEliminatedPlayers: [...currentEliminatedPlayers, eliminatedQueensStr]
+                };
                 
                 const currentHistory = leagueData.lgHistory || [];
-                const historyEntry = new Date().toISOString() + '. Weekly results: Challenge Winner: ' + (result["Maxi Challenge Winner"] || 'None') + ', Lip Sync Winner: ' + (result["Lip Sync Winner"] || 'None') + ', Eliminated: ' + (result["Eliminated Queen"] || 'None');
+                const historyEntry = new Date().toISOString() + '. Weekly results: Challenge Winner: ' + (challengeWinners.join(' & ') || 'None') + ', Lip Sync Winner: ' + (lipSyncWinners.join(' & ') || 'None') + ', Eliminated: ' + (eliminatedQueens.join(' & ') || 'None');
                 leagueUpdates.lgHistory = [...currentHistory, historyEntry];
                 
                 const leagueInput = {
@@ -521,14 +482,15 @@ export default function SubmissionsPopup({
                     ...leagueUpdates
                 };
                 
-                const leagueResult = await client.graphql({
+                await client.graphql({
                     query: updateLeague,
                     variables: { input: leagueInput }
                 });
-                console.log('League weekly results updated:', leagueResult);
                 
             } catch (error) {
                 console.error('Error updating league weekly results:', error);
+                setErrorMessage('Error submitting weekly results');
+                return;
             }
         }
         
@@ -538,19 +500,19 @@ export default function SubmissionsPopup({
 
     // render
     return (
-        <Dialog open={isOpen} onClose={() => onClose()} PaperProps={{ sx: dialogPaper }}>
-            <DialogTitle>
-                <Typography variant="h6">{version === "Submissions" ? "Submissions" : "Weekly Results"}</Typography>
-            </DialogTitle>
+        <StyledDialog open={isOpen} onClose={() => onClose()} maxWidth="sm" fullWidth>
+            <StyledDialogTitle>
+                {version === "Submissions" ? "Submit Weekly Pick" : "Submit Weekly Results"}
+            </StyledDialogTitle>
 
-            <DialogContent dividers>
+            <StyledDialogContent>
                 {version === "Submissions" && (
-                    <Box sx={sectionStyle}>
-                        <Typography variant="body2" sx={sectionText}>
+                    <Section>
+                        <SectionDesc variant="body2">
                             {isFinalEpisode 
-                                ? "Who will win?" 
-                                : "Pick one or more submission options from the list. Use \"Pick none\" to opt-out per row."}
-                        </Typography>
+                                ? "Who will win the season?" 
+                                : "Who will win this week's Maxi Challenge?"}
+                        </SectionDesc>
 
                         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mt: 1 }}>
                             {submissionRows.map((row, idx) => (
@@ -562,7 +524,6 @@ export default function SubmissionsPopup({
                                             value={row.value}
                                             label="-- select --"
                                             onChange={(e) => updateSubmissionRow(idx, { value: e.target.value })}
-                                            sx={select}
                                         >
                                             <MenuItem value="" disabled>-- select --</MenuItem>
                                             {renderOptionsFor(submissionRows, idx)}
@@ -574,8 +535,8 @@ export default function SubmissionsPopup({
 
                         {swapEligibility.allowed && (
                             <Box sx={{ mt: 2 }}>
-                                <Typography sx={sectionTitle}>Swap two names</Typography>
-                                <Typography sx={sectionText}>{swapEligibility.message}</Typography>
+                                <SectionTitle>Swap two names</SectionTitle>
+                                <SectionDesc>{swapEligibility.message}</SectionDesc>
 
                                 <Box sx={{ display: "flex", gap: 2, mt: 1 }}>
                                     <FormControl fullWidth size="small">
@@ -615,11 +576,11 @@ export default function SubmissionsPopup({
                                 )}
 
                                 {firstSwap && secondSwap && firstSwap === secondSwap && (
-                                    <Typography sx={{ color: "#b71c1c", mt: 1 }}>The two selections must be different.</Typography>
+                                    <ErrorText>The two selections must be different.</ErrorText>
                                 )}
                             </Box>
                         )}
-                    </Box>
+                    </Section>
                 )} 
 
                 {version === "Weekly Results" && (
@@ -632,71 +593,114 @@ export default function SubmissionsPopup({
                         
                         {isFinalEpisode ? (
                             <>
-                                <Box sx={sectionStyle}>
-                                    <Box sx={sectionHeader}>
-                                        <Typography sx={sectionTitle}>Final Rankings</Typography>
-                                        <Button size="small" variant="outlined" onClick={addFinalRankingRow}>Add</Button>
-                                    </Box>
+                                <Section>
+                                    <SectionHeader>
+                                        <SectionTitle>Final Rankings</SectionTitle>
+                                        <AddButton size="small" variant="outlined" startIcon={<AddIcon />} onClick={addFinalRankingRow}>
+                                            Add Placement
+                                        </AddButton>
+                                    </SectionHeader>
                                     
-                                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-                                        Enter the final rankings in order from 1st place to last place. The first selection will be the winner.
-                                    </Typography>
+                                    <SectionDesc variant="body2">
+                                        Enter the final rankings in order from 1st place to last place. Select multiple queens for ties.
+                                    </SectionDesc>
 
                                     <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
                                         {finalRankingRows.map((row, rowIndex) => (
-                                            <Box key={`final-${rowIndex}-${row.id}`} sx={rowStyle}>
-                                                <Typography sx={{ minWidth: '50px', fontWeight: 'bold' }}>
+                                            <FinalRankingRow key={`final-${rowIndex}-${row.id}`}>
+                                                <PositionLabel>
                                                     {getOrdinal(rowIndex + 1)}
-                                                </Typography>
+                                                </PositionLabel>
                                                 <FormControl fullWidth size="small">
-                                                    <InputLabel id={`final-${row.id}`}>-- select --</InputLabel>
+                                                    <InputLabel>Select Queen(s)</InputLabel>
                                                     <Select
-                                                        labelId={`final-${row.id}`}
-                                                        value={row.value}
-                                                        label="-- select --"
+                                                        multiple
+                                                        value={row.values || []}
+                                                        label="Select Queen(s)"
                                                         onChange={(e) => updateFinalRankingValue(row.id, e.target.value)}
+                                                        renderValue={(selected) => (
+                                                            <ChipWrapper>
+                                                                {selected.length === 0 ? (
+                                                                    <em style={{ color: '#999' }}>Select queen(s)</em>
+                                                                ) : (
+                                                                    selected.map((value) => (
+                                                                        <Chip key={value} label={value} size="small" />
+                                                                    ))
+                                                                )}
+                                                            </ChipWrapper>
+                                                        )}
                                                     >
-                                                        <MenuItem value="" disabled>-- select --</MenuItem>
-                                                        {optionsList.map((n, i) => <MenuItem key={`final-${rowIndex}-${row.id}-${i}-${String(n)}`} value={n}>{n}</MenuItem>)}
+                                                        {optionsList.map((n, i) => (
+                                                            <MenuItem key={`final-${rowIndex}-${row.id}-${i}-${String(n)}`} value={n}>
+                                                                <Checkbox checked={(row.values || []).includes(n)} />
+                                                                {n}
+                                                            </MenuItem>
+                                                        ))}
                                                     </Select>
                                                 </FormControl>
 
-                                                <Button size="small" variant="outlined" color="error" onClick={() => deleteFinalRankingRow(row.id)}>
-                                                    Delete
-                                                </Button>
-                                            </Box>
+                                                <DeleteIconButton 
+                                                    onClick={() => deleteFinalRankingRow(row.id)}
+                                                    size="small"
+                                                >
+                                                    <DeleteIcon />
+                                                </DeleteIconButton>
+                                            </FinalRankingRow>
                                         ))}
                                     </Box>
-                                </Box>
+                                </Section>
                                 
                                 {bonusCategoryRows.length > 0 && (
-                                    <Box sx={{ ...sectionStyle, mt: 3 }}>
-                                        <Typography sx={sectionTitle}>Bonus Categories</Typography>
-                                        <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                                    <Section style={{ marginTop: '24px' }}>
+                                        <SectionTitle>Bonus Categories</SectionTitle>
+                                        <SectionDesc>
                                             Select the result for each bonus category.
-                                        </Typography>
+                                        </SectionDesc>
 
-                                        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+                                        <FlexContainer style={{ gap: '16px' }}>
                                             {bonusCategoryRows.map((bonusRow, idx) => (
                                                 <Box key={`bonus-${idx}-${bonusRow.id}`}>
-                                                    <Typography sx={{ fontWeight: 'bold', mb: 1 }}>
+                                                    <BonusCategoryLabel>
                                                         {bonusRow.name} ({bonusRow.points} points)
-                                                    </Typography>
+                                                    </BonusCategoryLabel>
                                                     <FormControl fullWidth size="small">
-                                                        <InputLabel id={`bonus-${bonusRow.id}`}>-- select --</InputLabel>
+                                                        <InputLabel>Select Answer{bonusRow.type !== 'Yes/No' ? '(s)' : ''}</InputLabel>
                                                         <Select
-                                                            labelId={`bonus-${bonusRow.id}`}
-                                                            value={bonusRow.value}
-                                                            label="-- select --"
-                                                            onChange={(e) => updateBonusCategoryValue(bonusRow.id, e.target.value)}
+                                                            multiple={bonusRow.type !== 'Yes/No'}
+                                                            value={bonusRow.type !== 'Yes/No' ? (bonusRow.values || []) : (bonusRow.values?.[0] || '')}
+                                                            label={`Select Answer${bonusRow.type !== 'Yes/No' ? '(s)' : ''}`}
+                                                            onChange={(e) => {
+                                                                if (bonusRow.type !== 'Yes/No') {
+                                                                    updateBonusCategoryValue(bonusRow.id, e.target.value);
+                                                                } else {
+                                                                    updateBonusCategoryValue(bonusRow.id, [e.target.value]);
+                                                                }
+                                                            }}
+                                                            renderValue={(selected) => {
+                                                                if (bonusRow.type !== 'Yes/No') {
+                                                                    return (
+                                                                        <ChipWrapper>
+                                                                            {(selected || []).map((value) => (
+                                                                                <Chip key={value} label={value} size="small" />
+                                                                            ))}
+                                                                        </ChipWrapper>
+                                                                    );
+                                                                }
+                                                                return selected;
+                                                            }}
                                                         >
-                                                            <MenuItem value="" disabled>-- select --</MenuItem>
-                                                            {bonusRow.type === 'Queens' && optionsList.map((n, i) => 
-                                                                <MenuItem key={`bonus-${idx}-${i}-${String(n)}`} value={n}>{n}</MenuItem>
-                                                            )}
-                                                            {bonusRow.type === 'Number' && Array.from({ length: 100 }, (_, i) => i + 1).map((num) => 
-                                                                <MenuItem key={`bonus-${idx}-num-${num}`} value={String(num)}>{num}</MenuItem>
-                                                            )}
+                                                            {bonusRow.type === 'Queens' && optionsList.map((n, i) => (
+                                                                <MenuItem key={`bonus-${idx}-${i}-${String(n)}`} value={n}>
+                                                                    <Checkbox checked={(bonusRow.values || []).includes(n)} />
+                                                                    {n}
+                                                                </MenuItem>
+                                                            ))}
+                                                            {bonusRow.type === 'Number' && Array.from({ length: 30 }, (_, i) => i + 1).map((num) => (
+                                                                <MenuItem key={`bonus-${idx}-num-${num}`} value={String(num)}>
+                                                                    <Checkbox checked={(bonusRow.values || []).includes(String(num))} />
+                                                                    {num}
+                                                                </MenuItem>
+                                                            ))}
                                                             {bonusRow.type === 'Yes/No' && [
                                                                 <MenuItem key={`bonus-${idx}-yes`} value="Yes">Yes</MenuItem>,
                                                                 <MenuItem key={`bonus-${idx}-no`} value="No">No</MenuItem>
@@ -705,48 +709,123 @@ export default function SubmissionsPopup({
                                                     </FormControl>
                                                 </Box>
                                             ))}
-                                        </Box>
-                                    </Box>
+                                        </FlexContainer>
+                                    </Section>
                                 )}
                             </>
                         ) : (
-                            sections.map((section) => (
-                                <Box key={section.key} sx={sectionStyle}>
-                                    <Box sx={sectionHeader}>
-                                        <Typography sx={sectionTitle}>{section.title}</Typography>
-                                        <Button size="small" variant="outlined" onClick={() => addRowToSection(section.key)}>Add</Button>
-                                    </Box>
+                            <>
+                                {/* Challenge Winner Section */}
+                                <Section>
+                                    <SectionTitle>Maxi Challenge Winner</SectionTitle>
+                                    <SectionDesc>
+                                        Select who won the maxi challenge. Select multiple for ties, or leave empty for no winner.
+                                    </SectionDesc>
+                                    <FormControl fullWidth size="medium">
+                                        <InputLabel>Select Winner(s)</InputLabel>
+                                        <Select
+                                            multiple
+                                            value={challengeWinners}
+                                            label="Select Winner(s)"
+                                            onChange={(e) => setChallengeWinners(e.target.value)}
+                                            renderValue={(selected) => (
+                                                <ChipWrapper>
+                                                    {selected.length === 0 ? (
+                                                        <em style={{ color: '#999' }}>No winner</em>
+                                                    ) : (
+                                                        selected.map((value) => (
+                                                            <Chip key={value} label={value} size="small" />
+                                                        ))
+                                                    )}
+                                                </ChipWrapper>
+                                            )}
+                                        >
+                                            {optionsList.map((queen, i) => (
+                                                <MenuItem key={i} value={queen}>
+                                                    <Checkbox checked={challengeWinners.includes(queen)} />
+                                                    {queen}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Section>
 
-                                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
-                                        {section.rows.map((row, rowIndex) => (
-                                            <Box key={`${section.key}-${rowIndex}-${row.id}`} sx={rowStyle}>
-                                                <FormControl fullWidth size="small">
-                                                    <InputLabel id={`sec-${section.key}-${row.id}`}>-- select --</InputLabel>
-                                                    <Select
-                                                        labelId={`sec-${section.key}-${row.id}`}
-                                                        value={row.value}
-                                                        label="-- select --"
-                                                        onChange={(e) => updateSectionValue(section.key, row.id, e.target.value)}
-                                                    >
-                                                        <MenuItem value="" disabled>-- select --</MenuItem>
-                                                        {optionsList.map((n, i) => <MenuItem key={`${section.key}-${rowIndex}-${row.id}-${i}-${String(n)}`} value={n}>{n}</MenuItem>)}
-                                                    </Select>
-                                                </FormControl>
+                                {/* Lip Sync Winner Section */}
+                                <Section>
+                                    <SectionTitle>Lip Sync Winner</SectionTitle>
+                                    <SectionDesc>
+                                        Select who won the lip sync. Select multiple for ties, or leave empty for no lip sync.
+                                    </SectionDesc>
+                                    <FormControl fullWidth size="medium">
+                                        <InputLabel>Select Winner(s)</InputLabel>
+                                        <Select
+                                            multiple
+                                            value={lipSyncWinners}
+                                            label="Select Winner(s)"
+                                            onChange={(e) => setLipSyncWinners(e.target.value)}
+                                            renderValue={(selected) => (
+                                                <ChipWrapper>
+                                                    {selected.length === 0 ? (
+                                                        <em style={{ color: '#999' }}>No winner</em>
+                                                    ) : (
+                                                        selected.map((value) => (
+                                                            <Chip key={value} label={value} size="small" />
+                                                        ))
+                                                    )}
+                                                </ChipWrapper>
+                                            )}
+                                        >
+                                            {optionsList.map((queen, i) => (
+                                                <MenuItem key={i} value={queen}>
+                                                    <Checkbox checked={lipSyncWinners.includes(queen)} />
+                                                    {queen}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Section>
 
-                                                <Button size="small" variant="outlined" color="error" onClick={() => deleteRowFromSection(section.key, row.id)}>
-                                                    Delete
-                                                </Button>
-                                            </Box>
-                                        ))}
-                                    </Box>
-                                </Box>
-                            ))
+                                {/* Eliminated Queen Section */}
+                                <Section>
+                                    <SectionTitle>Eliminated Queen(s)</SectionTitle>
+                                    <SectionDesc>
+                                        Select who was eliminated. Select multiple for ties.
+                                    </SectionDesc>
+                                    <FormControl fullWidth size="medium">
+                                        <InputLabel>Select Eliminated</InputLabel>
+                                        <Select
+                                            multiple
+                                            value={eliminatedQueens}
+                                            label="Select Eliminated"
+                                            onChange={(e) => setEliminatedQueens(e.target.value)}
+                                            renderValue={(selected) => (
+                                                <ChipWrapper>
+                                                    {selected.length === 0 ? (
+                                                        <em style={{ color: '#999' }}>No one eliminated</em>
+                                                    ) : (
+                                                        selected.map((value) => (
+                                                            <Chip key={value} label={value} size="small" />
+                                                        ))
+                                                    )}
+                                                </ChipWrapper>
+                                            )}
+                                        >
+                                            {optionsList.map((queen, i) => (
+                                                <MenuItem key={i} value={queen}>
+                                                    <Checkbox checked={eliminatedQueens.includes(queen)} />
+                                                    {queen}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Section>
+                            </>
                         )}
                     </Box>
                 )}
-            </DialogContent>
+            </StyledDialogContent>
 
-            <DialogActions sx={{ px: 3, py: 2, justifyContent: 'space-between' }}>
+            <StyledDialogActions>
                 <Box>
                     {(version === "Weekly Results" || version === "Submissions") && (
                         <FormControlLabel
@@ -762,11 +841,11 @@ export default function SubmissionsPopup({
                     )}
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button onClick={() => onClose()} variant="outlined">Cancel</Button>
-                    <Button onClick={handleSubmit} variant="contained">Submit</Button>
+                    <CancelButton onClick={() => onClose()} variant="outlined">Cancel</CancelButton>
+                    <SubmitButton onClick={handleSubmit} variant="contained">Submit</SubmitButton>
                 </Box>
-            </DialogActions>
-        </Dialog>
+            </StyledDialogActions>
+        </StyledDialog>
     );
 }
 

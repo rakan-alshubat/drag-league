@@ -196,6 +196,7 @@ export const createPlayer = /* GraphQL */ `
         updatedAt
         __typename
       }
+      plEmail
       plName
       plStatus
       plLipSyncAssassin
@@ -243,6 +244,7 @@ export const updatePlayer = /* GraphQL */ `
         updatedAt
         __typename
       }
+      plEmail
       plName
       plStatus
       plLipSyncAssassin
@@ -290,6 +292,7 @@ export const deletePlayer = /* GraphQL */ `
         updatedAt
         __typename
       }
+      plEmail
       plName
       plStatus
       plLipSyncAssassin
