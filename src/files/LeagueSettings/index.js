@@ -7,14 +7,15 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Switch from '@mui/material/Switch';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import PublicIcon from '@mui/icons-material/Public';
 import LockIcon from '@mui/icons-material/Lock';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { generateClient } from 'aws-amplify/api';
-import { updatePlayer, updateLeague } from '@/graphql/mutations';
+import { updatePlayer, updateLeague, deleteLeague, deletePlayer } from '@/graphql/mutations';
+import { playersByLeagueId, listUsers } from '@/graphql/queries';
 import PopUp from '@/files/PopUp';
 import {
     Root,
@@ -38,6 +39,7 @@ export default function LeagueSettings(props) {
     const [popUpDescription, setPopUpDescription] = useState('');
     const [selectedPlayer, setSelectedPlayer] = useState(null);
     const [privacyAction, setPrivacyAction] = useState(null);
+    const [deleteLeagueAction, setDeleteLeagueAction] = useState(false);
 
     const client = generateClient();
 
@@ -151,8 +153,106 @@ export default function LeagueSettings(props) {
         }
     };
 
+    const handleDeleteLeague = () => {
+        setDeleteLeagueAction(true);
+        setPopUpTitle('Delete League?');
+        setPopUpDescription('This will permanently delete the league and all associated player data. This action cannot be undone. Are you sure?');
+        setConfirmOpen(true);
+    };
+
+    const handleConfirmDeleteLeague = async () => {
+        try {
+            setConfirmLoading(true);
+            console.log('Starting league deletion cascade...');
+
+            // Step 1: Get all players in the league
+            const playersResult = await client.graphql({
+                query: playersByLeagueId,
+                variables: { leagueId: leagueData.id, limit: 1000 }
+            });
+            const playersToDelete = playersResult?.data?.playersByLeagueId?.items || [];
+            console.log(`Found ${playersToDelete.length} players to delete`);
+
+            // Step 2: Delete all player records
+            for (const player of playersToDelete) {
+                await client.graphql({
+                    query: deletePlayer,
+                    variables: { input: { id: player.id } }
+                });
+                console.log(`Deleted player: ${player.plName}`);
+            }
+
+            // Step 3: Get all users to remove league references
+            const allUsersResult = await client.graphql({
+                query: listUsers,
+                variables: { limit: 10000 }
+            });
+            const allUsers = allUsersResult?.data?.listUsers?.items || [];
+
+            // Step 4: Update each user's leagues and pendingLeagues arrays
+            const { updateUsers } = await import('@/graphql/mutations');
+            for (const user of allUsers) {
+                let needsUpdate = false;
+                let updatedLeagues = user.leagues || [];
+                let updatedPendingLeagues = user.pendingLeagues || [];
+
+                // Remove from leagues array (format: "timestamp|leagueId|leagueName")
+                const filteredLeagues = updatedLeagues.filter(league => {
+                    const parts = league.split('|');
+                    return parts[1] !== leagueData.id;
+                });
+                if (filteredLeagues.length !== updatedLeagues.length) {
+                    updatedLeagues = filteredLeagues;
+                    needsUpdate = true;
+                }
+
+                // Remove from pendingLeagues array
+                const filteredPendingLeagues = updatedPendingLeagues.filter(leagueId => leagueId !== leagueData.id);
+                if (filteredPendingLeagues.length !== updatedPendingLeagues.length) {
+                    updatedPendingLeagues = filteredPendingLeagues;
+                    needsUpdate = true;
+                }
+
+                // Update user if leagues were removed
+                if (needsUpdate) {
+                    await client.graphql({
+                        query: updateUsers,
+                        variables: {
+                            input: {
+                                id: user.id,
+                                leagues: updatedLeagues,
+                                pendingLeagues: updatedPendingLeagues
+                            }
+                        }
+                    });
+                    console.log(`Updated user: ${user.id}`);
+                }
+            }
+
+            // Step 5: Finally, delete the league itself
+            await client.graphql({
+                query: deleteLeague,
+                variables: { input: { id: leagueData.id } }
+            });
+            console.log('League deleted successfully');
+            console.log('Cascade deletion completed successfully');
+
+            setConfirmOpen(false);
+            setDeleteLeagueAction(false);
+            // Redirect to player page
+            router.push('/Player');
+        } catch (error) {
+            console.error('Error deleting league:', error);
+            alert('Failed to delete league. Please try again.');
+        } finally {
+            setConfirmLoading(false);
+        }
+    };
+
     const handleConfirm = async () => {
-        if (selectedPlayer) {
+        if (deleteLeagueAction) {
+            await handleConfirmDeleteLeague();
+        } else if (selectedPlayer) {
             await handleConfirmPromote();
         } else if (privacyAction) {
             await handleConfirmPrivacy();
@@ -163,6 +263,86 @@ export default function LeagueSettings(props) {
         <Root>
             <Title variant="h5">League Settings</Title>
 
+
+            <SettingSection>
+                <SectionTitle>Players ({players.length})</SectionTitle>
+                <List>
+                    {players.length > 0 ? (
+                        <StyledAccordion disableGutters>
+                            <StyledSummary expandIcon={<ExpandMoreIcon />}>
+                                <SummaryText>View All Players</SummaryText>
+                            </StyledSummary>
+                            <StyledDetails>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    {players.map((player, idx) => {
+                                        const isAdmin = isPlayerAdmin(player);
+                                        return (
+                                            <Box
+                                                key={idx}
+                                                sx={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    padding: '12px 16px',
+                                                    borderRadius: '8px',
+                                                    background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
+                                                    border: '1px solid rgba(255, 20, 147, 0.2)',
+                                                    transition: 'all 0.2s ease',
+                                                    '&:hover': {
+                                                        borderColor: '#FFB6D9',
+                                                    },
+                                                }}
+                                            >
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                                                    <Typography sx={{ fontWeight: 600, color: '#333' }}>
+                                                        {player.plName}
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
+                                                        {player.id}
+                                                    </Typography>
+                                                    {isAdmin && (
+                                                        <Chip
+                                                            label="Admin"
+                                                            size="small"
+                                                            sx={{
+                                                                background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                                                                color: 'white',
+                                                                fontWeight: 600,
+                                                                fontSize: '0.75rem',
+                                                            }}
+                                                        />
+                                                    )}
+                                                </Box>
+                                                {!isAdmin && (
+                                                    <Tooltip title="Promote to Admin">
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => handlePromotePlayer(player)}
+                                                            sx={{
+                                                                color: '#9B30FF',
+                                                                '&:hover': {
+                                                                    background: 'rgba(155, 48, 255, 0.1)',
+                                                                },
+                                                            }}
+                                                        >
+                                                            <AdminPanelSettingsIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
+                                            </Box>
+                                        );
+                                    })}
+                                </Box>
+                            </StyledDetails>
+                        </StyledAccordion>
+                    ) : (
+                        <Typography variant="body2" color="text.secondary">
+                            No players in the league.
+                        </Typography>
+                    )}
+                </List>
+            </SettingSection>
+            
             {/* Privacy Section */}
             <SettingSection>
                 <SectionTitle>Privacy Settings</SectionTitle>
@@ -271,97 +451,62 @@ export default function LeagueSettings(props) {
                 </Box>
             </SettingSection>
 
-            {/* Players Section */}
             <SettingSection>
-                <SectionTitle>Players ({players.length})</SectionTitle>
-                <List>
-                    {players.length > 0 ? (
-                        <StyledAccordion disableGutters>
-                            <StyledSummary expandIcon={<ExpandMoreIcon />}>
-                                <SummaryText>View All Players</SummaryText>
-                            </StyledSummary>
-                            <StyledDetails>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                    {players.map((player, idx) => {
-                                        const isAdmin = isPlayerAdmin(player);
-                                        return (
-                                            <Box
-                                                key={idx}
-                                                sx={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'space-between',
-                                                    padding: '12px 16px',
-                                                    borderRadius: '8px',
-                                                    background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
-                                                    border: '1px solid rgba(255, 20, 147, 0.2)',
-                                                    transition: 'all 0.2s ease',
-                                                    '&:hover': {
-                                                        borderColor: '#FFB6D9',
-                                                    },
-                                                }}
-                                            >
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                                                    <Typography sx={{ fontWeight: 600, color: '#333' }}>
-                                                        {player.plName}
-                                                    </Typography>
-                                                    <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
-                                                        {player.id}
-                                                    </Typography>
-                                                    {isAdmin && (
-                                                        <Chip
-                                                            label="Admin"
-                                                            size="small"
-                                                            sx={{
-                                                                background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-                                                                color: 'white',
-                                                                fontWeight: 600,
-                                                                fontSize: '0.75rem',
-                                                            }}
-                                                        />
-                                                    )}
-                                                </Box>
-                                                {!isAdmin && (
-                                                    <Tooltip title="Promote to Admin">
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => handlePromotePlayer(player)}
-                                                            sx={{
-                                                                color: '#9B30FF',
-                                                                '&:hover': {
-                                                                    background: 'rgba(155, 48, 255, 0.1)',
-                                                                },
-                                                            }}
-                                                        >
-                                                            <AdminPanelSettingsIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                )}
-                                            </Box>
-                                        );
-                                    })}
-                                </Box>
-                            </StyledDetails>
-                        </StyledAccordion>
-                    ) : (
-                        <Typography variant="body2" color="text.secondary">
-                            No players in the league.
-                        </Typography>
-                    )}
-                </List>
+                <SectionTitle sx={{ color: '#ff4444' }}>Danger Zone</SectionTitle>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '16px',
+                            borderRadius: '8px',
+                            background: 'linear-gradient(135deg, rgba(255, 68, 68, 0.05) 0%, rgba(204, 0, 0, 0.05) 100%)',
+                            border: '2px solid rgba(255, 68, 68, 0.3)',
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <DeleteForeverIcon sx={{ color: '#ff4444', fontSize: 32 }} />
+                            <Box>
+                                <Typography sx={{ fontWeight: 600, color: '#ff4444' }}>
+                                    Delete League
+                                </Typography>
+                                <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
+                                    Permanently delete this league and all player data. This cannot be undone.
+                                </Typography>
+                            </Box>
+                        </Box>
+                        <Button
+                            variant="contained"
+                            onClick={handleDeleteLeague}
+                            sx={{
+                                background: 'linear-gradient(135deg, #ff4444 0%, #cc0000 100%)',
+                                color: 'white',
+                                fontWeight: 600,
+                                textTransform: 'none',
+                                '&:hover': {
+                                    background: 'linear-gradient(135deg, #e63939 0%, #b30000 100%)',
+                                },
+                            }}
+                        >
+                            Delete League
+                        </Button>
+                    </Box>
+                </Box>
             </SettingSection>
 
-            {/* Confirmation Dialog */}
+
             <PopUp
                 open={confirmOpen}
                 title={popUpTitle}
-                confirmText={selectedPlayer ? "Promote" : "Confirm"}
+                confirmText={deleteLeagueAction ? "Delete" : selectedPlayer ? "Promote" : "Confirm"}
                 cancelText="Cancel"
                 loading={confirmLoading}
                 onCancel={() => {
                     setConfirmOpen(false);
                     setSelectedPlayer(null);
                     setPrivacyAction(null);
+                    setDeleteLeagueAction(false);
                 }}
                 onConfirm={handleConfirm}
             >

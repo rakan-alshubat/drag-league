@@ -36,7 +36,7 @@ export default function SeasonInfo(props) {
             <List>
                 <StyledAccordion disableGutters>
                     <StyledSummary expandIcon={<ExpandMoreIcon />}>
-                        <SummaryText>Eliminated Queens ({eliminated.length})</SummaryText>
+                        <SummaryText>Eliminated Queens</SummaryText>
                     </StyledSummary>
                     <StyledDetails>
                         {eliminated.length > 0 ? (
@@ -121,7 +121,7 @@ export default function SeasonInfo(props) {
 
                 <StyledAccordion disableGutters>
                     <StyledSummary expandIcon={<ExpandMoreIcon />}>
-                        <SummaryText>Challenge Winners ({challengeWinners.length})</SummaryText>
+                        <SummaryText>Challenge Winners</SummaryText>
                     </StyledSummary>
                     <StyledDetails>
                         {challengeWinners.length > 0 ? (
@@ -186,7 +186,7 @@ export default function SeasonInfo(props) {
 
                 <StyledAccordion disableGutters>
                     <StyledSummary expandIcon={<ExpandMoreIcon />}>
-                        <SummaryText>Lip Sync Winners ({lipSyncWinners.length})</SummaryText>
+                        <SummaryText>Lip Sync Winners</SummaryText>
                     </StyledSummary>
                     <StyledDetails>
                         {lipSyncWinners.length > 0 ? (

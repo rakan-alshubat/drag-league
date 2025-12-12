@@ -107,11 +107,11 @@ export const WinnerBanner = styled(Box)(({ theme }) => ({
     boxShadow: '0 6px 20px rgba(255, 165, 0, 0.06)',
     position: 'relative',
     overflow: 'hidden',
-    minHeight: 88,
+    minHeight: 188,
 }));
 
 export const WinnerLabel = styled(Typography)(({ theme }) => ({
-    fontSize: 14,
+    fontSize: 34,
     color: theme.palette.text.secondary,
     marginBottom: theme.spacing(0.5),
     [theme.breakpoints.down('sm')]: {
@@ -120,7 +120,7 @@ export const WinnerLabel = styled(Typography)(({ theme }) => ({
 }));
 
 export const WinnerName = styled(Typography)(({ theme }) => ({
-    fontSize: 28,
+    fontSize: 60,
     fontWeight: 900,
     color: '#9B30FF',
     lineHeight: 1.05,
@@ -138,7 +138,7 @@ export const RevealButton = styled(Button)(({ theme }) => ({
     background: 'linear-gradient(135deg, #FFD700 0%, #FFB400 100%)',
     color: '#222',
     fontWeight: 800,
-    padding: theme.spacing(1, 3),
+    padding: theme.spacing(1.6, 10),
     borderRadius: 999,
     boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
     '&:hover': {

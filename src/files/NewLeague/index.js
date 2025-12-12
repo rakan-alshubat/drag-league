@@ -2,30 +2,46 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { generateClient } from 'aws-amplify/api'
 import { createPlayer, updateLeague, deleteLeague, createUsers, updateUsers, deletePlayer } from '@/graphql/mutations';
-import { getUsers } from '@/graphql/queries';
+import { getUsers, playersByLeagueId, listUsers } from '@/graphql/queries';
 import { sendEmailAPI } from "@/helpers/sendEmail";
 import { filterPipeCharacter } from "@/helpers/filterPipeChar";
-import { Box, Typography, Button, IconButton, Tooltip, TextField, Alert } from "@mui/material";
+import { Box, Typography, IconButton, Tooltip, TextField, Alert } from "@mui/material";
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import PersonAddAltSharpIcon from '@mui/icons-material/PersonAddAltSharp';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import PeopleIcon from '@mui/icons-material/People';
+import RuleIcon from '@mui/icons-material/Rule';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import PopUp from "@/files/PopUp";
 import Countdown from "@/files/Countdown";
-import checkPrivacy from "@/helpers/chechPrivacy";
-import { PageContainer,
+import {
+    PageContainer,
     Title,
-    DescriptionBox,
-    ButtonRow,
-    SquareSection,
+    HeroBanner,
+    HeroText,
+    InfoBanner,
+    ActionRow,
+    PrimaryButton,
+    SecondaryButton,
+    DangerButton,
+    CardSection,
     SectionHeader,
-    DynamicGrid,
-    GridHeader,
-    GridItem,
-    RowContainer,
-    RowGrid,
-    ColumnHeader,
-    RowItem} from "./NewLeague.styles";
+    GridLayout,
+    GridCard,
+    GridCardText,
+    TableContainer,
+    TableHeaderRow,
+    TableHeaderCell,
+    TableRow,
+    TableCell,
+    StatusChip,
+    EmptyState,
+    EmptyStateText,
+    BottomActionBar,
+    InviteSectionHeader
+} from "./NewLeague.styles";
 
 const DEADLINE_CHECK_INTERVAL_MS = 60000; // Check deadline every 60 seconds
 
@@ -57,29 +73,27 @@ export default function NewLeague( userData ) {
     const [popUpCopySuccess, setPopUpCopySuccess] = useState('');
 
     const [pickedPlayer, setPickedPlayer] = useState('');
-
-    const playerHeaders = ["Name", "Role", "Queens ranked?"];
-    const pendingHeaders = ["Name", "Status"];
+    const [displayName, setDisplayName] = useState('');
 
     useEffect(() => {
         if (!League?.lgRankingDeadline || League?.lgFinished === 'active') return;
-        
+
         const checkDeadline = () => {
             const deadlineDate = new Date(League.lgRankingDeadline);
             const now = new Date();
-            
+
             if (now >= deadlineDate && isAdmin) {
                 const currentHistory = League.lgHistory || [];
                 const historyEntry = new Date().toISOString() + '. Ranking deadline passed - league automatically started';
-                
+
                 client.graphql({
                     query: updateLeague,
-                    variables: { 
-                        input: { 
-                            id: League.id, 
+                    variables: {
+                        input: {
+                            id: League.id,
                             lgFinished: 'active',
                             lgHistory: [...currentHistory, historyEntry]
-                        } 
+                        }
                     }
                 }).then((result) => {
                     console.log('League auto-started:', result);
@@ -92,16 +106,19 @@ export default function NewLeague( userData ) {
 
         checkDeadline();
         const interval = setInterval(checkDeadline, DEADLINE_CHECK_INTERVAL_MS);
-        
+
         return () => clearInterval(interval);
     }, [League?.lgRankingDeadline, League?.lgFinished, League?.id, isAdmin, client, router]);
 
     const currentPlayerData = () => {
         if (Player && Array.isArray(Player)) {
             return Player.map((player) => {
-
-                const row = [player.plName, player.plStatus, (player.plRankings ? 'Submitted' : 'Pending')];
-                row._email = player.id.toLowerCase();
+                const row = {
+                    name: player.plName,
+                    role: player.plStatus,
+                    submitted: player.plRankings ? 'Submitted' : 'Pending',
+                    email: player.id.toLowerCase()
+                };
                 return row;
             });
         }
@@ -110,21 +127,26 @@ export default function NewLeague( userData ) {
 
     const pendingPlayerData = () => {
         let pendingPlayers = []
-        League?.lgPendingPlayers.forEach((player) => {
+        League?.lgPendingPlayers?.forEach((player) => {
             const pl = player.split('|').map(s => s.trim()).filter(Boolean)
-            pendingPlayers.push([pl[2], pl[1]]);
+            if (pl.length >= 3) {
+                pendingPlayers.push({
+                    name: pl[2],
+                    status: pl[0],
+                    email: pl[1]
+                });
+            }
         });
         return pendingPlayers
     }
 
     const rules = () => {
-        const swap = League?.lgSwap.split('|').map(s => s.trim()).filter(Boolean)
+        const swap = League?.lgSwap?.split('|').map(s => s.trim()).filter(Boolean) || []
         return [
-            // (League?.lgPublic ? 'This League is public' : 'This league is private'),
-            (League?.lgChallengePoints > 0 ? 'Predicting maxi challenge winners is worth ' + League?.lgChallengePoints + ' points!' : 'Predicting weekly maxi winners is disabled'),
-            (League?.lgDeadline === 'manual' ? 'The admin will manually stop taking submissions' : 'The deadline to submit the weekly maxi winner prediction is ' + formatDeadline(League?.lgDeadline)),
-            (League?.lgChallengePoints > 0 ? 'Predcting the lip sync assassin of the season is worth ' + League?.lgLipSyncPoints + ' points!' : 'Predicting the lip sync assasin is disabled'),
-            (League?.lgSwap === '' ? 'The admin has disabled swaps for this season' : 'Swaps will happen' + (swap[0] === 'Number of Episodes' ? ' after ' + swap[1] + ' episodes' : ' when there are ' + swap[1] + ' Queens remaining'))
+            (League?.lgChallengePoints > 0 ? `Predicting maxi challenge winners is worth ${League?.lgChallengePoints} points!` : 'Predicting weekly maxi winners is disabled'),
+            (League?.lgDeadline === 'manual' ? 'The admin will manually stop taking submissions' : `The deadline to submit the weekly maxi winner prediction is ${formatDeadline(League?.lgDeadline)}`),
+            (League?.lgLipSyncPoints > 0 ? `Predicting the lip sync assassin of the season is worth ${League?.lgLipSyncPoints} points!` : 'Predicting the lip sync assassin is disabled'),
+            (League?.lgSwap === '' || !League?.lgSwap ? 'The admin has disabled swaps for this season' : `Swaps will happen ${swap[0] === 'Number of Episodes' ? `after ${swap[1]} episodes` : `when there are ${swap[1]} Queens remaining`}`)
         ]
     }
 
@@ -145,7 +167,9 @@ export default function NewLeague( userData ) {
         let bonuses = []
         League?.lgBonusPoints?.forEach((bonus) => {
             const bonusInfo = bonus.split('|').map(s => s.trim()).filter(Boolean)
-            bonuses.push('The bonus category is ' + bonusInfo[0] + ', and its worth ' + bonusInfo[1] + ' points')
+            if (bonusInfo.length >= 2) {
+                bonuses.push(`${bonusInfo[0]} - ${bonusInfo[1]} points`)
+            }
         })
         return bonuses
     }
@@ -154,24 +178,27 @@ export default function NewLeague( userData ) {
         router.push(`/Rank/${League.id}`)
     };
 
-    const handleAcceptRequest = (row) => {
+    const handleAcceptRequest = (player) => {
         setPopUpTitle('Accept player?')
         setPopUpDescription('Are you sure you want to accept this player?')
-        setPickedPlayer(row._email)
+        setPickedPlayer(player.email)
+        setDisplayName(player.name)
         setConfirmOpen(true)
     };
 
-    const handleDeclineRequest = (row) => {
-        setPopUpTitle('Kick player?')
-        setPopUpDescription('This will revoke the invite from this player')
-        setPickedPlayer(row._email)
+    const handleDeclineRequest = (player) => {
+        setPopUpTitle('Decline player?')
+        setPopUpDescription('This will decline the join request from this player')
+        setPickedPlayer(player.email)
+        setDisplayName(player.name)
         setConfirmOpen(true)
     };
 
-    const handleKickRequest = (row) => {
+    const handleKickRequest = (player) => {
         setPopUpTitle('Revoke invite?')
         setPopUpDescription('This will revoke the invite from this player')
-        setPickedPlayer(row._email)
+        setPickedPlayer(player.email)
+        setDisplayName(player.name)
         setConfirmOpen(true)
     };
 
@@ -193,39 +220,86 @@ export default function NewLeague( userData ) {
         setConfirmOpen(true)
     }
 
-    const handlePromoteRequest = (row) => {
+    const handlePromoteRequest = (player) => {
         setPopUpTitle('Promote to Admin')
         setPopUpDescription('You sure you want this player to be admin?')
-        setPickedPlayer(row._email)
+        setPickedPlayer(player.email)
+        setDisplayName(player.name)
         setConfirmOpen(true)
     }
 
-    const renderRowTable = (headers, rows, columns) => (
-        <RowContainer>
-            <RowGrid columns={columns}>
-                {headers.map((h) => (
-                    <ColumnHeader key={h}>{h}</ColumnHeader>
-                ))}
-            </RowGrid>
+    return (
+        <PageContainer>
+            <Title variant="h3">{League?.lgName}</Title>
 
-            {rows.map((row, rIdx) => (
-                <RowGrid key={rIdx} columns={columns} sx={{ mt: 0 }}>
-                    {Array.from({ length: columns }).map((_, cIdx) => (
-                        <RowItem key={cIdx}>
-                            {(() => {
-                                const nameCol = headers.indexOf('Name');
-                                const cell = row[cIdx];
-                                if (typeof cell === 'string' && cell.toLowerCase().trim() === 'requested') {
-                                    return (
+            {(League?.lgDescription && League.lgDescription.length > 0) && (
+                <HeroBanner elevation={0}>
+                    <HeroText variant="body1">{League?.lgDescription}</HeroText>
+                </HeroBanner>
+            )}
+
+            {League?.lgRankingDeadline && (
+                <InfoBanner>
+                    <Countdown
+                        deadline={League.lgRankingDeadline}
+                        label="Ranking Submission Deadline"
+                    />
+                </InfoBanner>
+            )}
+
+            {isAdmin && (
+                <ActionRow>
+                    <PrimaryButton
+                        startIcon={<GroupAddIcon />}
+                        onClick={() => handleInvitePlayer()}
+                    >
+                        Invite Players
+                    </PrimaryButton>
+                    <SecondaryButton
+                        startIcon={<EmojiEventsIcon />}
+                        onClick={() => handleStartLeague()}
+                    >
+                        Start League
+                    </SecondaryButton>
+                </ActionRow>
+            )}
+
+            <CardSection elevation={0}>
+                <SectionHeader variant="h5">
+                    <PeopleIcon /> Current Players
+                </SectionHeader>
+                {currentPlayerData().length > 0 ? (
+                    <TableContainer>
+                        <TableHeaderRow>
+                            <TableHeaderCell>Name</TableHeaderCell>
+                            <TableHeaderCell>Role</TableHeaderCell>
+                            <TableHeaderCell>Rankings</TableHeaderCell>
+                        </TableHeaderRow>
+                        {currentPlayerData().map((player, idx) => (
+                            <TableRow key={idx}>
+                                <TableCell sx={{ justifyContent: { xs: 'flex-start', sm: 'center' } }}>
+                                    <Typography variant="body1" fontWeight={600}>
+                                        {player.name}
+                                    </Typography>
+                                </TableCell>
+                                <TableCell>
+                                    {player.role.toLowerCase() === 'requested' ? (
                                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                            requesting to join
+                                            <StatusChip
+                                                label="Requesting to join"
+                                                statuscolor="requested"
+                                                size="small"
+                                            />
                                             {isAdmin && (
                                                 <>
                                                     <Tooltip title="Accept">
                                                         <IconButton
                                                             size="small"
-                                                            color="success"
-                                                            onClick={() => handleAcceptRequest(row)}
+                                                            sx={{
+                                                                color: '#4caf50',
+                                                                '&:hover': { backgroundColor: 'rgba(76, 175, 80, 0.1)' }
+                                                            }}
+                                                            onClick={() => handleAcceptRequest(player)}
                                                         >
                                                             <CheckIcon fontSize="small" />
                                                         </IconButton>
@@ -233,8 +307,11 @@ export default function NewLeague( userData ) {
                                                     <Tooltip title="Decline">
                                                         <IconButton
                                                             size="small"
-                                                            color="error"
-                                                            onClick={() => handleDeclineRequest(row)}
+                                                            sx={{
+                                                                color: '#f44336',
+                                                                '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
+                                                            }}
+                                                            onClick={() => handleDeclineRequest(player)}
                                                         >
                                                             <CloseIcon fontSize="small" />
                                                         </IconButton>
@@ -242,200 +319,203 @@ export default function NewLeague( userData ) {
                                                 </>
                                             )}
                                         </Box>
-                                    );
-                                }
-                                // show a button when the cell explicitly indicates "not submitted"
-                                if (typeof cell === 'string' && cell.toLowerCase().trim() === 'pending') {
-                                    const playerName = (nameCol >= 0 && row[nameCol]) ? String(row[nameCol]).toLowerCase().trim() : '';
-                                    const loggedIn = userEmail ? String(userEmail).toLowerCase().trim() : '';
-
-                                    // Use email stored on the row (player.id)
-                                    let playerEmail = row._email || '';
-
-                                    const canSubmit = isAdmin || (playerEmail && loggedIn && playerEmail === loggedIn);
-                                    if (canSubmit) {
-                                        return (
-                                            <Button
+                                    ) : player.role.toLowerCase() === 'player' ? (
+                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                            <StatusChip
+                                                label="Player"
+                                                statuscolor="player"
                                                 size="small"
-                                                variant="contained"
-                                                color="primary"
-                                                onClick={() => handlePlayerSubmit()}
-                                            >
-                                                Submit your ranking
-                                            </Button>
-                                        );
-                                    }
-                                    return <Typography variant="body2">Not yet</Typography>;
-                                }
-                                if (typeof cell === 'string' && cell.toLowerCase().trim() === 'invited') {
-                                    return (
-                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                            Pending
-                                            {isAdmin && (
-                                                <Tooltip title="kick">
-                                                    <IconButton
-                                                        size="small"
-                                                        color="error"
-                                                        onClick={() => handleKickRequest(row)}
-                                                    >
-                                                        <CloseIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-                                        </Box>
-                                    );
-                                }
-                                if (typeof cell === 'string' && cell.toLowerCase().trim() === 'player') {
-                                    return (
-                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                            Player
+                                            />
                                             {isAdmin && (
                                                 <Tooltip title="Promote to Admin">
                                                     <IconButton
                                                         size="small"
-                                                        color="info"
-                                                        onClick={() => handlePromoteRequest(row)}
+                                                        sx={{
+                                                            color: '#FF1493',
+                                                            '&:hover': { backgroundColor: 'rgba(255, 20, 147, 0.1)' }
+                                                        }}
+                                                        onClick={() => handlePromoteRequest(player)}
                                                     >
                                                         <PersonAddAltSharpIcon fontSize="small" />
                                                     </IconButton>
                                                 </Tooltip>
                                             )}
                                         </Box>
-                                    );
-                                }
-                                // otherwise render the cell value
-                                return cell !== undefined ? cell : '';
-                            })()}
-                        </RowItem>
-                    ))}
-                </RowGrid>
-            ))}
-        </RowContainer>
-    );
+                                    ) : (
+                                        <StatusChip
+                                            label={player.role}
+                                            statuscolor="admin"
+                                            size="small"
+                                        />
+                                    )}
+                                </TableCell>
+                                <TableCell>
+                                    {player.submitted.toLowerCase() === 'pending' ? (
+                                        (() => {
+                                            const loggedIn = userEmail ? String(userEmail).toLowerCase().trim() : '';
+                                            const playerEmail = player.email || '';
+                                            const canSubmit = isAdmin || (playerEmail && loggedIn && playerEmail === loggedIn);
 
-    return (
-        <PageContainer>
-            <Title variant="h4">{League?.lgName}</Title>
-
-            {(League?.lgDescription && League.lgDescription.length > 0) && (
-                <DescriptionBox>
-                    <Typography variant="body1">{League?.lgDescription}</Typography>
-                </DescriptionBox>
-            )}
-
-            {League?.lgRankingDeadline && (
-                <Box sx={{ mb: 3 }}>
-                    <Countdown 
-                        deadline={League.lgRankingDeadline} 
-                        label="Ranking Submission Deadline" 
-                    />
-                </Box>
-            )}
-
-            <ButtonRow>
-                {isAdmin && (
-                    <>
-                        <Button variant="contained" color="primary" onClick={() => handleInvitePlayer()}>
-                            invite players
-                        </Button>
-
-                        <Button variant="contained" color="secondary" onClick={() => handleStartLeague()}>
-                            start league
-                        </Button>
-                    </>
+                                            if (canSubmit) {
+                                                return (
+                                                    <PrimaryButton
+                                                        size="small"
+                                                        onClick={() => handlePlayerSubmit()}
+                                                    >
+                                                        Submit Rankings
+                                                    </PrimaryButton>
+                                                );
+                                            }
+                                            return (
+                                                <StatusChip
+                                                    label="Not Submitted"
+                                                    statuscolor="pending"
+                                                    size="small"
+                                                />
+                                            );
+                                        })()
+                                    ) : (
+                                        <StatusChip
+                                            label="Submitted"
+                                            statuscolor="submitted"
+                                            size="small"
+                                            icon={<CheckIcon />}
+                                        />
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableContainer>
+                ) : (
+                    <EmptyState>
+                        <PeopleIcon sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.5 }} />
+                        <EmptyStateText>No players yet</EmptyStateText>
+                    </EmptyState>
                 )}
-            </ButtonRow>
+            </CardSection>
 
-            <SquareSection>
-                <SectionHeader variant="h6">Current Players</SectionHeader>
-                <Box sx={{ p: 2, flex: 1 }}>
-                    {renderRowTable(playerHeaders, currentPlayerData(), playerHeaders.length)}
-                </Box>
-            </SquareSection>
-
-            <Box sx={{ mb: 2 }}>
-                <GridHeader variant="h6">Meet The Queens</GridHeader>
-                <DynamicGrid columns={3} gap={2}>
-                    {League?.lgQueenNames.map((it) => (
-                        <GridItem key={it}>
-                            <Typography
-                                variant="subtitle1"
-                                align="center"
-                                sx={{ whiteSpace: 'normal' }}
-                            >
-                                {it}
-                            </Typography>
-                        </GridItem>
-                    ))}
-                </DynamicGrid>
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-                <GridHeader variant="h6">League Rules</GridHeader>
-                <DynamicGrid columns={2} gap={2}>
-                    {rules().map((it) => (
-                        <GridItem key={it}>
-                            <Typography
-                                variant="subtitle1"
-                                align="center"
-                                sx={{ whiteSpace: 'normal' }}
-                            >
-                                {it}
-                            </Typography>
-                        </GridItem>
-                    ))}
-                </DynamicGrid>
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-                <GridHeader variant="h6">Bonus rules!</GridHeader>
-                <DynamicGrid columns={1} gap={2}>
-                    {bonusRules().map((it) => (
-                        <GridItem key={it}>
-                            <Typography
-                                variant="subtitle1"
-                                align="center"
-                                sx={{ whiteSpace: 'normal' }}
-                            >
-                                {it}
-                            </Typography>
-                        </GridItem>
-                    ))}
-                </DynamicGrid>
-            </Box>
-
-            <SquareSection>
-                <SectionHeader variant="h6">Pending players
-                    {isAdmin && (
-                        <ButtonRow >
-                            <Button variant="contained" color="primary" onClick={() => handleInvitePlayer()}>
-                                invite players
-                            </Button>
-                        </ButtonRow>
-                    )}
+            <CardSection elevation={0}>
+                <SectionHeader variant="h5">
+                    <EmojiEventsIcon /> Meet The Queens
                 </SectionHeader>
-                <Box sx={{ p: 2, flex: 1 }}>
-                    {renderRowTable(pendingHeaders, pendingPlayerData(), pendingHeaders.length)}
-                </Box>
-            </SquareSection>
+                <GridLayout columns={3}>
+                    {League?.lgQueenNames?.map((queen, idx) => (
+                        <GridCard key={idx} elevation={0}>
+                            <GridCardText>{queen}</GridCardText>
+                        </GridCard>
+                    ))}
+                </GridLayout>
+            </CardSection>
 
-            <ButtonRow sx={{ justifyContent: 'space-between' }}>
-                {isAdmin && (
-                    <>
-                        <Button variant="contained" color="error" onClick={() => handleDeleteLeague()}>
-                            Delete League
-                        </Button>
-                        <Button variant="contained" color="secondary" onClick={() => handleStartLeague()}>
-                            start league
-                        </Button>
-                    </>
+            <CardSection elevation={0}>
+                <SectionHeader variant="h5">
+                    <RuleIcon /> League Rules
+                </SectionHeader>
+                <GridLayout columns={2}>
+                    {rules().map((rule, idx) => (
+                        <GridCard key={idx} elevation={0}>
+                            <GridCardText>{rule}</GridCardText>
+                        </GridCard>
+                    ))}
+                </GridLayout>
+            </CardSection>
+
+            {bonusRules().length > 0 && (
+                <CardSection elevation={0}>
+                    <SectionHeader variant="h5">
+                        <EmojiEventsIcon /> Bonus Categories
+                    </SectionHeader>
+                    <GridLayout columns={1}>
+                        {bonusRules().map((bonus, idx) => (
+                            <GridCard key={idx} elevation={0}>
+                                <GridCardText>{bonus}</GridCardText>
+                            </GridCard>
+                        ))}
+                    </GridLayout>
+                </CardSection>
+            )}
+
+            <CardSection elevation={0}>
+                <InviteSectionHeader>
+                    <SectionHeader variant="h5" sx={{ mb: 0 }}>
+                        <GroupAddIcon /> Pending Players
+                    </SectionHeader>
+                    {isAdmin && (
+                        <PrimaryButton
+                            size="small"
+                            startIcon={<GroupAddIcon />}
+                            onClick={() => handleInvitePlayer()}
+                        >
+                            Invite
+                        </PrimaryButton>
+                    )}
+                </InviteSectionHeader>
+                {pendingPlayerData().length > 0 ? (
+                    <TableContainer>
+                        <TableHeaderRow>
+                            <TableHeaderCell>Name</TableHeaderCell>
+                            <TableHeaderCell>Status</TableHeaderCell>
+                            <TableHeaderCell>Actions</TableHeaderCell>
+                        </TableHeaderRow>
+                        {pendingPlayerData().map((player, idx) => (
+                            <TableRow key={idx}>
+                                <TableCell sx={{ justifyContent: { xs: 'flex-start', sm: 'center' } }}>
+                                    <Typography variant="body1" fontWeight={600}>
+                                        {player.name}
+                                    </Typography>
+                                </TableCell>
+                                <TableCell>
+                                    <StatusChip
+                                        label={player.status === 'invited' ? 'Invited' : 'Pending'}
+                                        statuscolor={player.status === 'invited' ? 'invited' : 'pending'}
+                                        size="small"
+                                    />
+                                </TableCell>
+                                <TableCell>
+                                    {isAdmin && player.status === 'invited' && (
+                                        <Tooltip title="Revoke Invite">
+                                            <IconButton
+                                                size="small"
+                                                sx={{
+                                                    color: '#f44336',
+                                                    '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
+                                                }}
+                                                onClick={() => handleKickRequest(player)}
+                                            >
+                                                <CloseIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableContainer>
+                ) : (
+                    <EmptyState>
+                        <GroupAddIcon sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.5 }} />
+                        <EmptyStateText>No pending invites</EmptyStateText>
+                    </EmptyState>
                 )}
-            </ButtonRow>
+            </CardSection>
+
+            {isAdmin && (
+                <BottomActionBar>
+                    <DangerButton onClick={() => handleDeleteLeague()}>
+                        Delete League
+                    </DangerButton>
+                    <SecondaryButton
+                        startIcon={<EmojiEventsIcon />}
+                        onClick={() => handleStartLeague()}
+                    >
+                        Start League
+                    </SecondaryButton>
+                </BottomActionBar>
+            )}
 
             <PopUp
                 open={confirmOpen}
                 title={popUpTitle}
-                confirmText={popUpTitle === 'Delete League?' ? 'Delete' : 'Start'}
+                confirmText={popUpTitle === 'Delete League?' ? 'Delete' : popUpTitle === 'Start League?' ? 'Start' : popUpTitle === 'Invite Player' ? 'Send Invite' : 'Confirm'}
                 cancelText="Cancel"
                 loading={confirmLoading}
                 onCancel={() => {
@@ -443,6 +523,7 @@ export default function NewLeague( userData ) {
                     setPopUpNameInput('');
                     setPopUpEmailInput('');
                     setPopUpError('');
+                    setPopUpCopySuccess('');
                 }}
                 onConfirm={async () => {
                     try {
@@ -452,54 +533,125 @@ export default function NewLeague( userData ) {
                         if(popUpTitle === 'Start League?'){
                             const currentHistory = League.lgHistory || [];
                             const historyEntry = new Date().toISOString() + '. League manually started by admin';
-                            
+
                             const startResult = await client.graphql({
                                 query: updateLeague,
-                                variables: { 
-                                    input: { 
-                                        id: League.id, 
+                                variables: {
+                                    input: {
+                                        id: League.id,
                                         lgFinished: 'active',
                                         lgHistory: [...currentHistory, historyEntry]
-                                    } 
+                                    }
                                 }
                             });
                             console.log('League started:', startResult);
                             router.push(`/League/${League.id}`)
                         } else if(popUpTitle === 'Delete League?'){
+                            // Comprehensive cascade delete
+                            console.log('Starting league deletion cascade...');
+
+                            // Step 1: Get all players in the league
+                            const playersResult = await client.graphql({
+                                query: playersByLeagueId,
+                                variables: { leagueId: League.id, limit: 1000 }
+                            });
+                            const players = playersResult?.data?.playersByLeagueId?.items || [];
+                            console.log(`Found ${players.length} players to delete`);
+
+                            // Step 2: Delete all player records
+                            for (const player of players) {
+                                await client.graphql({
+                                    query: deletePlayer,
+                                    variables: { input: { id: player.id } }
+                                });
+                                console.log(`Deleted player: ${player.plName}`);
+                            }
+
+                            // Step 3: Get all users to remove league references
+                            const allUsersResult = await client.graphql({
+                                query: listUsers,
+                                variables: { limit: 10000 }
+                            });
+                            const allUsers = allUsersResult?.data?.listUsers?.items || [];
+
+                            // Step 4: Update each user's leagues and pendingLeagues arrays
+                            for (const user of allUsers) {
+                                let needsUpdate = false;
+                                let updatedLeagues = user.leagues || [];
+                                let updatedPendingLeagues = user.pendingLeagues || [];
+
+                                // Remove from leagues array (format: "timestamp|leagueId|leagueName")
+                                const filteredLeagues = updatedLeagues.filter(league => {
+                                    const parts = league.split('|');
+                                    return parts[1] !== League.id;
+                                });
+                                if (filteredLeagues.length !== updatedLeagues.length) {
+                                    updatedLeagues = filteredLeagues;
+                                    needsUpdate = true;
+                                }
+
+                                // Remove from pendingLeagues array
+                                const filteredPendingLeagues = updatedPendingLeagues.filter(leagueId => leagueId !== League.id);
+                                if (filteredPendingLeagues.length !== updatedPendingLeagues.length) {
+                                    updatedPendingLeagues = filteredPendingLeagues;
+                                    needsUpdate = true;
+                                }
+
+                                // Update user if leagues were removed
+                                if (needsUpdate) {
+                                    await client.graphql({
+                                        query: updateUsers,
+                                        variables: {
+                                            input: {
+                                                id: user.id,
+                                                leagues: updatedLeagues,
+                                                pendingLeagues: updatedPendingLeagues
+                                            }
+                                        }
+                                    });
+                                    console.log(`Updated user: ${user.id}`);
+                                }
+                            }
+
+                            // Step 5: Finally, delete the league itself
                             const deleteResult = await client.graphql({
                                 query: deleteLeague,
                                 variables: { input: { id: League.id } }
                             });
                             console.log('League deleted:', deleteResult);
-                            router.push(`/Player`)
+                            console.log('Cascade deletion completed successfully');
+
+                            // Close popup and redirect
+                            setConfirmOpen(false);
+                            window.location.href = '/Player';
                         } else if(popUpTitle === 'Invite Player'){
                             const inviteName = popUpNameInput.trim();
                             const inviteEmail = popUpEmailInput.trim().toLowerCase();
                             if (inviteName && inviteEmail) {
                                 const updatedPending = League.lgPendingPlayers || [];
-                                updatedPending.push(`invited|${inviteName}|${inviteEmail}`);
-                                
+                                updatedPending.push(`invited|${inviteEmail}|${inviteName}`);
+
                                 const currentHistory = League.lgHistory || [];
                                 const historyEntry = new Date().toISOString() + '. ' + inviteName + ' (' + inviteEmail + ') was invited to join';
-                                
+
                                 const inviteResult = await client.graphql({
                                     query: updateLeague,
-                                    variables: { 
-                                        input: { 
-                                            id: League.id, 
+                                    variables: {
+                                        input: {
+                                            id: League.id,
                                             lgPendingPlayers: updatedPending,
                                             lgHistory: [...currentHistory, historyEntry]
-                                        } 
+                                        }
                                     }
                                 });
                                 console.log('Player invited:', inviteResult);
-                                
+
                                 const results = await client.graphql({
                                     query: getUsers,
                                     variables: { id: inviteEmail }
                                 })
                                 console.log('User fetch result:', results);
-                                            
+
                                 if(results.data.getUsers === null) {
                                     const newUser = {
                                         id: inviteEmail,
@@ -516,35 +668,90 @@ export default function NewLeague( userData ) {
                                     });
                                     console.log('User pending leagues updated:', updateResult);
                                 }
+
+                                // Get the current user's name from Player data
+                                const currentUserPlayer = Player?.find(p => p.id?.toLowerCase() === userEmail?.toLowerCase());
+                                const currentUserName = currentUserPlayer?.plName || 'A league admin';
+
                                 try {
                                     const inviteHtml = `
                                         <!DOCTYPE html>
-                                        <html>
+                                        <html lang="en">
                                         <head>
-                                            <meta charset="utf-8">
+                                            <meta charset="UTF-8">
                                             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                            <meta http-equiv="X-UA-Compatible" content="IE=edge">
                                         </head>
-                                        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-                                            <div style="background-color: #B3F7DC; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                                                <h2 style="margin: 0; color: #1a1a1a;">🎭 Drag League Invitation</h2>
-                                            </div>
-                                            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
-                                                <p>Hi there!</p>
-                                                <p>You've been invited to join <strong>${League?.lgName}</strong> on Drag League!</p>
-                                                <p style="margin: 25px 0;">
-                                                    <a href="https://drag-league.com/Player" 
-                                                       style="background-color: #B3F7DC; color: #1a1a1a; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                                                        Accept Invitation
-                                                    </a>
-                                                </p>
-                                                <p style="color: #666; font-size: 14px;">
-                                                    If the button doesn't work, copy and paste this link into your browser:<br>
-                                                    <a href="https://drag-league.com/Player" style="color: #1a1a1a;">https://drag-league.com/Player</a>
-                                                </p>
-                                            </div>
-                                            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;">
-                                                <p>This email was sent by Drag League. If you didn't expect this invitation, you can safely ignore this email.</p>
-                                            </div>
+                                        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
+                                            <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">
+                                                <tr>
+                                                    <td style="padding: 20px 0;">
+                                                        <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                                            <!-- Header -->
+                                                            <tr>
+                                                                <td style="background: linear-gradient(135deg, #FF1493 0%, #9B30FF 50%, #FFD700 100%); padding: 30px 20px; text-align: center;">
+                                                                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                                                                        🏁 Drag League Invitation
+                                                                    </h1>
+                                                                </td>
+                                                            </tr>
+
+                                                            <!-- Main Content -->
+                                                            <tr>
+                                                                <td style="padding: 40px 30px;">
+                                                                    <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">Hi there!</p>
+
+                                                                    <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">
+                                                                        <strong style="color: #1a1a1a;">${currentUserName}</strong> has invited you to join
+                                                                        <strong style="color: #1a1a1a;">${League?.lgName}</strong> on Drag League!
+                                                                    </p>
+
+                                                                    <p style="margin: 0 0 30px 0; font-size: 16px; color: #555;">
+                                                                        Join the competition to rank queens, predict winners, and compete with your friends throughout the season.
+                                                                    </p>
+
+                                                                    <!-- CTA Button -->
+                                                                    <table role="presentation" style="margin: 0 auto;">
+                                                                        <tr>
+                                                                            <td style="text-align: center; padding: 20px 0;">
+                                                                                <a href="https://drag-league.com/Player"
+                                                                                   style="background: linear-gradient(135deg, #FF1493 0%, #C71585 100%); color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 12px rgba(255, 20, 147, 0.4); text-shadow: 0 1px 2px rgba(0,0,0,0.2);">
+                                                                                    Accept Invitation
+                                                                                </a>
+                                                                            </td>
+                                                                        </tr>
+                                                                    </table>
+
+                                                                    <!-- Fallback Link -->
+                                                                    <p style="margin: 30px 0 0 0; padding: 20px; background-color: #fff5f8; border-radius: 8px; font-size: 14px; color: #666; border-left: 4px solid #FF1493;">
+                                                                        <strong style="color: #FF1493;">Button not working?</strong><br>
+                                                                        Copy and paste this link into your browser:<br>
+                                                                        <a href="https://drag-league.com/Player" style="color: #FF1493; word-break: break-all; font-weight: 600;">https://drag-league.com/Player</a>
+                                                                    </p>
+                                                                </td>
+                                                            </tr>
+
+                                                            <!-- Footer -->
+                                                            <tr>
+                                                                <td style="padding: 30px; background-color: #f9f9f9; border-top: 1px solid #e0e0e0;">
+                                                                    <p style="margin: 0 0 10px 0; font-size: 12px; color: #999; text-align: center; line-height: 1.5;">
+                                                                        This is an automated notification from Drag League.<br>
+                                                                        If you didn't expect this invitation, you can safely ignore this email.
+                                                                    </p>
+                                                                    <p style="margin: 15px 0 0 0; font-size: 12px; text-align: center;">
+                                                                        <a href="https://drag-league.com/Support" style="color: #FF1493; text-decoration: underline; font-weight: 600;">Contact Support</a>
+                                                                        <span style="color: #ccc; margin: 0 8px;">|</span>
+                                                                        <a href="https://drag-league.com/FAQ" style="color: #FF1493; text-decoration: underline; font-weight: 600;">FAQ</a>
+                                                                    </p>
+                                                                    <p style="margin: 15px 0 0 0; font-size: 11px; color: #aaa; text-align: center;">
+                                                                        © 2025 Drag League. All rights reserved.
+                                                                    </p>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                            </table>
                                         </body>
                                         </html>
                                     `;
@@ -552,7 +759,7 @@ export default function NewLeague( userData ) {
                                         to: inviteEmail,
                                         subject: `You're invited to join ${League?.lgName} on Drag League`,
                                         html: inviteHtml,
-                                        text: `Hi there!\n\nYou've been invited to join ${League?.lgName} on Drag League!\n\nClick here to accept: https://drag-league.com/Player\n\nIf you didn't expect this invitation, you can safely ignore this email.\n\n- Drag League`
+                                        text: `🏁 DRAG LEAGUE INVITATION\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nHi there!\n\n${currentUserName} has invited you to join "${League?.lgName}" on Drag League!\n\nJoin the competition to rank queens, predict winners, and compete with your friends throughout the season.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🔗 ACCEPT YOUR INVITATION:\nhttps://drag-league.com/Player\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nThis is an automated notification from Drag League.\nIf you didn't expect this invitation, you can safely ignore this email.\n\nNeed help? Visit: https://drag-league.com/Support\nHave questions? Check our FAQ: https://drag-league.com/FAQ\n\n© 2025 Drag League. All rights reserved.`
                                     });
                                 } catch (e) {
                                     setPopUpError("Failed to send invite email");
@@ -560,7 +767,7 @@ export default function NewLeague( userData ) {
                                 }
                                 setPopUpNameInput('');
                                 setPopUpEmailInput('');
-
+                                router.push(`/League/${League.id}`)
                             } else {
                                 setPopUpError('Both name and email are required to invite a player.');
                                 return;
@@ -569,18 +776,18 @@ export default function NewLeague( userData ) {
                         } else if(popUpTitle === 'Promote to Admin'){
                             const updatedAdmins = League.lgAdmin || [];
                             updatedAdmins.push(pickedPlayer.trim().toLowerCase());
-                            
+
                             const currentHistory = League.lgHistory || [];
                             const historyEntry = new Date().toISOString() + '. ' + displayName + ' was promoted to admin';
-                            
+
                             const promoteResult = await client.graphql({
                                 query: updateLeague,
-                                variables: { 
-                                    input: { 
-                                        id: League.id, 
+                                variables: {
+                                    input: {
+                                        id: League.id,
                                         lgAdmin: updatedAdmins,
                                         lgHistory: [...currentHistory, historyEntry]
-                                    } 
+                                    }
                                 }
                             });
                             console.log('Player promoted to admin:', promoteResult);
@@ -588,26 +795,26 @@ export default function NewLeague( userData ) {
                         } else if(popUpTitle === 'Accept player?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
                                 const pl = p.split('|').map(s => s.trim()).filter(Boolean)
-                                return pl[2].toLowerCase() !== pickedPlayer.toLowerCase();
+                                return pl[2]?.toLowerCase() !== displayName?.toLowerCase();
                             });
-                            
+
                             const createPlayerResult = await client.graphql({
                                 query: createPlayer,
-                                variables: { input: { id: adminEmail, leagueId: League.id, plName: displayName, plStatus: 'Player' } }
+                                variables: { input: { id: pickedPlayer, leagueId: League.id, plName: displayName, plStatus: 'Player' } }
                             });
                             console.log('Player accepted and created:', createPlayerResult);
-                            
+
                             const currentHistory = League.lgHistory || [];
                             const historyEntry = new Date().toISOString() + '. ' + displayName + ' accepted and joined the league';
-                            
+
                             const updateResult = await client.graphql({
                                 query: updateLeague,
-                                variables: { 
-                                    input: { 
-                                        id: League.id, 
+                                variables: {
+                                    input: {
+                                        id: League.id,
                                         lgPendingPlayers: updatedPending,
                                         lgHistory: [...currentHistory, historyEntry]
-                                    } 
+                                    }
                                 }
                             });
                             console.log('League updated after accept:', updateResult);
@@ -615,20 +822,20 @@ export default function NewLeague( userData ) {
                         } else if(popUpTitle === 'Revoke invite?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
                                 const pl = p.split('|').map(s => s.trim()).filter(Boolean)
-                                return pl[2].toLowerCase() !== pickedPlayer.toLowerCase();
+                                return pl[2]?.toLowerCase() !== displayName?.toLowerCase();
                             });
-                            
+
                             const currentHistory = League.lgHistory || [];
-                            const historyEntry = new Date().toISOString() + '. Invite revoked for ' + pickedPlayer;
-                            
+                            const historyEntry = new Date().toISOString() + '. Invite revoked for ' + displayName;
+
                             const revokeResult = await client.graphql({
                                 query: updateLeague,
-                                variables: { 
-                                    input: { 
-                                        id: League.id, 
+                                variables: {
+                                    input: {
+                                        id: League.id,
                                         lgPendingPlayers: updatedPending,
                                         lgHistory: [...currentHistory, historyEntry]
-                                    } 
+                                    }
                                 }
                             });
                             console.log('Invite revoked:', revokeResult);
@@ -636,20 +843,20 @@ export default function NewLeague( userData ) {
                         }else if(popUpTitle === 'Decline player?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
                                 const pl = p.split('|').map(s => s.trim()).filter(Boolean)
-                                return pl[2].toLowerCase() !== pickedPlayer.toLowerCase();
+                                return pl[2]?.toLowerCase() !== displayName?.toLowerCase();
                             });
-                            
+
                             const currentHistory = League.lgHistory || [];
-                            const historyEntry = new Date().toISOString() + '. Join request declined for ' + pickedPlayer;
-                            
+                            const historyEntry = new Date().toISOString() + '. Join request declined for ' + displayName;
+
                             const declineResult = await client.graphql({
                                 query: updateLeague,
-                                variables: { 
-                                    input: { 
-                                        id: League.id, 
+                                variables: {
+                                    input: {
+                                        id: League.id,
                                         lgPendingPlayers: updatedPending,
                                         lgHistory: [...currentHistory, historyEntry]
-                                    } 
+                                    }
                                 }
                             });
                             console.log('Player declined:', declineResult);
@@ -660,17 +867,17 @@ export default function NewLeague( userData ) {
                                 variables: { input: { id: pickedPlayer } }
                             });
                             console.log('Player kicked:', kickResult);
-                            
+
                             const currentHistory = League.lgHistory || [];
-                            const historyEntry = new Date().toISOString() + '. Player ' + pickedPlayer + ' was removed from the league';
-                            
+                            const historyEntry = new Date().toISOString() + '. Player ' + displayName + ' was removed from the league';
+
                             await client.graphql({
                                 query: updateLeague,
-                                variables: { 
-                                    input: { 
+                                variables: {
+                                    input: {
                                         id: League.id,
                                         lgHistory: [...currentHistory, historyEntry]
-                                    } 
+                                    }
                                 }
                             });
                             router.push(`/League/${League.id}`)
@@ -698,19 +905,20 @@ export default function NewLeague( userData ) {
                         <TextField
                             fullWidth
                             rows={3}
-                            label='name'
+                            label='Name'
                             value={popUpNameInput}
                             onChange={(e) => setPopUpNameInput(filterPipeCharacter(e.target.value))}
                         />
                         <TextField
                             fullWidth
                             rows={3}
-                            label='email'
+                            label='Email'
+                            type="email"
                             value={popUpEmailInput}
                             onChange={(e) => setPopUpEmailInput(filterPipeCharacter(e.target.value))}
                         />
-                        <Box sx={{ mt: 1, mb: 1 }}>
-                            <Typography variant="caption">or</Typography>
+                        <Box sx={{ mt: 1, mb: 1, textAlign: 'center' }}>
+                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>or share invite link</Typography>
                         </Box>
                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                             <TextField
@@ -722,7 +930,10 @@ export default function NewLeague( userData ) {
                             />
                             <Tooltip title="Copy invite link">
                                 <IconButton
-                                    color="primary"
+                                    sx={{
+                                        color: '#FF1493',
+                                        '&:hover': { backgroundColor: 'rgba(255, 20, 147, 0.1)' }
+                                    }}
                                     onClick={async () => {
                                         const link = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/Player?invite=' + (League?.id || '');
                                         try {
@@ -739,7 +950,9 @@ export default function NewLeague( userData ) {
                             </Tooltip>
                         </Box>
                         {popUpCopySuccess && (
-                            <Typography variant="caption" sx={{ color: 'success.main' }}>{popUpCopySuccess}</Typography>
+                            <Typography variant="caption" sx={{ color: 'success.main', textAlign: 'center' }}>
+                                {popUpCopySuccess}
+                            </Typography>
                         )}
                     </Box>
                 )}

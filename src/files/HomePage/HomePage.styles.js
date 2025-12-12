@@ -167,3 +167,100 @@ export const FeatureCard = styled(Box)(({ theme }) => ({
         },
     },
 }));
+
+export const SupportSection = styled(Box)(({ theme }) => ({
+    marginBottom: theme.spacing(5),
+    padding: theme.spacing(4),
+    background: 'linear-gradient(180deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 20, 147, 0.1) 100%)',
+    borderRadius: theme.spacing(3),
+    boxShadow: '0 6px 25px rgba(255, 20, 147, 0.15)',
+    border: `2px solid ${theme.palette.primary.light}`,
+    transition: 'all 0.3s ease',
+    '&:hover': {
+        boxShadow: '0 10px 35px rgba(255, 20, 147, 0.25)',
+        transform: 'translateY(-4px)',
+        border: `2px solid ${theme.palette.primary.main}`,
+    },
+    [theme.breakpoints.down('sm')]: {
+        marginBottom: theme.spacing(3),
+        padding: theme.spacing(2.5),
+        borderRadius: theme.spacing(2),
+        '&:hover': {
+            transform: 'translateY(-2px)',
+        },
+    },
+}));
+
+export const SectionTitle = styled(Typography)(({ theme }) => ({
+    fontSize: '2rem',
+    fontWeight: 700,
+    marginBottom: theme.spacing(2),
+    color: theme.palette.primary.main,
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '1.6rem',
+    },
+}));
+
+export const IconWrapper = styled(Box)(({ theme }) => ({
+    marginRight: theme.spacing(1),
+    display: 'flex',
+    alignItems: 'center',
+}));
+
+export const StyledIcon = styled('span')(({ theme }) => ({
+    marginRight: theme.spacing(1),
+    display: 'inline-flex',
+    alignItems: 'center',
+}));
+
+export const CoffeeButton = styled(Button)(({ theme }) => ({
+    backgroundColor: '#FFDD00',
+    color: '#000000',
+    padding: '14px 32px',
+    fontSize: '1.05rem',
+    fontWeight: 700,
+    borderRadius: '50px',
+    textTransform: 'none',
+    boxShadow: '0 6px 20px rgba(255, 221, 0, 0.4)',
+    transition: 'all 0.3s ease',
+    '&:hover': {
+        backgroundColor: '#FFED4E',
+        transform: 'translateY(-4px) scale(1.03)',
+        boxShadow: '0 10px 30px rgba(255, 221, 0, 0.5)',
+    },
+    [theme.breakpoints.down('sm')]: {
+        padding: '10px 24px',
+        fontSize: '0.95rem',
+        width: '100%',
+    },
+}));
+
+export const HighlightBox = styled(Box)(({ theme }) => ({
+    background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.15) 0%, rgba(255, 215, 0, 0.15) 100%)',
+    padding: theme.spacing(4),
+    borderRadius: theme.spacing(2),
+    marginTop: theme.spacing(3),
+    textAlign: 'center',
+    border: `3px solid ${theme.palette.secondary.main}`,
+    boxShadow: '0 6px 20px rgba(255, 215, 0, 0.3)',
+}));
+
+export const HighlightTitle = styled(Typography)(({ theme }) => ({
+    fontSize: '1.8rem',
+    fontWeight: 900,
+    marginBottom: theme.spacing(1),
+    color: theme.palette.primary.main,
+}));
+
+export const HighlightText = styled(Typography)(({ theme }) => ({
+    fontSize: '1.1rem',
+    color: theme.palette.text.primary,
+    fontWeight: 600,
+}));
+
+export const SectionDescription = styled(Typography)(({ theme }) => ({
+    fontSize: '1.05rem',
+    lineHeight: 1.9,
+    marginBottom: theme.spacing(3),
+    color: theme.palette.text.secondary,
+}));

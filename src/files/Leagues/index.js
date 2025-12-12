@@ -82,6 +82,17 @@ export default function Leagues({ userData, leagueData, playersData }) {
             if (lastNonEmpty) winnerDisplay = String(lastNonEmpty).replace(/\|/g, ' & ');
         }
     }
+
+    const displayLeagueName = (() => {
+        let raw = (League?.lgName || '').toString().trim();
+        if (!raw) return '';
+        // if name does not already contain the word 'league' (anywhere), append it
+        if (!/\bleague\b/i.test(raw)) {
+            raw = `${raw} league`;
+        }
+        // if first word is 'the' (case-insensitive), keep as-is; otherwise prefix with 'the '
+        return (/^the\b/i.test(raw) ? raw : `the ${raw}`);
+    })();
     if (!winnerDisplay) {
         const eliminated = League?.lgEliminatedPlayers || [];
         if (Array.isArray(eliminated) && eliminated.length > 0) {
@@ -259,7 +270,9 @@ export default function Leagues({ userData, leagueData, playersData }) {
             {isFinished && winnerDisplay && (
                 <>
                     <div style={{ textAlign: 'center', marginBottom: 8 }}>
-                        <WinnerLabel>Season Winner</WinnerLabel>
+                        <WinnerLabel>                                   
+                            {`The winner of ${displayLeagueName} is...`}
+                        </WinnerLabel>
                     </div>
                     <WinnerBanner>
                         <div style={{
@@ -271,7 +284,7 @@ export default function Leagues({ userData, leagueData, playersData }) {
                             transition: 'filter 1200ms ease, opacity 1200ms ease',
                             filter: revealed ? 'none' : 'blur(6px)'
                         }}>
-                            <EmojiEventsIcon sx={{ color: '#FFD700', fontSize: { xs: 28, sm: 48 } }} />
+                            <EmojiEventsIcon sx={{ color: '#FFD700', fontSize: { xs: 60, sm: 68 } }} />
                             <WinnerName>{winnerDisplay}</WinnerName>
                         </div>
                         {!revealed && (

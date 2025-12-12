@@ -4,11 +4,11 @@ import { getCurrentUser, signOut } from "aws-amplify/auth";
 import LoadingWheel from "@/files/LoadingWheel";
 import parseToArray from '@/helpers/parseToArray';
 import { generateClient } from 'aws-amplify/api'
-import { getUsers} from "@/graphql/queries";
-import { createUsers } from '@/graphql/mutations';
+import { getUsers } from "@/graphql/queries";
+import { createUsers, updateUsers, deleteUsers } from '@/graphql/mutations';
 import ErrorPopup from "../ErrorPopUp";
 import { onCreateUsers, onUpdateUsers, onDeleteUsers } from '@/graphql/subscriptions';
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography, Button, Tabs, Tab, TextField, Stack } from '@mui/material';
 import {
     WelcomeBanner,
     WelcomeText,
@@ -33,6 +33,11 @@ export default function PlayerPage() {
     const [email, setEmail] = useState('');
     const [leagues, setLeagues] = useState([]);
     const [pendingLeagues, setPendingLeagues] = useState([]);
+    const [tabIndex, setTabIndex] = useState(0);
+    const [nameInput, setNameInput] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    
     
     useEffect(() => {
         getCurrentUser()
@@ -125,6 +130,10 @@ export default function PlayerPage() {
         };
     }, [userID, client, router]);
 
+    useEffect(() => {
+        setNameInput(name || '');
+    }, [name]);
+
     const handleSignOut = async () => {
         try{
             await signOut()
@@ -133,6 +142,39 @@ export default function PlayerPage() {
             console.error('Could not sign out')
         }
     }
+
+    const handleSaveSettings = async () => {
+        if (!userID) return;
+        setSaving(true);
+        try {
+            const input = { id: userID, name: (nameInput || '').trim() };
+            await client.graphql({ query: updateUsers, variables: { input } });
+            setName(nameInput || '');
+        } catch (err) {
+            console.error('Save settings error', err);
+            setErrorPopup(true);
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    const handleDeleteAccount = async () => {
+        if (!userID) return;
+        const ok = window.confirm('Delete your account? This cannot be undone.');
+        if (!ok) return;
+        setDeleting(true);
+        try {
+            await client.graphql({ query: deleteUsers, variables: { input: { id: userID } } });
+            router.push('/SignIn');
+        } catch (err) {
+            console.error('Delete account error', err);
+            setErrorPopup(true);
+        } finally {
+            setDeleting(false);
+        }
+    }
+
+    
     
     if(loading){
         return (
@@ -143,101 +185,102 @@ export default function PlayerPage() {
     return (
         <Box>
             <WelcomeBanner>
-                <WelcomeText>Welcome, Player!</WelcomeText>
+                <WelcomeText>{name && name.trim() ? `Welcome, ${name.trim()}` : 'Welcome, Player'}</WelcomeText>
             </WelcomeBanner>
 
             <ContentContainer>
-                <LeagueSection>
-                    <Typography variant="h5" sx={{ fontWeight: 700, color: '#FF1493', mb: 2 }}>
+                <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} sx={{ mb: 2 }}>
+                    <Tab label="Leagues" />
+                    <Tab label="Settings" />
+                </Tabs>
+
+                {tabIndex === 0 && (
+                    <LeagueSection>
+                        <Typography variant="h5" sx={{ fontWeight: 700, color: '#FF1493', mb: 2 }}>
                         Your Leagues
-                    </Typography>
-                    {sortedLeagues(leagues).length > 0 ? (
-                        <LeagueList>
-                            {sortedLeagues(leagues).map((league) => (
-                                <LeagueLink key={league.id} href={`/League/${league.id}`} onClick={() => router.push(`/League/${league.id}`)}>
-                                    {league.name}
-                                </LeagueLink>
-                            ))}
-                        </LeagueList>
-                    ) : (
-                        <EmptyState>
-                            <EmptyStateIcon>👑</EmptyStateIcon>
-                            <EmptyStateTitle>No Leagues Yet</EmptyStateTitle>
-                            <EmptyStateDescription>
+                        </Typography>
+                        {sortedLeagues(leagues).length > 0 ? (
+                            <LeagueList>
+                                {sortedLeagues(leagues).map((league) => (
+                                    <LeagueLink key={league.id} href={`/League/${league.id}`} onClick={() => router.push(`/League/${league.id}`)}>
+                                        {league.name}
+                                    </LeagueLink>
+                                ))}
+                            </LeagueList>
+                        ) : (
+                            <EmptyState>
+                                <EmptyStateIcon>👑</EmptyStateIcon>
+                                <EmptyStateTitle>No Leagues Yet</EmptyStateTitle>
+                                <EmptyStateDescription>
                                 You haven&apos;t joined any leagues yet. Create your own or search for existing leagues to get started!
-                            </EmptyStateDescription>
-                        </EmptyState>
-                    )}
+                                </EmptyStateDescription>
+                            </EmptyState>
+                        )}
 
-                    <Typography variant="h5" sx={{ fontWeight: 700, color: '#9B30FF', mt: 4, mb: 2 }}>
+                        <Typography variant="h5" sx={{ fontWeight: 700, color: '#9B30FF', mt: 4, mb: 2 }}>
                         Pending Requests
-                    </Typography>
-                    {sortedLeagues(pendingLeagues).length > 0 ? (
-                        <LeagueList>
-                            {sortedLeagues(pendingLeagues).map((league) => (
-                                <LeagueLink key={league.id} href={`/League/${league.id}`} onClick={() => router.push(`/League/${league.id}`)}>
-                                    {league.name}
-                                    <Typography component="span" sx={{ ml: 1, fontSize: '0.85rem', color: '#9B30FF', fontWeight: 500 }}>
+                        </Typography>
+                        {sortedLeagues(pendingLeagues).length > 0 ? (
+                            <LeagueList>
+                                {sortedLeagues(pendingLeagues).map((league) => (
+                                    <LeagueLink key={league.id} href={`/League/${league.id}`} onClick={() => router.push(`/League/${league.id}`)}>
+                                        {league.name}
+                                        <Typography component="span" sx={{ ml: 1, fontSize: '0.85rem', color: '#9B30FF', fontWeight: 500 }}>
                                         (Pending)
-                                    </Typography>
-                                </LeagueLink>
-                            ))}
-                        </LeagueList>
-                    ) : (
-                        <EmptyState>
-                            <EmptyStateIcon>⏳</EmptyStateIcon>
-                            <EmptyStateTitle>No Pending Requests</EmptyStateTitle>
-                            <EmptyStateDescription>
+                                        </Typography>
+                                    </LeagueLink>
+                                ))}
+                            </LeagueList>
+                        ) : (
+                            <EmptyState>
+                                <EmptyStateIcon>⏳</EmptyStateIcon>
+                                <EmptyStateTitle>No Pending Requests</EmptyStateTitle>
+                                <EmptyStateDescription>
                                 You don&apos;t have any pending league requests at the moment.
-                            </EmptyStateDescription>
-                        </EmptyState>
-                    )}
-                </LeagueSection>
+                                </EmptyStateDescription>
+                            </EmptyState>
+                        )}
+                    </LeagueSection>
+                )}
 
-                <ButtonContainer>
-                    <Button
-                        variant="contained"
-                        href="/CreateLeague"
-                        onClick={() => { router.push('/CreateLeague'); }}
-                        sx={{
-                            background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)',
-                            color: 'white',
-                            fontWeight: 600,
-                            padding: '12px 32px',
-                            fontSize: '1rem',
-                            boxShadow: '0 4px 15px rgba(255, 20, 147, 0.3)',
-                            '&:hover': {
-                                background: 'linear-gradient(135deg, #E0127D 0%, #8520E0 100%)',
-                                boxShadow: '0 6px 20px rgba(255, 20, 147, 0.4)',
-                                transform: 'translateY(-2px)',
-                            },
-                            transition: 'all 0.3s ease',
-                        }}
-                    >
-                        Create League
-                    </Button>
-                    <Button
-                        variant="outlined"
-                        onClick={handleSignOut}
-                        sx={{
-                            borderColor: '#FF1493',
-                            color: '#FF1493',
-                            fontWeight: 600,
-                            padding: '12px 32px',
-                            fontSize: '1rem',
-                            borderWidth: '2px',
-                            '&:hover': {
-                                borderColor: '#E0127D',
-                                borderWidth: '2px',
-                                background: 'rgba(255, 20, 147, 0.05)',
-                                transform: 'translateY(-2px)',
-                            },
-                            transition: 'all 0.3s ease',
-                        }}
-                    >
-                        Sign Out
-                    </Button>
-                </ButtonContainer>
+                {tabIndex === 1 && (
+                    <Box sx={{ mt: 2 }}>
+                        <Stack spacing={2}>
+                            <TextField label="Display Name" value={nameInput} onChange={(e) => setNameInput(e.target.value)} fullWidth />
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Button variant="contained" onClick={handleSaveSettings} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+                                <Button variant="outlined" onClick={handleSignOut}>Sign Out</Button>
+                                <Button variant="outlined" color="error" onClick={handleDeleteAccount} disabled={deleting}>{deleting ? 'Deleting...' : 'Delete Account'}</Button>
+                            </Box>
+                        </Stack>
+                    </Box>
+                )}
+
+                {tabIndex === 0 && (
+                    <ButtonContainer>
+                        <Button
+                            variant="contained"
+                            href="/CreateLeague"
+                            onClick={() => { router.push('/CreateLeague'); }}
+                            sx={{
+                                background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)',
+                                color: 'white',
+                                fontWeight: 600,
+                                padding: '12px 32px',
+                                fontSize: '1rem',
+                                boxShadow: '0 4px 15px rgba(255, 20, 147, 0.3)',
+                                '&:hover': {
+                                    background: 'linear-gradient(135deg, #E0127D 0%, #8520E0 100%)',
+                                    boxShadow: '0 6px 20px rgba(255, 20, 147, 0.4)',
+                                    transform: 'translateY(-2px)',
+                                },
+                                transition: 'all 0.3s ease',
+                            }}
+                        >
+                            Create League
+                        </Button>
+                    </ButtonContainer>
+                )}
             </ContentContainer>
 
             <ErrorPopup
