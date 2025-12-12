@@ -67,14 +67,14 @@ export default function SubmissionsPopup({
     const [firstSwap, setFirstSwap] = useState("");
     const [secondSwap, setSecondSwap] = useState("");
     const [swappedResult, setSwappedResult] = useState([]);
-    
+
     // Weekly Results State (redesigned with multi-select)
     const [challengeWinners, setChallengeWinners] = useState([]);
     const [lipSyncWinners, setLipSyncWinners] = useState([]);
     const [eliminatedQueens, setEliminatedQueens] = useState([]);
-    
+
     const [errorMessage, setErrorMessage] = useState('');
-    
+
     // Final Episode State (redesigned with multi-select)
     const [isFinalEpisode, setIsFinalEpisode] = useState(false);
     const [finalRankingRows, setFinalRankingRows] = useState(() => ([
@@ -82,6 +82,30 @@ export default function SubmissionsPopup({
         { ...makeRow() }
     ]));
     const [bonusCategoryRows, setBonusCategoryRows] = useState([]);
+
+    // Toggle to show/hide eliminated queens
+    const [showEliminatedQueens, setShowEliminatedQueens] = useState(false);
+
+    // Get list of eliminated queens from leagueData
+    const getEliminatedQueensList = () => {
+        if (!leagueData?.lgEliminatedPlayers) return [];
+        const eliminated = [];
+        leagueData.lgEliminatedPlayers.forEach(entry => {
+            // Each entry can be pipe-separated for ties
+            const queens = entry.split('|').map(q => q.trim()).filter(q => q);
+            eliminated.push(...queens);
+        });
+        return eliminated;
+    };
+
+    // Filter options based on showEliminatedQueens toggle
+    const filteredOptionsList = () => {
+        if (showEliminatedQueens) {
+            return optionsList;
+        }
+        const eliminatedList = getEliminatedQueensList();
+        return optionsList.filter(queen => !eliminatedList.includes(queen));
+    };
 
     // Reset when opened or version changes
     useEffect(() => {
@@ -93,18 +117,19 @@ export default function SubmissionsPopup({
         setSwappedResult([]);
         setErrorMessage('');
         setIsFinalEpisode(false);
-        
+        setShowEliminatedQueens(false);
+
         // Reset weekly results state
         setChallengeWinners([]);
         setLipSyncWinners([]);
         setEliminatedQueens([]);
-        
+
         // Reset final episode state
         setFinalRankingRows([
             { ...makeRow() },
             { ...makeRow() }
         ]);
-        
+
         // Initialize bonus category rows from leagueData
         if (leagueData?.lgBonusPoints && Array.isArray(leagueData.lgBonusPoints)) {
             const bonusRows = leagueData.lgBonusPoints.map(bonusString => {
@@ -241,7 +266,7 @@ export default function SubmissionsPopup({
     const renderOptionsFor = (rows, rowIndex, extraExcludes = []) => {
         const selected = getSelectedSet(rows, rowIndex);
         extraExcludes.forEach(e => { if (e) selected.add(e); });
-        return optionsList.map((opt, i) => (
+        return filteredOptionsList().map((opt, i) => (
             <MenuItem key={`${rowIndex}-${i}-${String(opt)}`} value={opt} disabled={selected.has(opt)}>
                 {opt}
             </MenuItem>
@@ -319,29 +344,33 @@ export default function SubmissionsPopup({
                 try {
                     const userEmail = userData.id; // User ID is their email
                     const currentSubmissions = leagueData.lgSubmissions || [];
-                    
+
                     // Remove any existing submissions from this user
                     const filteredSubmissions = currentSubmissions.filter(submission => {
                         const parts = submission.split('|');
                         const submissionEmail = parts[1]; // Email is the second part
                         return submissionEmail !== userEmail;
                     });
-                    
+
                     // Create new submission entries as "queenName|userEmail"
                     const newSubmissions = selected.map(queenName => `${queenName}|${userEmail}`);
-                    
+
+                    // Create history entry for weekly picks submission
+                    const currentHistory = leagueData.lgHistory || [];
+                    const historyEntry = new Date().toISOString() + '. ' + (playerData?.plName || userEmail) + ' submitted weekly pick: ' + selected.join(', ');
+
                     const leagueInput = {
                         id: leagueData.id,
                         lgSubmissions: [...filteredSubmissions, ...newSubmissions],
                         lgHistory: [...currentHistory, historyEntry]
                     };
-                    
+
                     const leagueResult = await client.graphql({
                         query: updateLeague,
                         variables: { input: leagueInput }
                     });
                     console.log('League submissions updated:', leagueResult);
-                    
+
                 } catch (error) {
                     console.error('Error updating league submissions:', error);
                 }
@@ -349,6 +378,9 @@ export default function SubmissionsPopup({
             
             if (typeof onSubmit === "function") try { onSubmit({ version, value: joined, playerUpdates }); } catch {}
             try { onClose(joined); } catch { onClose(); }
+
+            // Reload page to show updates
+            window.location.reload();
             return;
         }
 
@@ -451,52 +483,122 @@ export default function SubmissionsPopup({
             
             if (typeof onSubmit === "function") try { onSubmit({ version, value: 'final' }); } catch {}
             try { onClose('final'); } catch { onClose(); }
+
+            // Reload page to show updates
+            window.location.reload();
             return;
         }
 
         // Handle regular weekly results (non-final episode)
         if (leagueData?.id && version === "Weekly Results" && !isFinalEpisode) {
             try {
+                // Process lgSubmissions and map to player plWinners
+                const submissions = leagueData.lgSubmissions || [];
+                console.log('Processing submissions:', submissions);
+                const submissionMap = {};
+                submissions.forEach(sub => {
+                    const parts = sub.split('|').map(s => s.trim());
+                    if (parts.length === 2) {
+                        const [queenName, userEmail] = parts;
+                        submissionMap[userEmail.toLowerCase()] = queenName;
+                    }
+                });
+                console.log('Submission map:', submissionMap);
+
+                const allPlayers = leagueData.players || [];
+                console.log('All players from leagueData:', allPlayers);
+                console.log('Is allPlayers an array?', Array.isArray(allPlayers));
+
+                if (Array.isArray(allPlayers) && allPlayers.length > 0) {
+                    const updatePromises = allPlayers.map(async (player) => {
+                        console.log('Player object:', player);
+                        console.log('Player ID:', player.id);
+                        console.log('Player email (plEmail):', player.plEmail);
+
+                        // Try both player.id and player.plEmail
+                        const playerIdLower = player.id?.toLowerCase();
+                        const playerEmailLower = player.plEmail?.toLowerCase();
+
+                        console.log('Looking for submission with keys:', { playerIdLower, playerEmailLower });
+                        console.log('Available submission keys:', Object.keys(submissionMap));
+
+                        const submission = submissionMap[playerIdLower] || submissionMap[playerEmailLower] || '';
+                        const updatedWinners = [...(player.plWinners || []), submission];
+
+                        console.log(`Updating player ${player.plName} (ID: ${player.id}, Email: ${player.plEmail}): adding "${submission}" to plWinners`);
+                        console.log('Updated winners array:', updatedWinners);
+
+                        return await client.graphql({
+                            query: updatePlayer,
+                            variables: {
+                                input: {
+                                    id: player.id,
+                                    leagueId: player.leagueId,
+                                    plWinners: updatedWinners
+                                }
+                            }
+                        });
+                    });
+
+                    await Promise.all(updatePromises);
+                    console.log('All player updates completed');
+                } else {
+                    console.warn('No players array found in leagueData or array is empty');
+                }
+
                 // Get current arrays from league data
                 const currentChallengeWinners = leagueData.lgChallengeWinners || [];
                 const currentLipSyncWinners = leagueData.lgLipSyncWinners || [];
                 const currentEliminatedPlayers = leagueData.lgEliminatedPlayers || [];
-                
+
                 // Join multi-selected values with pipes
                 const challengeWinnersStr = challengeWinners.join('|') || "";
                 const lipSyncWinnersStr = lipSyncWinners.join('|') || "";
                 const eliminatedQueensStr = eliminatedQueens.join('|') || "";
-                
-                // Add new entries to the arrays
+
+                // Calculate next week's deadline (7 days from current deadline)
+                let nextWeekDeadline = null;
+                if (leagueData.lgDeadline) {
+                    const currentDeadline = new Date(leagueData.lgDeadline);
+                    currentDeadline.setDate(currentDeadline.getDate() + 7);
+                    nextWeekDeadline = currentDeadline.toISOString();
+                }
+
+                // Add new entries to the arrays and clear lgSubmissions
                 const leagueUpdates = {
                     lgChallengeWinners: [...currentChallengeWinners, challengeWinnersStr],
                     lgLipSyncWinners: [...currentLipSyncWinners, lipSyncWinnersStr],
-                    lgEliminatedPlayers: [...currentEliminatedPlayers, eliminatedQueensStr]
+                    lgEliminatedPlayers: [...currentEliminatedPlayers, eliminatedQueensStr],
+                    lgSubmissions: [],
+                    lgDeadline: nextWeekDeadline
                 };
-                
+
                 const currentHistory = leagueData.lgHistory || [];
                 const historyEntry = new Date().toISOString() + '. Weekly results: Challenge Winner: ' + (challengeWinners.join(' & ') || 'None') + ', Lip Sync Winner: ' + (lipSyncWinners.join(' & ') || 'None') + ', Eliminated: ' + (eliminatedQueens.join(' & ') || 'None');
                 leagueUpdates.lgHistory = [...currentHistory, historyEntry];
-                
+
                 const leagueInput = {
                     id: leagueData.id,
                     ...leagueUpdates
                 };
-                
+
                 await client.graphql({
                     query: updateLeague,
                     variables: { input: leagueInput }
                 });
-                
+
             } catch (error) {
                 console.error('Error updating league weekly results:', error);
                 setErrorMessage('Error submitting weekly results');
                 return;
             }
+
+            if (typeof onSubmit === "function") try { onSubmit({ version, value: 'weekly' }); } catch {}
+            try { onClose('weekly'); } catch { onClose(); }
+
+            // Reload page to show updates
+            window.location.reload();
         }
-        
-        if (typeof onSubmit === "function") try { onSubmit({ version, value: result }); } catch {}
-        try { onClose(result); } catch { onClose(); }
     };
 
     // render
@@ -549,7 +651,7 @@ export default function SubmissionsPopup({
                                             onChange={(e) => setFirstSwap(e.target.value)}
                                         >
                                             <MenuItem value="" disabled>-- select first --</MenuItem>
-                                            {optionsList.map((opt, i) => <MenuItem key={`first-${i}-${String(opt)}`} value={opt}>{opt}</MenuItem>)}
+                                            {filteredOptionsList().map((opt, i) => <MenuItem key={`first-${i}-${String(opt)}`} value={opt}>{opt}</MenuItem>)}
                                         </Select>
                                     </FormControl>
 
@@ -562,7 +664,7 @@ export default function SubmissionsPopup({
                                             onChange={(e) => setSecondSwap(e.target.value)}
                                         >
                                             <MenuItem value="" disabled>-- select second --</MenuItem>
-                                            {optionsList.map((opt, i) => <MenuItem key={`second-${i}-${String(opt)}`} value={opt} disabled={opt === firstSwap}>{opt}</MenuItem>)}
+                                            {filteredOptionsList().map((opt, i) => <MenuItem key={`second-${i}-${String(opt)}`} value={opt} disabled={opt === firstSwap}>{opt}</MenuItem>)}
                                         </Select>
                                     </FormControl>
                                 </Box>
@@ -631,7 +733,7 @@ export default function SubmissionsPopup({
                                                             </ChipWrapper>
                                                         )}
                                                     >
-                                                        {optionsList.map((n, i) => (
+                                                        {filteredOptionsList().map((n, i) => (
                                                             <MenuItem key={`final-${rowIndex}-${row.id}-${i}-${String(n)}`} value={n}>
                                                                 <Checkbox checked={(row.values || []).includes(n)} />
                                                                 {n}
@@ -640,7 +742,7 @@ export default function SubmissionsPopup({
                                                     </Select>
                                                 </FormControl>
 
-                                                <DeleteIconButton 
+                                                <DeleteIconButton
                                                     onClick={() => deleteFinalRankingRow(row.id)}
                                                     size="small"
                                                 >
@@ -690,7 +792,7 @@ export default function SubmissionsPopup({
                                                                 return selected;
                                                             }}
                                                         >
-                                                            {bonusRow.type === 'Queens' && optionsList.map((n, i) => (
+                                                            {bonusRow.type === 'Queens' && filteredOptionsList().map((n, i) => (
                                                                 <MenuItem key={`bonus-${idx}-${i}-${String(n)}`} value={n}>
                                                                     <Checkbox checked={(bonusRow.values || []).includes(n)} />
                                                                     {n}
@@ -741,7 +843,7 @@ export default function SubmissionsPopup({
                                                 </ChipWrapper>
                                             )}
                                         >
-                                            {optionsList.map((queen, i) => (
+                                            {filteredOptionsList().map((queen, i) => (
                                                 <MenuItem key={i} value={queen}>
                                                     <Checkbox checked={challengeWinners.includes(queen)} />
                                                     {queen}
@@ -776,7 +878,7 @@ export default function SubmissionsPopup({
                                                 </ChipWrapper>
                                             )}
                                         >
-                                            {optionsList.map((queen, i) => (
+                                            {filteredOptionsList().map((queen, i) => (
                                                 <MenuItem key={i} value={queen}>
                                                     <Checkbox checked={lipSyncWinners.includes(queen)} />
                                                     {queen}
@@ -811,7 +913,7 @@ export default function SubmissionsPopup({
                                                 </ChipWrapper>
                                             )}
                                         >
-                                            {optionsList.map((queen, i) => (
+                                            {filteredOptionsList().map((queen, i) => (
                                                 <MenuItem key={i} value={queen}>
                                                     <Checkbox checked={eliminatedQueens.includes(queen)} />
                                                     {queen}
@@ -827,18 +929,30 @@ export default function SubmissionsPopup({
             </StyledDialogContent>
 
             <StyledDialogActions>
-                <Box>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                     {(version === "Weekly Results" || version === "Submissions") && (
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={isFinalEpisode}
-                                    onChange={(e) => setIsFinalEpisode(e.target.checked)}
-                                    color="primary"
-                                />
-                            }
-                            label="Final Episode?"
-                        />
+                        <>
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={isFinalEpisode}
+                                        onChange={(e) => setIsFinalEpisode(e.target.checked)}
+                                        color="primary"
+                                    />
+                                }
+                                label="Final Episode?"
+                            />
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={showEliminatedQueens}
+                                        onChange={(e) => setShowEliminatedQueens(e.target.checked)}
+                                        color="secondary"
+                                    />
+                                }
+                                label="Show Eliminated Queens"
+                            />
+                        </>
                     )}
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>

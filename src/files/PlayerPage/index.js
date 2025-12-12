@@ -9,14 +9,18 @@ import { createUsers } from '@/graphql/mutations';
 import ErrorPopup from "../ErrorPopUp";
 import { onCreateUsers, onUpdateUsers, onDeleteUsers } from '@/graphql/subscriptions';
 import { Box, Typography, Button } from '@mui/material';
-import { 
-    WelcomeBanner, 
-    WelcomeText, 
-    ContentContainer, 
-    LeagueSection, 
-    LeagueList, 
-    LeagueLink, 
-    ButtonContainer } from './PlayerPage.styles';
+import {
+    WelcomeBanner,
+    WelcomeText,
+    ContentContainer,
+    LeagueSection,
+    LeagueList,
+    LeagueLink,
+    ButtonContainer,
+    EmptyState,
+    EmptyStateIcon,
+    EmptyStateTitle,
+    EmptyStateDescription } from './PlayerPage.styles';
 
 export default function PlayerPage() {
     const [loading, setLoading] = useState(true);
@@ -144,41 +148,93 @@ export default function PlayerPage() {
 
             <ContentContainer>
                 <LeagueSection>
-                    <Typography variant="h6">Leagues</Typography>
-                    <LeagueList>
-                        {sortedLeagues(leagues).map((league) => (
-                            <LeagueLink key={league.id} onClick={() => router.push(`/League/${league.id}`)}>
-                                {league.name}
-                            </LeagueLink>
-                        ))}
-                    </LeagueList>
+                    <Typography variant="h5" sx={{ fontWeight: 700, color: '#FF1493', mb: 2 }}>
+                        Your Leagues
+                    </Typography>
+                    {sortedLeagues(leagues).length > 0 ? (
+                        <LeagueList>
+                            {sortedLeagues(leagues).map((league) => (
+                                <LeagueLink key={league.id} onClick={() => router.push(`/League/${league.id}`)}>
+                                    {league.name}
+                                </LeagueLink>
+                            ))}
+                        </LeagueList>
+                    ) : (
+                        <EmptyState>
+                            <EmptyStateIcon>👑</EmptyStateIcon>
+                            <EmptyStateTitle>No Leagues Yet</EmptyStateTitle>
+                            <EmptyStateDescription>
+                                You haven't joined any leagues yet. Create your own or search for existing leagues to get started!
+                            </EmptyStateDescription>
+                        </EmptyState>
+                    )}
 
-                    <Typography variant="h6" sx={{ mt: 3 }}>Pending Leagues</Typography>
-                    <LeagueList>
-                        {sortedLeagues(pendingLeagues).map((league) => (
-                            <LeagueLink key={league.id} onClick={() => router.push(`/League/${league.id}`)}>
-                                {league.name}
-                            </LeagueLink>
-                        ))}
-                    </LeagueList>
+                    <Typography variant="h5" sx={{ fontWeight: 700, color: '#9B30FF', mt: 4, mb: 2 }}>
+                        Pending Requests
+                    </Typography>
+                    {sortedLeagues(pendingLeagues).length > 0 ? (
+                        <LeagueList>
+                            {sortedLeagues(pendingLeagues).map((league) => (
+                                <LeagueLink key={league.id} onClick={() => router.push(`/League/${league.id}`)}>
+                                    {league.name}
+                                    <Typography component="span" sx={{ ml: 1, fontSize: '0.85rem', color: '#9B30FF', fontWeight: 500 }}>
+                                        (Pending)
+                                    </Typography>
+                                </LeagueLink>
+                            ))}
+                        </LeagueList>
+                    ) : (
+                        <EmptyState>
+                            <EmptyStateIcon>⏳</EmptyStateIcon>
+                            <EmptyStateTitle>No Pending Requests</EmptyStateTitle>
+                            <EmptyStateDescription>
+                                You don't have any pending league requests at the moment.
+                            </EmptyStateDescription>
+                        </EmptyState>
+                    )}
                 </LeagueSection>
 
                 <ButtonContainer>
                     <Button
                         variant="contained"
                         onClick={() => { router.push('/CreateLeague'); }}
+                        sx={{
+                            background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)',
+                            color: 'white',
+                            fontWeight: 600,
+                            padding: '12px 32px',
+                            fontSize: '1rem',
+                            boxShadow: '0 4px 15px rgba(255, 20, 147, 0.3)',
+                            '&:hover': {
+                                background: 'linear-gradient(135deg, #E0127D 0%, #8520E0 100%)',
+                                boxShadow: '0 6px 20px rgba(255, 20, 147, 0.4)',
+                                transform: 'translateY(-2px)',
+                            },
+                            transition: 'all 0.3s ease',
+                        }}
                     >
                         Create League
                     </Button>
                     <Button
-                        variant="contained"
-                        onClick={() => {
-                            // open popup showing the three-way (search) version
-                            setSwapPopupVersion('three');
-                            setShowSwapPopup(true);
+                        variant="outlined"
+                        onClick={handleSignOut}
+                        sx={{
+                            borderColor: '#FF1493',
+                            color: '#FF1493',
+                            fontWeight: 600,
+                            padding: '12px 32px',
+                            fontSize: '1rem',
+                            borderWidth: '2px',
+                            '&:hover': {
+                                borderColor: '#E0127D',
+                                borderWidth: '2px',
+                                background: 'rgba(255, 20, 147, 0.05)',
+                                transform: 'translateY(-2px)',
+                            },
+                            transition: 'all 0.3s ease',
                         }}
                     >
-                        Search Leagues
+                        Sign Out
                     </Button>
                 </ButtonContainer>
             </ContentContainer>

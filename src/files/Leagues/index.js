@@ -1,7 +1,5 @@
 import React from "react";
-import { useState, useEffect } from "react";
-import { generateClient } from 'aws-amplify/api'
-import { updateLeague, updatePlayer } from '@/graphql/mutations';
+import { useState } from "react";
 import PlayerRankings from "../PlayerRankings";
 import PlayerSubmissions from "../PlayerSubmissions";
 import LeagueSettings from "../LeagueSettings";
@@ -20,20 +18,25 @@ import {
     Panel,
 } from "./Leagues.styles";
 
-const DEADLINE_CHECK_INTERVAL_MS = 60000; // Check deadline every 60 seconds
-
-export default function Leagues( userData, leagueData ) {
+export default function Leagues({ userData, leagueData, playersData }) {
     const [tabIndex, setTabIndex] = useState(0);
     const tabs = ["Player Rankings", "Player Submissions", "Season Info", "History", "League Settings"];
 
     const [showSwapPopup, setShowSwapPopup] = useState(false);
     const [swapPopupVersion, setSwapPopupVersion] = useState('');
 
-    const League = userData.leagueData
-    const User = userData.userData
-    const Player = userData.playersData
+    const League = leagueData
+    const User = userData
+    const AllPlayers = playersData
 
-    const client = generateClient();
+    // Find current user's player object
+    const Player = AllPlayers?.find(p => p.plEmail?.toLowerCase() === User?.id?.toLowerCase()) || null;
+
+    console.log('Leagues component - userData:', userData);
+    console.log('Leagues component - League:', League);
+    console.log('Leagues component - User:', User);
+    console.log('Leagues component - AllPlayers:', AllPlayers);
+    console.log('Leagues component - Current Player:', Player);
 
     const [userEmail, setUserEmail] = useState(User?.id || '');
     const [isAdmin, setIsAdmin] = useState(() => {
@@ -44,77 +47,13 @@ export default function Leagues( userData, leagueData ) {
         }
     });
 
-    useEffect(() => {
-        if (!League?.lgDeadline || !Player || !Array.isArray(Player)) return;
-        
-        const checkAndProcessDeadline = async () => {
-            const deadlineDate = new Date(League.lgDeadline);
-            const now = new Date();
-            
-            if (now >= deadlineDate) {
-                try {
-                    const nextWeekDeadline = new Date(deadlineDate);
-                    nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
-                    const newDeadlineISO = nextWeekDeadline.toISOString();
-                    
-                    const submissions = League.lgSubmissions || [];
-                    const submissionMap = {};
-                    submissions.forEach(sub => {
-                        const parts = sub.split('|').map(s => s.trim());
-                        if (parts.length === 2) {
-                            const [queenName, userEmail] = parts;
-                            submissionMap[userEmail.toLowerCase()] = queenName;
-                        }
-                    });
-                    
-                    const updatePromises = Player.map(async (player) => {
-                        const playerEmail = player.id.toLowerCase();
-                        const submission = submissionMap[playerEmail] || '';
-                        const updatedWinners = [...(player.plWinners || []), submission];
-                        
-                        const playerResult = await client.graphql({
-                            query: updatePlayer,
-                            variables: {
-                                input: {
-                                    id: player.id,
-                                    leagueId: player.leagueId,
-                                    plWinners: updatedWinners
-                                }
-                            }
-                        });
-                        console.log('Player weekly submission processed:', playerResult);
-                        return playerResult;
-                    });
-                    
-                    await Promise.all(updatePromises);
-                    
-                    const currentHistory = League.lgHistory || [];
-                    const historyEntry = new Date().toISOString() + '. Weekly deadline passed - submissions automatically processed';
-                    
-                    const leagueResult = await client.graphql({
-                        query: updateLeague,
-                        variables: {
-                            input: {
-                                id: League.id,
-                                lgDeadline: newDeadlineISO,
-                                lgSubmissions: [],
-                                lgHistory: [...currentHistory, historyEntry]
-                            }
-                        }
-                    });
-                    console.log('League deadline processed:', leagueResult);
-                    
-                } catch (err) {
-                    console.error('Error processing weekly deadline:', err);
-                }
-            }
-        };
-
-        checkAndProcessDeadline();
-        const interval = setInterval(checkAndProcessDeadline, DEADLINE_CHECK_INTERVAL_MS);
-        
-        return () => clearInterval(interval);
-    }, [League?.lgDeadline, League?.lgSubmissions, League?.id, Player, client]);
+    // Check if deadline has passed (for disabling submissions)
+    const isDeadlinePassed = () => {
+        if (!League?.lgDeadline) return false;
+        const deadlineDate = new Date(League.lgDeadline);
+        const now = new Date();
+        return now >= deadlineDate;
+    };
 
     return (
         <Container>
@@ -125,13 +64,25 @@ export default function Leagues( userData, leagueData ) {
                 </div>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                     {League?.lgDeadline && (
-                        <Countdown 
-                            deadline={League.lgDeadline} 
+                        <Countdown
+                            deadline={League.lgDeadline}
                             label="Weekly Picks Deadline"
                             compact={true}
                         />
                     )}
-                    <button onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Submissions'); }} aria-label="Add" style={{ padding: '8px 12px', borderRadius: 6, cursor: 'pointer' }}>
+                    <button
+                        onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Submissions'); }}
+                        aria-label="Add"
+                        disabled={isDeadlinePassed()}
+                        style={{
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            cursor: isDeadlinePassed() ? 'not-allowed' : 'pointer',
+                            opacity: isDeadlinePassed() ? 0.5 : 1,
+                            background: isDeadlinePassed() ? '#ccc' : ''
+                        }}
+                        title={isDeadlinePassed() ? 'Deadline has passed - waiting for admin to submit results' : 'Submit your weekly pick'}
+                    >
                         Submit your weekly pick
                     </button>
                     {isAdmin && (
@@ -156,11 +107,11 @@ export default function Leagues( userData, leagueData ) {
 
             <MainContent>
                 <Panel role="tabpanel" hidden={tabIndex !== 0} aria-hidden={tabIndex !== 0}>
-                    {tabIndex === 0 && <PlayerRankings userData={User} leagueData={League} playersData={Player} />}
+                    {tabIndex === 0 && <PlayerRankings userData={User} leagueData={League} playersData={AllPlayers} />}
                 </Panel>
 
                 <Panel role="tabpanel" hidden={tabIndex !== 1} aria-hidden={tabIndex !== 1}>
-                    {tabIndex === 1 && <PlayerSubmissions leagueData={League} playersData={Player} />}
+                    {tabIndex === 1 && <PlayerSubmissions leagueData={League} playersData={AllPlayers} />}
                 </Panel>
 
                 <Panel role="tabpanel" hidden={tabIndex !== 2} aria-hidden={tabIndex !== 2}>
@@ -172,7 +123,7 @@ export default function Leagues( userData, leagueData ) {
                 </Panel>
 
                 <Panel role="tabpanel" hidden={tabIndex !== 4} aria-hidden={tabIndex !== 4}>
-                    {tabIndex === 4 && <LeagueSettings userData={User} leagueData={League} playersData={Player} />}
+                    {tabIndex === 4 && <LeagueSettings userData={User} leagueData={League} playersData={AllPlayers} />}
                 </Panel>
             </MainContent>
 
@@ -183,7 +134,7 @@ export default function Leagues( userData, leagueData ) {
                 initialVersion={swapPopupVersion}
                 currentPlayerRankings={Player?.plRankings}
                 playerData={Player}
-                leagueData={League}
+                leagueData={{ ...League, players: AllPlayers }}
                 userData={User}
             />
         </Container>
