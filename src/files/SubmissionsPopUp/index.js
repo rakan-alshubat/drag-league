@@ -11,6 +11,7 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Chip from "@mui/material/Chip";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { Typography } from "@mui/material";
 import { generateClient } from 'aws-amplify/api';
 import { updatePlayer, updateLeague } from "@/graphql/mutations";
 import {

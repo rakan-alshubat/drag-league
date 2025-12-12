@@ -29,6 +29,7 @@ import {
     DemoBox,
     DemoBigBox
 } from "./HowToPlayPage.styles";
+import Link from "next/link";
 
 export default function HowToPlayPage() {
     const router = useRouter();
@@ -45,7 +46,7 @@ export default function HowToPlayPage() {
             <HighlightBox sx={{ mb: 3, mt: -4 }}>
                 <HighlightText sx={{ textAlign: 'center' }}>
                 🎭 Want to see how it works?<br />
-                    Try the <a href="/Demo" style={{ fontWeight: 700, textDecoration: 'underline' }}>interactive demo league</a> to explore and see how a season runs - No signup required!
+                    Try the <Link href="/Demo" style={{ fontWeight: 700, textDecoration: 'underline' }}>interactive demo league</Link> to explore and see how a season runs - No signup required!
                 </HighlightText>
             </HighlightBox>
 
