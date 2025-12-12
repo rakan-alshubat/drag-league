@@ -130,6 +130,7 @@ export default function SupportPage() {
                     </StyledButton>
                     <StyledButton 
                         variant="outlined"
+                        href="/FAQ"
                         onClick={() => router.push('/FAQ')}
                         startIcon={<QuestionAnswerIcon />}
                     >
@@ -174,6 +175,7 @@ export default function SupportPage() {
                     </StyledButton>
                     <StyledButton 
                         variant="outlined"
+                        href="/FAQ"
                         onClick={() => router.push('/FAQ')}
                         startIcon={<QuestionAnswerIcon />}
                     >

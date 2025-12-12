@@ -212,7 +212,9 @@ export const ExplanationText = styled(Typography)(({ theme }) => ({
 }));
 
 export const DescriptionBox = styled(Box)(({ theme }) => ({
-    width: '800px',
+    width: '100%',
+    maxWidth: '800px',
+    boxSizing: 'border-box',
     margin: '0 auto',
     background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.08) 0%, rgba(255, 215, 0, 0.08) 100%)',
     padding: theme.spacing(2),
@@ -221,6 +223,11 @@ export const DescriptionBox = styled(Box)(({ theme }) => ({
     textAlign: 'center',
     marginBottom: theme.spacing(2),
     border: '1px solid rgba(255, 20, 147, 0.2)',
+    [theme.breakpoints.down('sm')]: {
+        padding: theme.spacing(1.25),
+        marginLeft: theme.spacing(0),
+        marginRight: theme.spacing(0),
+    },
 }));
 
 export const DescriptionText = styled(Typography)(({ theme }) => ({

@@ -313,6 +313,7 @@ export default function HowToPlayPage() {
                 <CTAButton 
                     variant="contained"
                     size="large"
+                    href="/CreateLeague"
                     onClick={() => router.push('/CreateLeague')}
                 >
                     Create a League

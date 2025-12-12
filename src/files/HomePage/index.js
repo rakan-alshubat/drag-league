@@ -51,6 +51,7 @@ export default function HomePage() {
                             variant="contained" 
                             color="secondary"
                             size="large"
+                            href="/Player"
                             onClick={() => router.push('/Player')}
                         >
                             My Leagues
@@ -58,6 +59,7 @@ export default function HomePage() {
                         <StyledButton 
                             variant="outlined" 
                             size="large"
+                            href="/CreateLeague"
                             onClick={() => router.push('/CreateLeague')}
                             sx={{ 
                                 borderColor: 'white', 
@@ -88,6 +90,7 @@ export default function HomePage() {
                         variant="contained" 
                         color="secondary"
                         size="large"
+                        href="/SignIn"
                         onClick={() => router.push('/SignIn')}
                     >
                         Sign Up
@@ -95,6 +98,7 @@ export default function HomePage() {
                     <StyledButton 
                         variant="outlined" 
                         size="large"
+                        href="/SignIn"
                         onClick={() => router.push('/SignIn')}
                         sx={{ 
                             borderColor: 'white', 

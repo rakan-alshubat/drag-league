@@ -154,7 +154,7 @@ export default function PlayerPage() {
                     {sortedLeagues(leagues).length > 0 ? (
                         <LeagueList>
                             {sortedLeagues(leagues).map((league) => (
-                                <LeagueLink key={league.id} onClick={() => router.push(`/League/${league.id}`)}>
+                                <LeagueLink key={league.id} href={`/League/${league.id}`} onClick={() => router.push(`/League/${league.id}`)}>
                                     {league.name}
                                 </LeagueLink>
                             ))}
@@ -175,7 +175,7 @@ export default function PlayerPage() {
                     {sortedLeagues(pendingLeagues).length > 0 ? (
                         <LeagueList>
                             {sortedLeagues(pendingLeagues).map((league) => (
-                                <LeagueLink key={league.id} onClick={() => router.push(`/League/${league.id}`)}>
+                                <LeagueLink key={league.id} href={`/League/${league.id}`} onClick={() => router.push(`/League/${league.id}`)}>
                                     {league.name}
                                     <Typography component="span" sx={{ ml: 1, fontSize: '0.85rem', color: '#9B30FF', fontWeight: 500 }}>
                                         (Pending)
@@ -197,6 +197,7 @@ export default function PlayerPage() {
                 <ButtonContainer>
                     <Button
                         variant="contained"
+                        href="/CreateLeague"
                         onClick={() => { router.push('/CreateLeague'); }}
                         sx={{
                             background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)',
