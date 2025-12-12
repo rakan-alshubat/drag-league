@@ -1,6 +1,6 @@
 // ...existing code...
 import { styled } from "@mui/material/styles";
-import { Box, Tabs, Tab, Typography } from "@mui/material";
+import { Box, Tabs, Tab, Typography, Button } from "@mui/material";
 
 export const Container = styled(Box)(({ theme }) => ({
     padding: theme.spacing(3),
@@ -89,5 +89,60 @@ export const EmptyState = styled(Box)(({ theme }) => ({
     color: theme.palette.text.secondary,
     textAlign: "center",
     minHeight: 120,
+}));
+
+export const WinnerBanner = styled(Box)(({ theme }) => ({
+    width: '100%',
+    maxWidth: '1100px',
+    margin: '0 auto',
+    padding: theme.spacing(2),
+    borderRadius: 12,
+    background: 'linear-gradient(90deg, rgba(255,201,0,0.12), rgba(255,20,147,0.06))',
+    border: `2px solid rgba(255, 165, 0, 0.18)`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    marginBottom: theme.spacing(2),
+    boxShadow: '0 6px 20px rgba(255, 165, 0, 0.06)',
+    position: 'relative',
+    overflow: 'hidden',
+    minHeight: 88,
+}));
+
+export const WinnerLabel = styled(Typography)(({ theme }) => ({
+    fontSize: 14,
+    color: theme.palette.text.secondary,
+    marginBottom: theme.spacing(0.5),
+    [theme.breakpoints.down('sm')]: {
+        fontSize: 12,
+    },
+}));
+
+export const WinnerName = styled(Typography)(({ theme }) => ({
+    fontSize: 28,
+    fontWeight: 900,
+    color: '#9B30FF',
+    lineHeight: 1.05,
+    [theme.breakpoints.down('sm')]: {
+        fontSize: 20,
+    },
+}));
+
+export const RevealButton = styled(Button)(({ theme }) => ({
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    transform: 'translate(-50%, -50%)',
+    zIndex: 40,
+    background: 'linear-gradient(135deg, #FFD700 0%, #FFB400 100%)',
+    color: '#222',
+    fontWeight: 800,
+    padding: theme.spacing(1, 3),
+    borderRadius: 999,
+    boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
+    '&:hover': {
+        boxShadow: '0 8px 22px rgba(0,0,0,0.16)'
+    }
 }));
 // ...existing code...

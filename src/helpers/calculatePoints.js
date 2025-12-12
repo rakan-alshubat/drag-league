@@ -49,19 +49,27 @@ export default function calculatePoints(playerData, gameData){
     // 2. Calculate points for weekly challenge winner predictions
     const challengeWinners = gameData?.lgChallengeWinners || [];
     const playerWinners = playerData?.plWinners || [];
-    
+    // helper to parse names from various formats (pipe, comma, ampersand, ' & ', ' and ')
+    const parseNames = (str) => {
+        if (!str || typeof str !== 'string') return [];
+        // Replace Oxford-style ", &" with comma and ampersand handled by regex below
+        // Split on pipe, comma, ampersand or the word 'and'
+        return str
+            .split(/\s*(?:\||,|&|and)\s*/i)
+            .map(s => s.trim())
+            .filter(Boolean)
+            .map(s => s.toLowerCase());
+    };
+
     for (let i = 0; i < challengeWinners.length && i < playerWinners.length; i++) {
         const actualWinner = challengeWinners[i];
         const prediction = playerWinners[i];
-        
-        // Check if prediction is correct (handle ties with pipe-separated names)
+
         if (actualWinner && actualWinner.trim() !== '' && prediction && prediction.trim() !== '') {
-            const winnersList = actualWinner.split('|').map(s => s.trim().toLowerCase());
-            const predictions = prediction.split('|').map(s => s.trim().toLowerCase());
-            
-            // Player is correct if ANY of their predictions match ANY of the actual winners
+            const winnersList = parseNames(actualWinner);
+            const predictions = parseNames(prediction);
+
             const isCorrect = predictions.some(pred => winnersList.includes(pred));
-            
             if (isCorrect) {
                 totalPoints += gameData.lgChallengePoints || 0;
             }
@@ -101,8 +109,11 @@ export default function calculatePoints(playerData, gameData){
     const playerLipSyncPrediction = playerData?.plLipSyncAssassin;
 
     if (lipSyncAssassin && playerLipSyncPrediction) {
-        // Check if player's prediction matches the assassin (case-insensitive)
-        if (playerLipSyncPrediction.toLowerCase().includes(lipSyncAssassin.toLowerCase())) {
+        const assassinNames = parseNames(lipSyncAssassin);
+        const playerPreds = parseNames(playerLipSyncPrediction);
+        // Player gets points if any of their predictions match any of the assassin names
+        const match = playerPreds.some(p => assassinNames.includes(p));
+        if (match) {
             totalPoints += gameData?.lgLipSyncPoints || 0;
         }
     }

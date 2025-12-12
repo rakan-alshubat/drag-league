@@ -404,17 +404,18 @@ export default function SubmissionsPopup({
                     const parts = sub.split('|').map(s => s.trim());
                     if (parts.length === 2) {
                         const [queenName, userEmail] = parts;
-                        submissionMap[userEmail.toLowerCase()] = queenName;
+                        if (userEmail) submissionMap[userEmail.toLowerCase()] = queenName;
                     }
                 });
-                
+
                 const allPlayers = leagueData.players || [];
                 if (Array.isArray(allPlayers)) {
                     const updatePromises = allPlayers.map(async (player) => {
-                        const playerEmail = player.id.toLowerCase();
-                        const submission = submissionMap[playerEmail] || '';
+                        const playerIdLower = String(player.id || '').toLowerCase();
+                        const playerEmailLower = String(player.plEmail || '').toLowerCase();
+                        const submission = submissionMap[playerIdLower] || submissionMap[playerEmailLower] || '';
                         const updatedWinners = [...(player.plWinners || []), submission];
-                        
+
                         return await client.graphql({
                             query: updatePlayer,
                             variables: {
@@ -426,7 +427,7 @@ export default function SubmissionsPopup({
                             }
                         });
                     });
-                    
+
                     await Promise.all(updatePromises);
                 }
                 
