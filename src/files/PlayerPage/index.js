@@ -4,7 +4,7 @@ import { getCurrentUser, signOut } from "aws-amplify/auth";
 import LoadingWheel from "@/files/LoadingWheel";
 import parseToArray from '@/helpers/parseToArray';
 import { generateClient } from 'aws-amplify/api'
-import { getUsers } from "@/graphql/queries";
+import { getUsers, getLeague } from "@/graphql/queries";
 import { createUsers, updateUsers, deleteUsers } from '@/graphql/mutations';
 import ErrorPopup from "../ErrorPopUp";
 import { onCreateUsers, onUpdateUsers, onDeleteUsers } from '@/graphql/subscriptions';
@@ -33,6 +33,7 @@ export default function PlayerPage() {
     const [email, setEmail] = useState('');
     const [leagues, setLeagues] = useState([]);
     const [pendingLeagues, setPendingLeagues] = useState([]);
+    const [pendingLeaguesWithNames, setPendingLeaguesWithNames] = useState([]);
     const [tabIndex, setTabIndex] = useState(0);
     const [nameInput, setNameInput] = useState('');
     const [saving, setSaving] = useState(false);
@@ -134,6 +135,41 @@ export default function PlayerPage() {
         setNameInput(name || '');
     }, [name]);
 
+    // Fetch league names for pending leagues
+    useEffect(() => {
+        if (!pendingLeagues || pendingLeagues.length === 0) {
+            setPendingLeaguesWithNames([]);
+            return;
+        }
+
+        async function fetchPendingLeagueNames() {
+            const leaguesWithNames = [];
+
+            for (const leagueId of pendingLeagues) {
+                try {
+                    const result = await client.graphql({
+                        query: getLeague,
+                        variables: { id: leagueId }
+                    });
+
+                    if (result.data.getLeague) {
+                        leaguesWithNames.push({
+                            id: leagueId,
+                            name: result.data.getLeague.lgName,
+                            date: result.data.getLeague.createdAt || new Date().toISOString()
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Error fetching league ${leagueId}:`, error);
+                }
+            }
+
+            setPendingLeaguesWithNames(leaguesWithNames);
+        }
+
+        fetchPendingLeagueNames();
+    }, [pendingLeagues, client]);
+
     const handleSignOut = async () => {
         try{
             await signOut()
@@ -220,14 +256,11 @@ export default function PlayerPage() {
                         <Typography variant="h5" sx={{ fontWeight: 700, color: '#9B30FF', mt: 4, mb: 2 }}>
                         Pending Requests
                         </Typography>
-                        {sortedLeagues(pendingLeagues).length > 0 ? (
+                        {pendingLeaguesWithNames.length > 0 ? (
                             <LeagueList>
-                                {sortedLeagues(pendingLeagues).map((league) => (
+                                {pendingLeaguesWithNames.sort((a, b) => new Date(b.date) - new Date(a.date)).map((league) => (
                                     <LeagueLink key={league.id} href={`/League/${league.id}`} onClick={() => router.push(`/League/${league.id}`)}>
                                         {league.name}
-                                        <Typography component="span" sx={{ ml: 1, fontSize: '0.85rem', color: '#9B30FF', fontWeight: 500 }}>
-                                        (Pending)
-                                        </Typography>
                                     </LeagueLink>
                                 ))}
                             </LeagueList>

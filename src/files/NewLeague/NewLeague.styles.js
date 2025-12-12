@@ -248,9 +248,35 @@ export const GridCard = styled(Paper)(({ theme }) => ({
 
 export const GridCardText = styled(Typography)(({ theme }) => ({
     fontWeight: 500,
-    fontSize: '1rem',
-    lineHeight: 1.5,
+    fontSize: '1.0625rem',
+    lineHeight: 1.7,
     color: theme.palette.text.primary,
+    letterSpacing: '0.01em',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    '& strong, & b': {
+        fontWeight: 700,
+        color: theme.palette.primary.main,
+        background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.08) 0%, rgba(155, 48, 255, 0.08) 100%)',
+        padding: '2px 6px',
+        borderRadius: '4px',
+    },
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '0.9375rem',
+        lineHeight: 1.6,
+    },
+}));
+
+export const QueenNameText = styled(Typography)(({ theme }) => ({
+    fontWeight: 600,
+    fontSize: '1.0625rem',
+    lineHeight: 1.4,
+    color: theme.palette.text.primary,
+    letterSpacing: '0.015em',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    textAlign: 'center',
+    background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.05) 0%, rgba(155, 48, 255, 0.05) 100%)',
+    padding: '4px 8px',
+    borderRadius: '6px',
     [theme.breakpoints.down('sm')]: {
         fontSize: '0.9375rem',
     },

@@ -31,6 +31,7 @@ import {
     GridLayout,
     GridCard,
     GridCardText,
+    QueenNameText,
     TableContainer,
     TableHeaderRow,
     TableHeaderCell,
@@ -143,10 +144,10 @@ export default function NewLeague( userData ) {
     const rules = () => {
         const swap = League?.lgSwap?.split('|').map(s => s.trim()).filter(Boolean) || []
         return [
-            (League?.lgChallengePoints > 0 ? `Predicting maxi challenge winners is worth ${League?.lgChallengePoints} points!` : 'Predicting weekly maxi winners is disabled'),
-            (League?.lgDeadline === 'manual' ? 'The admin will manually stop taking submissions' : `The deadline to submit the weekly maxi winner prediction is ${formatDeadline(League?.lgDeadline)}`),
-            (League?.lgLipSyncPoints > 0 ? `Predicting the lip sync assassin of the season is worth ${League?.lgLipSyncPoints} points!` : 'Predicting the lip sync assassin is disabled'),
-            (League?.lgSwap === '' || !League?.lgSwap ? 'The admin has disabled swaps for this season' : `Swaps will happen ${swap[0] === 'Number of Episodes' ? `after ${swap[1]} episodes` : `when there are ${swap[1]} Queens remaining`}`)
+            (League?.lgChallengePoints > 0 ? `Predicting maxi challenge winners is worth <strong>${League?.lgChallengePoints} points</strong>` : 'Predicting weekly maxi winners is disabled'),
+            (League?.lgDeadline === 'manual' ? 'The admin will manually stop taking submissions' : `The deadline to submit weekly predictions is <strong>${formatDeadline(League?.lgDeadline)}</strong>`),
+            (League?.lgLipSyncPoints > 0 ? `Predicting the lip sync assassin is worth <strong>${League?.lgLipSyncPoints} points</strong>` : 'Predicting the lip sync assassin is disabled'),
+            (League?.lgSwap === '' || !League?.lgSwap ? 'The admin has disabled swaps for this season' : `Swaps will happen ${swap[0] === 'Number of Episodes' ? `after <strong>${swap[1]} episodes</strong>` : `when there are <strong>${swap[1]} Queens remaining</strong>`}`)
         ]
     }
 
@@ -168,7 +169,7 @@ export default function NewLeague( userData ) {
         League?.lgBonusPoints?.forEach((bonus) => {
             const bonusInfo = bonus.split('|').map(s => s.trim()).filter(Boolean)
             if (bonusInfo.length >= 2) {
-                bonuses.push(`${bonusInfo[0]} - ${bonusInfo[1]} points`)
+                bonuses.push(`${bonusInfo[0]} — <strong>${bonusInfo[1]} points</strong>`)
             }
         })
         return bonuses
@@ -401,7 +402,7 @@ export default function NewLeague( userData ) {
                 <GridLayout columns={3}>
                     {League?.lgQueenNames?.map((queen, idx) => (
                         <GridCard key={idx} elevation={0}>
-                            <GridCardText>{queen}</GridCardText>
+                            <QueenNameText>{queen}</QueenNameText>
                         </GridCard>
                     ))}
                 </GridLayout>
@@ -414,7 +415,7 @@ export default function NewLeague( userData ) {
                 <GridLayout columns={2}>
                     {rules().map((rule, idx) => (
                         <GridCard key={idx} elevation={0}>
-                            <GridCardText>{rule}</GridCardText>
+                            <GridCardText dangerouslySetInnerHTML={{ __html: rule }} />
                         </GridCard>
                     ))}
                 </GridLayout>
@@ -428,7 +429,7 @@ export default function NewLeague( userData ) {
                     <GridLayout columns={1}>
                         {bonusRules().map((bonus, idx) => (
                             <GridCard key={idx} elevation={0}>
-                                <GridCardText>{bonus}</GridCardText>
+                                <GridCardText dangerouslySetInnerHTML={{ __html: bonus }} />
                             </GridCard>
                         ))}
                     </GridLayout>

@@ -4,6 +4,7 @@ import { getCurrentUser } from "@aws-amplify/auth";
 import { generateClient } from 'aws-amplify/api'
 import { useRouter } from "next/router";
 import { getUsers, getLeague, playersByLeagueId} from "@/graphql/queries";
+import { createPlayer, updateLeague, updateUsers } from "@/graphql/mutations";
 import LoadingWheel from "@/files/LoadingWheel";
 import ErrorPopup from "@/files/ErrorPopUp";
 import PopUp from "@/files/PopUp";
@@ -32,6 +33,7 @@ export default function League(){
     const [isPrivate, setIsPrivate] = useState(false);
     const [isPlayerOrAdmin, setIsPlayerOrAdmin] = useState(false);
     const [showRequestPopup, setShowRequestPopup] = useState(false);
+    const [isInvited, setIsInvited] = useState(false);
     
     const router = useRouter();
     const client = generateClient()
@@ -84,7 +86,12 @@ export default function League(){
                             const isAuthorized = userIsAdmin || userPlayer;
                             setIsPlayerOrAdmin(!!isAuthorized);
 
-                            console.log('Privacy check:', { leagueIsPrivate, isAuthorized, userIsAdmin, hasPlayer: !!userPlayer });
+                            // Check if user is invited (in pending players list)
+                            const userIsInvited = league.lgPendingPlayers?.includes(userEmail) ||
+                                                  userResults.data.getUsers?.pendingLeagues?.includes(id);
+                            setIsInvited(userIsInvited);
+
+                            console.log('Privacy check:', { leagueIsPrivate, isAuthorized, userIsAdmin, hasPlayer: !!userPlayer, userIsInvited });
 
                             // If private and user is not authorized
                             if (leagueIsPrivate && !isAuthorized) {
@@ -150,6 +157,123 @@ export default function League(){
     const handleRequestClose = () => {
         setShowRequestPopup(false);
         router.push('/Player');
+    };
+
+    const handleAcceptInvitation = async () => {
+        try {
+            setLoading(true);
+            const userEmail = userData?.id?.toLowerCase();
+            const userName = userData?.name || 'Player';
+
+            // Remove from pending players list
+            const updatedPending = (leagueData.lgPendingPlayers || []).filter(p => {
+                const pl = p.split('|').map(s => s.trim()).filter(Boolean);
+                return pl[1]?.toLowerCase() !== userEmail;
+            });
+
+            // Create player record
+            await client.graphql({
+                query: createPlayer,
+                variables: {
+                    input: {
+                        id: userEmail,
+                        leagueId: leagueData.id,
+                        plName: userName,
+                        plEmail: userEmail,
+                        plStatus: 'Player'
+                    }
+                }
+            });
+
+            // Add league to user's leagues array
+            const leagueEntry = `${new Date().toISOString()}|${leagueData.id}|${leagueData.lgName}`;
+            const updatedUserLeagues = [...(userData.leagues || []), leagueEntry];
+
+            // Remove from user's pending leagues
+            const updatedPendingLeagues = (userData.pendingLeagues || []).filter(id => id !== leagueData.id);
+
+            // Update user data
+            await client.graphql({
+                query: updateUsers,
+                variables: {
+                    input: {
+                        id: userEmail,
+                        leagues: updatedUserLeagues,
+                        pendingLeagues: updatedPendingLeagues
+                    }
+                }
+            });
+
+            // Update league history
+            const currentHistory = leagueData.lgHistory || [];
+            const historyEntry = new Date().toISOString() + '. ' + userName + ' accepted invitation and joined the league';
+
+            await client.graphql({
+                query: updateLeague,
+                variables: {
+                    input: {
+                        id: leagueData.id,
+                        lgPendingPlayers: updatedPending,
+                        lgHistory: [...currentHistory, historyEntry]
+                    }
+                }
+            });
+
+            // Reload the page to show the league content
+            window.location.reload();
+        } catch (error) {
+            console.error('Error accepting invitation:', error);
+            setLoading(false);
+        }
+    };
+
+    const handleDeclineInvitation = async () => {
+        try {
+            setLoading(true);
+            const userEmail = userData?.id?.toLowerCase();
+            const userName = userData?.name || 'Player';
+
+            // Remove from pending players list
+            const updatedPending = (leagueData.lgPendingPlayers || []).filter(p => {
+                const pl = p.split('|').map(s => s.trim()).filter(Boolean);
+                return pl[1]?.toLowerCase() !== userEmail;
+            });
+
+            // Remove from user's pending leagues
+            const updatedPendingLeagues = (userData.pendingLeagues || []).filter(id => id !== leagueData.id);
+
+            // Update user data
+            await client.graphql({
+                query: updateUsers,
+                variables: {
+                    input: {
+                        id: userEmail,
+                        pendingLeagues: updatedPendingLeagues
+                    }
+                }
+            });
+
+            // Update league history
+            const currentHistory = leagueData.lgHistory || [];
+            const historyEntry = new Date().toISOString() + '. ' + userName + ' declined invitation';
+
+            await client.graphql({
+                query: updateLeague,
+                variables: {
+                    input: {
+                        id: leagueData.id,
+                        lgPendingPlayers: updatedPending,
+                        lgHistory: [...currentHistory, historyEntry]
+                    }
+                }
+            });
+
+            // Redirect to player page
+            router.push('/Player');
+        } catch (error) {
+            console.error('Error declining invitation:', error);
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -306,14 +430,16 @@ export default function League(){
                             }}
                         >
                             <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#FF1493' }}>
-                                🔒 Private League
+                                {isInvited ? '✉️ League Invitation' : '🔒 Private League'}
                             </Typography>
                             <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
-                                This league is private. Would you like to request to join?
+                                {isInvited
+                                    ? 'You have been invited to join this league! Would you like to accept or decline the invitation?'
+                                    : 'This league is private. Would you like to request to join?'}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
                                 <button
-                                    onClick={handleRequestClose}
+                                    onClick={isInvited ? handleDeclineInvitation : handleRequestClose}
                                     style={{
                                         padding: '10px 24px',
                                         borderRadius: 8,
@@ -324,10 +450,10 @@ export default function League(){
                                         fontWeight: 600
                                     }}
                                 >
-                                    Cancel
+                                    {isInvited ? 'Decline' : 'Cancel'}
                                 </button>
                                 <button
-                                    onClick={() => {
+                                    onClick={isInvited ? handleAcceptInvitation : () => {
                                         // Will use the NewLeague component's request to join function
                                         setShowRequestPopup(false);
                                         setLeagueNotStarted(true);
@@ -342,7 +468,7 @@ export default function League(){
                                         fontWeight: 600
                                     }}
                                 >
-                                    Request to Join
+                                    {isInvited ? 'Accept Invitation' : 'Request to Join'}
                                 </button>
                             </Box>
                         </Box>
