@@ -164,7 +164,7 @@ export default function PlayerPage() {
                             <EmptyStateIcon>👑</EmptyStateIcon>
                             <EmptyStateTitle>No Leagues Yet</EmptyStateTitle>
                             <EmptyStateDescription>
-                                You haven't joined any leagues yet. Create your own or search for existing leagues to get started!
+                                You haven&apos;t joined any leagues yet. Create your own or search for existing leagues to get started!
                             </EmptyStateDescription>
                         </EmptyState>
                     )}
@@ -188,7 +188,7 @@ export default function PlayerPage() {
                             <EmptyStateIcon>⏳</EmptyStateIcon>
                             <EmptyStateTitle>No Pending Requests</EmptyStateTitle>
                             <EmptyStateDescription>
-                                You don't have any pending league requests at the moment.
+                                You don&apos;t have any pending league requests at the moment.
                             </EmptyStateDescription>
                         </EmptyState>
                     )}
