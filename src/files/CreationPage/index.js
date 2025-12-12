@@ -3,7 +3,7 @@ import { generateClient } from 'aws-amplify/api'
 import { useRouter } from "next/router";
 import { getUsers} from "@/graphql/queries";
 import Link from "next/link";
-import { createLeague, updateUsers, createPlayer  } from '@/graphql/mutations';
+import { createLeague, updateUsers, createPlayer, deleteLeague } from '@/graphql/mutations';
 import LoadingWheel from "@/files/LoadingWheel";
 import { filterPipeCharacter } from "@/helpers/filterPipeChar";
 import { FormContainer,
@@ -65,11 +65,32 @@ export default function CreationPage(){
 
     const [loading, setLoading] = useState(true);
     const [errorPopup, setErrorPopup] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     const [validationErrorPopup, setValidationErrorPopup] = useState(false);
     const [deadlineMatchError, setDeadlineMatchError] = useState(false);
 
     const router = useRouter();
     const client = generateClient()
+
+    const formatError = (err) => {
+        try {
+            if (!err) return 'Unknown error';
+            if (typeof err === 'string') return err;
+            if (err.message) return String(err.message);
+            if (Array.isArray(err.errors)) return err.errors.map(e => e.message || JSON.stringify(e)).join('; ');
+            if (err.response && err.response.body) {
+                try {
+                    return typeof err.response.body === 'string' ? err.response.body : JSON.stringify(err.response.body);
+                } catch (e) {
+                    return String(err.response.body);
+                }
+            }
+            // try to stringify common objects (use getOwnPropertyNames to include non-enumerable props)
+            try { return JSON.stringify(err, Object.getOwnPropertyNames(err), 2); } catch (e) { return String(err); }
+        } catch (e) {
+            return 'An unexpected error occurred';
+        }
+    };
 
     const numbers = Array.from({ length: 30 }, (_, i) => i + 1);
 
@@ -151,85 +172,86 @@ export default function CreationPage(){
     const checkForErrors = () => {
         let hasError = false;
 
-        if(leagueName.trim() === ''){
+        if (String(leagueName || '').trim() === '') {
             setNameError(true);
             hasError = true;
         }
-        if(displayName.trim() === ''){
+        if (String(displayName || '').trim() === '') {
             setPlayerNameError(true);
             hasError = true;
         }
-        if(!queensNumber || queensNumber <= 0){
+        if (!queensNumber || queensNumber <= 0) {
             setQueenNumberError(true);
             hasError = true;
-        }if(Object.keys(queenNames).length < queensNumber){
+        }
+        if (Object.keys(queenNames).length < queensNumber) {
             setQueenNamesError(true);
             hasError = true;
-        }if(pointValue > 0 && !deadline){
+        }
+        if (pointValue > 0 && !deadline) {
             setDeadlineError(true);
             hasError = true;
-        }if(pointValue > 0 && deadline && rankingDeadline){
+        }
+        if (pointValue > 0 && deadline && rankingDeadline) {
             const rankingDate = new Date(rankingDeadline);
             const pointsDate = new Date(deadline);
-            if(rankingDate >= pointsDate){
+            if (rankingDate >= pointsDate) {
                 setDeadlineMatchError(true);
                 hasError = true;
             }
-        }if(lipSyncAssassin && (!lipSyncPoints || lipSyncPoints <= 0)){
+        }
+        if (lipSyncAssassin && (!lipSyncPoints || lipSyncPoints <= 0)) {
             setLipSyncAssassinError(true);
             hasError = true;
-        }if(swap && (!swapType || !swapPoints)){
+        }
+        if (swap && (!swapType || !swapPoints)) {
             setSwapError(true);
             hasError = true;
-        }if(bonusPoints){
-            if(!bonusCategories || bonusCategories <= 0){
+        }
+        if (bonusPoints) {
+            if (!bonusCategories || bonusCategories <= 0) {
                 setCategoryNumberError(true);
                 hasError = true;
             }
-            for(let i = 0; i < bonusCategories; i++){
+            for (let i = 0; i < bonusCategories; i++) {
                 const category = categoryData[i];
-                if(!category || !category.name || !category.points || !category.type){
+                if (!category || !category.name || (category.points === undefined || category.points === null) || !category.type) {
                     setCategoryTypeError(true);
                     hasError = true;
                     break;
                 }
             }
-        }if(rankingDeadline.trim() === ''){
+        }
+        if (String(rankingDeadline || '').trim() === '') {
             setRankingDeadlineError(true);
             hasError = true;
         }
-        if(!hasError){
-            // No errors found, reset all error states
-            setNameError(false);
-            setPlayerNameError(false);
-            setQueenNumberError(false);
-            setQueenNamesError(false);
-            setDeadlineError(false);
-            setLipSyncAssassinError(false);
-            setSwapError(false);
-            setCategoryNumberError(false);
-            setCategoryTypeError(false);
-            setRankingDeadlineError(false);
-        }else{
-            setValidationErrorPopup(true);
-        }
 
+        if (hasError) setValidationErrorPopup(true);
         return hasError;
-    }
+    };
 
-    async function handleSubmitChange(event){
+    async function handleSubmitChange(event) {
         if (event && typeof event.preventDefault === 'function') event.preventDefault();
 
+        // ensure adminEmail is present before building the league input
+        if (!adminEmail || String(adminEmail).trim() === '') {
+            setErrorMessage('Unable to determine your user id. Please sign in again.');
+            setErrorPopup(true);
+            return;
+        }
+
+        // build arrays
         const queenArray = Object.values(queenNames || {})
-            .map(s => (s || '').trim())
+            .map(s => String(s || '').trim())
             .filter(Boolean);
-        
+
         const bonusArray = Object.values(categoryData || {})
             .map(c => {
                 if (!c) return null;
-                const name = (c.name || '').trim();
-                const points = (c.points || '').trim();
-                const type = (c.type || '').trim();
+                const name = String(c.name || '').trim();
+                const points = String(c.points || '').trim();
+                const type = String(c.type || '').trim();
                 return (name && points && type) ? `${name}|${points}|${type}` : null;
             })
             .filter(Boolean);
@@ -238,7 +260,7 @@ export default function CreationPage(){
             lgName: leagueName,
             lgDescription: leagueDescription || '',
             lgAdmin: [adminEmail],
-            lgPendingPlayers: [],  
+            lgPendingPlayers: [],
             lgFollowers: [],
             lgHistory: [new Date().toISOString() + '. League created by ' + displayName],
             lgQueenNames: queenArray,
@@ -257,39 +279,59 @@ export default function CreationPage(){
             Object.entries(league).filter(([_, v]) => v !== undefined && v !== null)
         );
 
-        if(checkForErrors()){
+        if (checkForErrors()) return;
+
+        // ensure adminEmail is present
+        if (!adminEmail || String(adminEmail).trim() === '') {
+            setErrorMessage('Unable to determine your user id. Please sign in again.');
+            setErrorPopup(true);
             return;
         }
+
+        let createdLeagueId = null;
+        const prevLeaguesList = Array.isArray(leaguesList) ? [...leaguesList] : [];
 
         try {
             const newLeague = await client.graphql({
                 query: createLeague,
                 variables: { input: input }
             });
-            console.log('League created:', newLeague);
+            createdLeagueId = newLeague?.data?.createLeague?.id;
+            if (!createdLeagueId) throw new Error('League created but missing id');
 
-            const newLeagueEntry = `${newLeague.data.createLeague.createdAt}|${newLeague.data.createLeague.id}|${leagueName}`;
-            const updatedLeaguesList = [...leaguesList, newLeagueEntry];
+            const newLeagueEntry = `${newLeague.data.createLeague.createdAt}|${createdLeagueId}|${leagueName}`;
+            const updatedLeaguesList = [...prevLeaguesList, newLeagueEntry];
             setLeaguesList(updatedLeaguesList);
-            
-            const updateUser = await client.graphql({
-                query: updateUsers,
-                variables: { input: { id: adminEmail, leagues: updatedLeaguesList } }
-            });
-            console.log('User leagues updated:', updateUser);
-            
-            const createNewPlayer = await client.graphql({
-                query: createPlayer,
-                variables: { input: { id: adminEmail, leagueId: newLeague.data.createLeague.id, plName: displayName, plStatus: 'Admin' } }
-            });
-            console.log('Admin player created:', createNewPlayer);
-            
-            router.push('/League/' + newLeague.data.createLeague.id);
-        }catch (error) {
+
+            // update user leagues; if this fails, rollback created league
+            try {
+                await client.graphql({
+                    query: updateUsers,
+                    variables: { input: { id: adminEmail, leagues: updatedLeaguesList } }
+                });
+            } catch (err) {
+                try { await client.graphql({ query: deleteLeague, variables: { input: { id: createdLeagueId } } }); } catch (delErr) { console.error('Rollback delete failed', delErr); }
+                throw err;
+            }
+
+            // create the admin player record; if this fails, rollback user update and league
+            try {
+                await client.graphql({
+                    query: createPlayer,
+                    variables: { input: { leagueId: createdLeagueId, plEmail: adminEmail, plName: displayName, plStatus: 'Admin' } }
+                });
+            } catch (err) {
+                try { await client.graphql({ query: updateUsers, variables: { input: { id: adminEmail, leagues: prevLeaguesList } } }); } catch (revertErr) { console.error('Rollback user revert failed', revertErr); }
+                try { await client.graphql({ query: deleteLeague, variables: { input: { id: createdLeagueId } } }); } catch (delErr) { console.error('Rollback delete failed', delErr); }
+                throw err;
+            }
+
+            router.push('/League/' + createdLeagueId);
+        } catch (error) {
             console.error('Error creating league:', error);
+                setErrorMessage(formatError(error) || 'Failed to create league.');
             setErrorPopup(true);
         }
-
     };
 
     const frequencyOptions = [
@@ -767,8 +809,8 @@ export default function CreationPage(){
             </SubmitContainer>
             <ErrorPopup
                 open={errorPopup}
-                onClose={() => setErrorPopup(false)}
-                message="An error occurred while creating the league."
+                onClose={() => { setErrorPopup(false); setErrorMessage(''); }}
+                message={errorMessage || 'An error occurred while creating the league.'}
             />
             <ErrorPopup
                 open={validationErrorPopup}

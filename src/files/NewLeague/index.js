@@ -250,7 +250,7 @@ export default function NewLeague( userData ) {
                                     // Use email stored on the row (player.id)
                                     let playerEmail = row._email || '';
 
-                                    const canSubmit = playerEmail && loggedIn && playerEmail === loggedIn;
+                                    const canSubmit = isAdmin || (playerEmail && loggedIn && playerEmail === loggedIn);
                                     if (canSubmit) {
                                         return (
                                             <Button
