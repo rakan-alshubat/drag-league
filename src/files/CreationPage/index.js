@@ -329,7 +329,7 @@ export default function CreationPage(){
             router.push('/League/' + createdLeagueId);
         } catch (error) {
             console.error('Error creating league:', error);
-                setErrorMessage(formatError(error) || 'Failed to create league.');
+            setErrorMessage(formatError(error) || 'Failed to create league.');
             setErrorPopup(true);
         }
     };

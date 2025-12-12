@@ -354,9 +354,13 @@ export default function NewLeague( userData ) {
             <Box sx={{ mb: 2 }}>
                 <GridHeader variant="h6">Meet The Queens</GridHeader>
                 <DynamicGrid columns={3} gap={2}>
-                    {League?.lgQueenNames.map(it => (
+                    {League?.lgQueenNames.map((it) => (
                         <GridItem key={it}>
-                            <Typography variant="subtitle1" align="center" sx={{ whiteSpace: 'normal' }}>
+                            <Typography
+                                variant="subtitle1"
+                                align="center"
+                                sx={{ whiteSpace: 'normal' }}
+                            >
                                 {it}
                             </Typography>
                         </GridItem>
@@ -367,9 +371,13 @@ export default function NewLeague( userData ) {
             <Box sx={{ mb: 2 }}>
                 <GridHeader variant="h6">League Rules</GridHeader>
                 <DynamicGrid columns={2} gap={2}>
-                    {rules().map(it => (
+                    {rules().map((it) => (
                         <GridItem key={it}>
-                            <Typography variant="subtitle1" align="center" sx={{ whiteSpace: 'normal' }}>
+                            <Typography
+                                variant="subtitle1"
+                                align="center"
+                                sx={{ whiteSpace: 'normal' }}
+                            >
                                 {it}
                             </Typography>
                         </GridItem>
@@ -380,9 +388,13 @@ export default function NewLeague( userData ) {
             <Box sx={{ mb: 2 }}>
                 <GridHeader variant="h6">Bonus rules!</GridHeader>
                 <DynamicGrid columns={1} gap={2}>
-                    {bonusRules().map(it => (
+                    {bonusRules().map((it) => (
                         <GridItem key={it}>
-                            <Typography variant="subtitle1" align="center" sx={{ whiteSpace: 'normal' }}>
+                            <Typography
+                                variant="subtitle1"
+                                align="center"
+                                sx={{ whiteSpace: 'normal' }}
+                            >
                                 {it}
                             </Typography>
                         </GridItem>
