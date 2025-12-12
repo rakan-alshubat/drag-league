@@ -51,6 +51,7 @@ export const CategoryTitle = styled(Typography)(({ theme }) => ({
     color: theme.palette.primary.main,
     borderBottom: `3px solid ${theme.palette.primary.main}`,
     paddingBottom: theme.spacing(1.5),
+    paddingTop: theme.spacing(1.5),
     background: 'linear-gradient(90deg, rgba(255, 20, 147, 0.1) 0%, transparent 100%)',
     paddingLeft: theme.spacing(2),
     borderRadius: theme.spacing(0.5),

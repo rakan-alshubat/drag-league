@@ -26,7 +26,9 @@ export const StyledToolbar = styled(Toolbar)(({ theme }) => ({
     },
 }));
 
-export const Logo = styled(Typography)(({ theme }) => ({
+export const Logo = styled('a')(({ theme }) => ({
+    display: 'inline-block',
+    textDecoration: 'none',
     fontSize: 26,
     fontWeight: 800,
     background: 'linear-gradient(135deg, #FF1493 0%, #FFD700 100%)',
@@ -157,7 +159,7 @@ export const MobileNavLinks = styled(Box)(({ theme }) => ({
     display: 'flex',
     flexDirection: 'column',
     gap: theme.spacing(1.5),
-    alignItems: 'stretch',
+    alignItems: 'flex-start',
     '& button': {
         width: '100%',
         justifyContent: 'flex-start',

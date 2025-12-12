@@ -144,8 +144,8 @@ export default function NewLeague( userData ) {
     const rules = () => {
         const swap = League?.lgSwap?.split('|').map(s => s.trim()).filter(Boolean) || []
         return [
-            (League?.lgChallengePoints > 0 ? `Predicting maxi challenge winners is worth <strong>${League?.lgChallengePoints} points</strong>` : 'Predicting weekly maxi winners is disabled'),
-            (League?.lgDeadline === 'manual' ? 'The admin will manually stop taking submissions' : `The deadline to submit weekly predictions is <strong>${formatDeadline(League?.lgDeadline)}</strong>`),
+            (League?.lgChallengePoints > 0 ? `Predicting the weekly Maxi Challenge winners is worth <strong>${League?.lgChallengePoints} points</strong>` : 'Predicting weekly Maxi Challenge winners is disabled'),
+            (League?.lgDeadline === 'manual' ? 'The admin will manually stop taking submissions' : `The deadline to submit weekly Maxi Challenge predictions is <strong>${formatDeadline(League?.lgDeadline)}</strong>`),
             (League?.lgLipSyncPoints > 0 ? `Predicting the lip sync assassin is worth <strong>${League?.lgLipSyncPoints} points</strong>` : 'Predicting the lip sync assassin is disabled'),
             (League?.lgSwap === '' || !League?.lgSwap ? 'The admin has disabled swaps for this season' : `Swaps will happen ${swap[0] === 'Number of Episodes' ? `after <strong>${swap[1]} episodes</strong>` : `when there are <strong>${swap[1]} Queens remaining</strong>`}`)
         ]
@@ -355,7 +355,7 @@ export default function NewLeague( userData ) {
                                         (() => {
                                             const loggedIn = userEmail ? String(userEmail).toLowerCase().trim() : '';
                                             const playerEmail = player.email || '';
-                                            const canSubmit = isAdmin || (playerEmail && loggedIn && playerEmail === loggedIn);
+                                            const canSubmit = (playerEmail && loggedIn && playerEmail === loggedIn);
 
                                             if (canSubmit) {
                                                 return (
@@ -451,15 +451,15 @@ export default function NewLeague( userData ) {
                         </PrimaryButton>
                     )}
                 </InviteSectionHeader>
-                {pendingPlayerData().length > 0 ? (
+                        {pendingPlayerData().length > 0 ? (
                     <TableContainer>
-                        <TableHeaderRow>
+                        <TableHeaderRow isAdmin={isAdmin}>
                             <TableHeaderCell>Name</TableHeaderCell>
                             <TableHeaderCell>Status</TableHeaderCell>
-                            <TableHeaderCell>Actions</TableHeaderCell>
+                                        {isAdmin && <TableHeaderCell>Actions</TableHeaderCell>}
                         </TableHeaderRow>
                         {pendingPlayerData().map((player, idx) => (
-                            <TableRow key={idx}>
+                                <TableRow key={idx} isAdmin={isAdmin}>
                                 <TableCell sx={{ justifyContent: { xs: 'flex-start', sm: 'center' } }}>
                                     <Typography variant="body1" fontWeight={600}>
                                         {player.name}
@@ -472,22 +472,24 @@ export default function NewLeague( userData ) {
                                         size="small"
                                     />
                                 </TableCell>
-                                <TableCell>
-                                    {isAdmin && player.status === 'invited' && (
-                                        <Tooltip title="Revoke Invite">
-                                            <IconButton
-                                                size="small"
-                                                sx={{
-                                                    color: '#f44336',
-                                                    '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
-                                                }}
-                                                onClick={() => handleKickRequest(player)}
-                                            >
-                                                <CloseIcon fontSize="small" />
-                                            </IconButton>
-                                        </Tooltip>
-                                    )}
-                                </TableCell>
+                                        {isAdmin && (
+                                            <TableCell>
+                                                {player.status === 'invited' && (
+                                                    <Tooltip title="Revoke Invite">
+                                                        <IconButton
+                                                            size="small"
+                                                            sx={{
+                                                                color: '#f44336',
+                                                                '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
+                                                            }}
+                                                            onClick={() => handleKickRequest(player)}
+                                                        >
+                                                            <CloseIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
+                                            </TableCell>
+                                        )}
                             </TableRow>
                         ))}
                     </TableContainer>
@@ -630,6 +632,15 @@ export default function NewLeague( userData ) {
                             const inviteEmail = popUpEmailInput.trim().toLowerCase();
                             if (inviteName && inviteEmail) {
                                 const updatedPending = League.lgPendingPlayers || [];
+                                // don't add duplicate pending invites for the same email
+                                const alreadyPending = updatedPending.some(p => {
+                                    const parts = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
+                                    return (parts[1] && parts[1].toLowerCase() === inviteEmail.toLowerCase()) || (parts[2] && parts[2].toLowerCase() === inviteEmail.toLowerCase());
+                                });
+                                if (alreadyPending) {
+                                    setPopUpError('That user already has a pending invite.');
+                                    return;
+                                }
                                 updatedPending.push(`invited|${inviteEmail}|${inviteName}`);
 
                                 const currentHistory = League.lgHistory || [];
@@ -663,11 +674,16 @@ export default function NewLeague( userData ) {
                                     });
                                     console.log('New user created:', createResult);
                                 }else{
-                                    const updateResult = await client.graphql({
-                                        query: updateUsers,
-                                        variables: { input: { id: inviteEmail, pendingLeagues: [...(results.data.getUsers.pendingLeagues || []), League.id] } }
-                                    });
-                                    console.log('User pending leagues updated:', updateResult);
+                                    const existingPending = results.data.getUsers.pendingLeagues || [];
+                                    if (!existingPending.includes(League.id)) {
+                                        const updateResult = await client.graphql({
+                                            query: updateUsers,
+                                            variables: { input: { id: inviteEmail, pendingLeagues: [...existingPending, League.id] } }
+                                        });
+                                        console.log('User pending leagues updated:', updateResult);
+                                    } else {
+                                        console.log('User already has this league in pendingLeagues');
+                                    }
                                 }
 
                                 // Get the current user's name from Player data
@@ -792,16 +808,17 @@ export default function NewLeague( userData ) {
                                 }
                             });
                             console.log('Player promoted to admin:', promoteResult);
-                            router.push(`/League/${League.id}`)
+                            router.reload();
                         } else if(popUpTitle === 'Accept player?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
-                                const pl = p.split('|').map(s => s.trim()).filter(Boolean)
-                                return pl[2]?.toLowerCase() !== displayName?.toLowerCase();
-                            });
+                                    const pl = p.split('|').map(s => s.trim()).filter(Boolean)
+                                    // compare by email (pl[1]) to avoid name mismatches
+                                    return pl[1]?.toLowerCase() !== pickedPlayer?.toLowerCase();
+                                });
 
                             const createPlayerResult = await client.graphql({
                                 query: createPlayer,
-                                variables: { input: { id: pickedPlayer, leagueId: League.id, plName: displayName, plStatus: 'Player' } }
+                                variables: { input: { leagueId: League.id, plEmail: pickedPlayer, plName: displayName, plStatus: 'Player' } }
                             });
                             console.log('Player accepted and created:', createPlayerResult);
 
@@ -819,12 +836,13 @@ export default function NewLeague( userData ) {
                                 }
                             });
                             console.log('League updated after accept:', updateResult);
-                            router.push(`/League/${League.id}`)
+                            router.reload();
                         } else if(popUpTitle === 'Revoke invite?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
-                                const pl = p.split('|').map(s => s.trim()).filter(Boolean)
-                                return pl[2]?.toLowerCase() !== displayName?.toLowerCase();
-                            });
+                                    const pl = p.split('|').map(s => s.trim()).filter(Boolean)
+                                    // compare by email (pl[1]) to avoid name mismatches
+                                    return pl[1]?.toLowerCase() !== displayName?.toLowerCase() && pl[1]?.toLowerCase() !== pickedPlayer?.toLowerCase();
+                                });
 
                             const currentHistory = League.lgHistory || [];
                             const historyEntry = new Date().toISOString() + '. Invite revoked for ' + displayName;
@@ -840,11 +858,13 @@ export default function NewLeague( userData ) {
                                 }
                             });
                             console.log('Invite revoked:', revokeResult);
-                            router.push(`/League/${League.id}`)
+                            // Refresh the page so UI reflects the revoked invite
+                            router.reload();
                         }else if(popUpTitle === 'Decline player?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
                                 const pl = p.split('|').map(s => s.trim()).filter(Boolean)
-                                return pl[2]?.toLowerCase() !== displayName?.toLowerCase();
+                                // compare by email
+                                return pl[1]?.toLowerCase() !== pickedPlayer?.toLowerCase();
                             });
 
                             const currentHistory = League.lgHistory || [];
@@ -861,7 +881,7 @@ export default function NewLeague( userData ) {
                                 }
                             });
                             console.log('Player declined:', declineResult);
-                            router.push(`/League/${League.id}`)
+                            router.reload();
                         } else if(popUpTitle === 'Kick player?'){
                             const kickResult = await client.graphql({
                                 query: deletePlayer,
@@ -881,7 +901,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
-                            router.push(`/League/${League.id}`)
+                            router.reload();
                         }
 
                         setConfirmOpen(false);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from "next/router";
 import { getCurrentUser, signOut } from "aws-amplify/auth";
 import LoadingWheel from "@/files/LoadingWheel";
@@ -26,7 +26,7 @@ export default function PlayerPage() {
     const [loading, setLoading] = useState(true);
     const [errorPopup, setErrorPopup] = useState(false);
     const router = useRouter();
-    const client = generateClient()
+    const client = useMemo(() => generateClient(), []);
 
     const [userID, setUserID] = useState('');
     const [name, setName] = useState('');

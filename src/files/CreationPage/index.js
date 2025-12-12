@@ -265,6 +265,7 @@ export default function CreationPage(){
             lgHistory: [new Date().toISOString() + '. League created by ' + displayName],
             lgQueenNames: queenArray,
             lgPublic: publicLeague,
+            lgPrivate: !publicLeague,
             lgFullyPrivate: false,
             lgChallengePoints: Number(pointValue) || 0,
             lgLipSyncPoints: lipSyncAssassin && Number(lipSyncPoints) || 0,
@@ -358,7 +359,7 @@ export default function CreationPage(){
 
             <DescriptionBox>
                 <DescriptionText>
-                    Not sure how to play? Visit the <Link href="/rules">How To Play</Link> page for more information.
+                    Not sure how to play? Visit the <Link href="/HowToPlay">How To Play</Link> page for more information.
                 </DescriptionText>
             </DescriptionBox>
             
@@ -499,6 +500,24 @@ export default function CreationPage(){
             <SectionWrapper>
                 <FormSection>
                     <TitleRow>
+
+                        <InputGroupWithCheckbox>
+                            <CheckboxLabel
+                                control={<StyledCheckbox checked={publicLeague} onChange={(e) => setPublicLeague(e.target.checked)} />}
+                                label=""
+                            />
+                            <SectionTitle>Public League</SectionTitle>
+                        </InputGroupWithCheckbox>
+                    </TitleRow>
+                    <ExplanationText>
+                        If checked, your league will be viewable by anyone.
+                    </ExplanationText>
+                </FormSection>
+            </SectionWrapper>
+
+            <SectionWrapper>
+                <FormSection>
+                    <TitleRow>
                         <SectionTitle>Points per Maxi Challenge Win</SectionTitle>
                     </TitleRow>
                     <ExplanationText>
@@ -569,7 +588,7 @@ export default function CreationPage(){
                     <InputGroupWithCheckbox>
                         <CheckboxLabel
                             control={<StyledCheckbox />}
-                            label="Lip Sync Assassin (optional)"
+                            label=""
                             onChange={(e) => {
                                 setLipSyncAssassin(e.target.checked);
                                 if (!e.target.checked) {
@@ -578,6 +597,7 @@ export default function CreationPage(){
                                 }
                             }}
                         />
+                        <SectionTitle>Lip Sync Assassin (optional)</SectionTitle>
                         {lipSyncAssassin && (
                             <StyledSelect
                                 value={lipSyncPoints}
@@ -615,7 +635,7 @@ export default function CreationPage(){
                     <InputGroupWithCheckbox>
                         <CheckboxLabel
                             control={<StyledCheckbox />}
-                            label="Swap (optional)"
+                            label=""
                             onChange={(e) => {
                                 const checked = e.target.checked;
                                 setSwap(checked);
@@ -626,6 +646,7 @@ export default function CreationPage(){
                                 }
                             }}
                         />
+                        <SectionTitle>Swap (optional)</SectionTitle>
                     </InputGroupWithCheckbox>
                     {swapError && (
                         <ErrorAlert severity="error">Missing Swap Deadline, or you can uncheck the box.</ErrorAlert>
@@ -686,7 +707,7 @@ export default function CreationPage(){
                     <InputGroupWithCheckbox>
                         <CheckboxLabel
                             control={<StyledCheckbox />}
-                            label="Bonus Points (optional)"
+                            label=""
                             onChange={(e) => {
                                 setBonusPoints(e.target.checked);
                                 if (!e.target.checked) {
@@ -697,6 +718,7 @@ export default function CreationPage(){
                                 }
                             }}
                         />
+                        <SectionTitle>Bonus Points (optional)</SectionTitle>
                     </InputGroupWithCheckbox>
                     {categoryNumberError && (
                         <ErrorAlert severity="error">Missing Number of Bonus Categories, or you can uncheck the box.</ErrorAlert>

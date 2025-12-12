@@ -42,7 +42,7 @@ export const FormSection = styled(Box)(({ theme }) => ({
 export const SectionTitle = styled(Typography)(({ theme }) => ({
     fontSize: '1.2rem',
     fontWeight: 'bold',
-    marginTop: theme.spacing(2),
+    marginTop: 0,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -94,7 +94,6 @@ export const CheckboxLabel = styled(FormControlLabel)(({ theme }) => ({
 export const InputGroupWithCheckbox = styled(Box)(({ theme }) => ({
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing(2),
     '& .MuiTextField-root': {
         flexGrow: 1
     }
@@ -237,8 +236,8 @@ export const DescriptionText = styled(Typography)(({ theme }) => ({
 
 export const TitleRow = styled(Box)(({ theme }) => ({
     display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'start',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: theme.spacing(2),
     width: '100%'
 }));
