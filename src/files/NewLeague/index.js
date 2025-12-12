@@ -9,6 +9,7 @@ import { Box, Typography, Button, IconButton, Tooltip, TextField, Alert } from "
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import PersonAddAltSharpIcon from '@mui/icons-material/PersonAddAltSharp';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PopUp from "@/files/PopUp";
 import Countdown from "@/files/Countdown";
 import checkPrivacy from "@/helpers/chechPrivacy";
@@ -53,6 +54,7 @@ export default function NewLeague( userData ) {
     const [popUpNameInput, setPopUpNameInput] = useState('');
     const [popUpEmailInput, setPopUpEmailInput] = useState('');
     const [popUpError, setPopUpError] = useState('');
+    const [popUpCopySuccess, setPopUpCopySuccess] = useState('');
 
     const [pickedPlayer, setPickedPlayer] = useState('');
 
@@ -707,6 +709,38 @@ export default function NewLeague( userData ) {
                             value={popUpEmailInput}
                             onChange={(e) => setPopUpEmailInput(filterPipeCharacter(e.target.value))}
                         />
+                        <Box sx={{ mt: 1, mb: 1 }}>
+                            <Typography variant="caption">or</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                            <TextField
+                                fullWidth
+                                label="Invite link"
+                                value={(typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/Player?invite=' + (League?.id || '')}
+                                InputProps={{ readOnly: true }}
+                                onClick={(e) => { e.target.select && e.target.select(); }}
+                            />
+                            <Tooltip title="Copy invite link">
+                                <IconButton
+                                    color="primary"
+                                    onClick={async () => {
+                                        const link = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/Player?invite=' + (League?.id || '');
+                                        try {
+                                            await navigator.clipboard.writeText(link);
+                                            setPopUpCopySuccess('Copied!');
+                                            setTimeout(() => setPopUpCopySuccess(''), 2500);
+                                        } catch (e) {
+                                            setPopUpError('Failed to copy link');
+                                        }
+                                    }}
+                                >
+                                    <ContentCopyIcon />
+                                </IconButton>
+                            </Tooltip>
+                        </Box>
+                        {popUpCopySuccess && (
+                            <Typography variant="caption" sx={{ color: 'success.main' }}>{popUpCopySuccess}</Typography>
+                        )}
                     </Box>
                 )}
             </PopUp>
