@@ -7,7 +7,8 @@ import {
     ConfirmButton,
     CancelButton,
 } from "./PopUp.styles";
-import { Typography, CircularProgress } from "@mui/material";
+import { Typography, CircularProgress, Box } from "@mui/material";
+import { DescriptionText } from "./PopUp.styles";
 
 /**
  * ConfirmDialog (reusable)
@@ -30,6 +31,7 @@ export default function PopUp({
     onConfirm = () => {},
     onCancel = () => {},
     loading = false,
+    confirmVariant = 'primary'
 }) {
     return (
         <StyledDialog
@@ -44,7 +46,7 @@ export default function PopUp({
 
             <ContentBox dividers>
                 {typeof children === "string" ? (
-                    <Typography variant="body2">{children}</Typography>
+                    <DescriptionText>{children}</DescriptionText>
                 ) : (
                     children
                 )}
@@ -62,8 +64,8 @@ export default function PopUp({
                 <ConfirmButton
                     onClick={onConfirm}
                     variant="contained"
-                    color="primary"
                     disabled={loading}
+                    variantstyle={confirmVariant}
                     startIcon={loading ? <CircularProgress color="inherit" size={16} /> : null}
                 >
                     {confirmText}

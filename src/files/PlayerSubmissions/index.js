@@ -4,6 +4,7 @@ import mostFrequentName from '../../helpers/lipSyncAssassin';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Box, Chip } from '@mui/material';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import {
     Root,
     Title,
@@ -155,6 +156,25 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
                     </NestedSummary>
 
                     <NestedDetails>
+                        {/* Show swap indicator when player has a recorded swap */}
+                        {item?.plSwap && typeof item.plSwap === 'string' && item.plSwap.trim() !== '' && (() => {
+                            const parts = item.plSwap.split('|').map(s => s.trim()).filter(Boolean);
+                            if (parts.length >= 2) {
+                                const [a, b] = parts;
+                                return (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                        <Chip
+                                            icon={<SwapHorizIcon sx={{ color: 'white' }} />}
+                                            label={`Swapped: ${a} ↔ ${b}`}
+                                            size="meduim"
+                                            sx={{ background: 'linear-gradient(135deg,#FF1493 0%, #9B30FF 100%)', color: 'white', fontWeight: 700 }}
+                                        />
+                                    </Box>
+                                );
+                            }
+                            return null;
+                        })()}
+
                         {Array.isArray(item.plRankings) && item.plRankings.length > 0 ? (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
                                 {item.plRankings.map((rank, idx) => {
@@ -162,45 +182,48 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
                                     const isEliminated = queenInfo?.isEliminated;
                                     
                                     return (
-                                        <Box 
-                                            key={idx} 
-                                            sx={{ 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
+                                        <Box
+                                            key={idx}
+                                            sx={{
+                                                display: 'flex',
+                                                flexDirection: { xs: 'column', sm: 'row' },
+                                                alignItems: { xs: 'flex-start', sm: 'center' },
                                                 gap: 1.5,
                                                 p: 1,
                                                 borderRadius: 1,
-                                                background: isEliminated 
+                                                background: isEliminated
                                                     ? 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)'
                                                     : 'transparent',
                                                 border: isEliminated ? '1px solid rgba(255, 20, 147, 0.2)' : 'none',
                                                 transition: 'all 0.2s ease',
                                             }}
                                         >
-                                            <Typography 
-                                                component="span" 
-                                                sx={{ 
-                                                    fontWeight: 700, 
-                                                    color: '#9B30FF',
-                                                    minWidth: '40px',
-                                                    flexShrink: 0
-                                                }}
-                                            >
-                                                {getOrdinal(idx + 1)}
-                                            </Typography>
-                                            
-                                            <Typography 
-                                                component="span" 
-                                                sx={{ 
-                                                    flex: 1,
-                                                    fontWeight: 500
-                                                }}
-                                            >
-                                                {rank}
-                                            </Typography>
-                                            
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+                                                <Typography
+                                                    component="span"
+                                                    sx={{
+                                                        fontWeight: 700,
+                                                        color: '#9B30FF',
+                                                        minWidth: '40px',
+                                                        flexShrink: 0
+                                                    }}
+                                                >
+                                                    {getOrdinal(idx + 1)}
+                                                </Typography>
+
+                                                <Typography
+                                                    component="span"
+                                                    sx={{
+                                                        flex: 1,
+                                                        fontWeight: 500
+                                                    }}
+                                                >
+                                                    {rank}
+                                                </Typography>
+                                            </Box>
+
                                             {isEliminated && (
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: { xs: 0, sm: 0 } }}>
                                                     <Chip
                                                         label={getOrdinal(queenInfo.actualRanking)}
                                                         size="medium"
@@ -219,13 +242,13 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
                                                         label={`+${queenInfo.pointsEarned} pts`}
                                                         size="medium"
                                                         sx={{
-                                                            background: queenInfo.difference === 0 
-                                                                ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)' // Perfect guess - gold
+                                                            background: queenInfo.difference === 0
+                                                                ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)'
                                                                 : queenInfo.pointsEarned >= (leagueData?.lgQueenNames?.length || 0) * 0.75
-                                                                    ? 'linear-gradient(135deg, #50C878 0%, #3CB371 100%)' // Great guess - green
+                                                                    ? 'linear-gradient(135deg, #50C878 0%, #3CB371 100%)'
                                                                     : queenInfo.pointsEarned >= (leagueData?.lgQueenNames?.length || 0) * 0.5
-                                                                        ? 'linear-gradient(135deg, #FF8C00 0%, #FF6347 100%)' // Good guess - orange
-                                                                        : 'linear-gradient(135deg, #DC143C 0%, #B22222 100%)', // Poor guess - red
+                                                                        ? 'linear-gradient(135deg, #FF8C00 0%, #FF6347 100%)'
+                                                                        : 'linear-gradient(135deg, #DC143C 0%, #B22222 100%)',
                                                             color: 'white',
                                                             fontWeight: 700,
                                                             fontSize: '0.85rem',

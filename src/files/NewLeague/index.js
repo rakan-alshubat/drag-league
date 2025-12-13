@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { generateClient } from 'aws-amplify/api'
-import { createPlayer, updateLeague, deleteLeague, createUsers, updateUsers, deletePlayer } from '@/graphql/mutations';
+import { createPlayer, updateLeague, deleteLeague, createUsers, updateUsers, deletePlayer, updatePlayer } from '@/graphql/mutations';
 import { getUsers, playersByLeagueId, listUsers } from '@/graphql/queries';
 import { sendEmailAPI } from "@/helpers/sendEmail";
 import { filterPipeCharacter } from "@/helpers/filterPipeChar";
@@ -14,6 +14,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import PeopleIcon from '@mui/icons-material/People';
 import RuleIcon from '@mui/icons-material/Rule';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import EditIcon from '@mui/icons-material/Edit';
 import PopUp from "@/files/PopUp";
 import Countdown from "@/files/Countdown";
 import {
@@ -33,9 +34,11 @@ import {
     GridCardText,
     QueenNameText,
     TableContainer,
-    TableHeaderRow,
+    TableHeaderRowCurrent,
+    TableHeaderRowPending,
     TableHeaderCell,
-    TableRow,
+    TableRowCurrent,
+    TableRowPending,
     TableCell,
     StatusChip,
     EmptyState,
@@ -142,6 +145,9 @@ export default function NewLeague( userData ) {
     }
 
     const rules = () => {
+        console.log('league: ',League)
+        console.log('player: ',Player)
+        console.log('user: ',User)
         const swap = League?.lgSwap?.split('|').map(s => s.trim()).filter(Boolean) || []
         return [
             (League?.lgChallengePoints > 0 ? `Predicting the weekly Maxi Challenge winners is worth <strong>${League?.lgChallengePoints} points</strong>` : 'Predicting weekly Maxi Challenge winners is disabled'),
@@ -181,7 +187,7 @@ export default function NewLeague( userData ) {
 
     const handleAcceptRequest = (player) => {
         setPopUpTitle('Accept player?')
-        setPopUpDescription('Are you sure you want to accept this player?')
+        setPopUpDescription(`${player.name} has requested to join. Accepting will add them as a player who can submit rankings immediately. Continue?`)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -189,7 +195,7 @@ export default function NewLeague( userData ) {
 
     const handleDeclineRequest = (player) => {
         setPopUpTitle('Decline player?')
-        setPopUpDescription('This will decline the join request from this player')
+        setPopUpDescription(`Decline ${player.name}'s request to join? They won't be added to the league and won't be notified further.`)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -197,7 +203,15 @@ export default function NewLeague( userData ) {
 
     const handleKickRequest = (player) => {
         setPopUpTitle('Revoke invite?')
-        setPopUpDescription('This will revoke the invite from this player')
+        setPopUpDescription(`Revoke the invite for ${player.name}? They will no longer be able to accept the invitation using the invite link.`)
+        setPickedPlayer(player.email)
+        setDisplayName(player.name)
+        setConfirmOpen(true)
+    };
+
+    const handleRemovePlayer = (player) => {
+        setPopUpTitle('Kick player?')
+        setPopUpDescription(`Remove ${player.name} from the league? This will delete their player record and submissions.`)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -205,25 +219,25 @@ export default function NewLeague( userData ) {
 
     const handleStartLeague = () => {
         setPopUpTitle('Start League?')
-        setPopUpDescription('You cant add any more players after this')
+        setPopUpDescription(`Starting the league will close registrations and freeze the player list for ${League?.lgName}. Make sure you're ready — this cannot be undone.`)
         setConfirmOpen(true)
     };
 
     const handleDeleteLeague = () => {
         setPopUpTitle('Delete League?')
-        setPopUpDescription('All settings and submissions will be deleted. this cant be undone')
+        setPopUpDescription(`This will permanently delete "${League?.lgName}" and all its data (players, submissions, settings). This action cannot be undone. Are you sure you want to proceed?`)
         setConfirmOpen(true)
     }
 
     const handleInvitePlayer = () => {
         setPopUpTitle('Invite Player')
-        setPopUpDescription('')
+        setPopUpDescription('Invite a new player by entering their name and email, or share the invite link below. Invited players can accept to join your league.')
         setConfirmOpen(true)
     }
 
     const handlePromoteRequest = (player) => {
         setPopUpTitle('Promote to Admin')
-        setPopUpDescription('You sure you want this player to be admin?')
+        setPopUpDescription(`Promote ${player.name} to league admin? They'll get permissions to manage invites, start the league, and update settings.`)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -250,12 +264,12 @@ export default function NewLeague( userData ) {
 
             {isAdmin && (
                 <ActionRow>
-                    <PrimaryButton
-                        startIcon={<GroupAddIcon />}
-                        onClick={() => handleInvitePlayer()}
+                    <SecondaryButton
+                        startIcon={<EditIcon />}
+                        onClick={() => { /* noop for now */ }}
                     >
-                        Invite Players
-                    </PrimaryButton>
+                        Edit League
+                    </SecondaryButton>
                     <SecondaryButton
                         startIcon={<EmojiEventsIcon />}
                         onClick={() => handleStartLeague()}
@@ -266,18 +280,30 @@ export default function NewLeague( userData ) {
             )}
 
             <CardSection elevation={0}>
-                <SectionHeader variant="h5">
-                    <PeopleIcon /> Current Players
-                </SectionHeader>
+                <InviteSectionHeader>
+                    <SectionHeader variant="h5" sx={{ mb: 0 }}>
+                        <PeopleIcon /> Current Players
+                    </SectionHeader>
+                    {isAdmin && (
+                        <PrimaryButton
+                            size="small"
+                            startIcon={<GroupAddIcon />}
+                            onClick={() => handleInvitePlayer()}
+                        >
+                            Invite
+                        </PrimaryButton>
+                    )}
+                </InviteSectionHeader>
                 {currentPlayerData().length > 0 ? (
                     <TableContainer>
-                        <TableHeaderRow>
+                        <TableHeaderRowCurrent isAdmin={isAdmin}>
                             <TableHeaderCell>Name</TableHeaderCell>
                             <TableHeaderCell>Role</TableHeaderCell>
                             <TableHeaderCell>Rankings</TableHeaderCell>
-                        </TableHeaderRow>
+                            {isAdmin && <TableHeaderCell>Actions</TableHeaderCell>}
+                        </TableHeaderRowCurrent>
                         {currentPlayerData().map((player, idx) => (
-                            <TableRow key={idx}>
+                            <TableRowCurrent key={idx} isAdmin={isAdmin}>
                                 <TableCell sx={{ justifyContent: { xs: 'flex-start', sm: 'center' } }}>
                                     <Typography variant="body1" fontWeight={600}>
                                         {player.name}
@@ -327,20 +353,6 @@ export default function NewLeague( userData ) {
                                                 statuscolor="player"
                                                 size="small"
                                             />
-                                            {isAdmin && (
-                                                <Tooltip title="Promote to Admin">
-                                                    <IconButton
-                                                        size="small"
-                                                        sx={{
-                                                            color: '#FF1493',
-                                                            '&:hover': { backgroundColor: 'rgba(255, 20, 147, 0.1)' }
-                                                        }}
-                                                        onClick={() => handlePromoteRequest(player)}
-                                                    >
-                                                        <PersonAddAltSharpIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
                                         </Box>
                                     ) : (
                                         <StatusChip
@@ -384,7 +396,47 @@ export default function NewLeague( userData ) {
                                         />
                                     )}
                                 </TableCell>
-                            </TableRow>
+                                {isAdmin && (
+                                    <TableCell>
+                                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                                            {player.role.toLowerCase() === 'player' && (
+                                                <Tooltip title="Promote to Admin">
+                                                    <IconButton
+                                                        size="small"
+                                                        sx={{
+                                                            color: '#FF1493',
+                                                            '&:hover': { backgroundColor: 'rgba(255, 20, 147, 0.1)' }
+                                                        }}
+                                                        onClick={() => handlePromoteRequest(player)}
+                                                    >
+                                                        <PersonAddAltSharpIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                            {(() => {
+                                                const loggedIn = userEmail ? String(userEmail).toLowerCase().trim() : '';
+                                                const playerEmail = player.email ? String(player.email).toLowerCase().trim() : '';
+                                                // don't show remove button for the admin's own player row
+                                                if (playerEmail === loggedIn) return null;
+                                                return (
+                                                    <Tooltip title="Remove player">
+                                                        <IconButton
+                                                            size="small"
+                                                            sx={{
+                                                                color: '#f44336',
+                                                                '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.08)' }
+                                                            }}
+                                                            onClick={() => handleRemovePlayer(player)}
+                                                        >
+                                                            <CloseIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                );
+                                            })()}
+                                        </Box>
+                                    </TableCell>
+                                )}
+                            </TableRowCurrent>
                         ))}
                     </TableContainer>
                 ) : (
@@ -451,15 +503,15 @@ export default function NewLeague( userData ) {
                         </PrimaryButton>
                     )}
                 </InviteSectionHeader>
-                        {pendingPlayerData().length > 0 ? (
+                {pendingPlayerData().length > 0 ? (
                     <TableContainer>
-                        <TableHeaderRow isAdmin={isAdmin}>
+                        <TableHeaderRowPending isAdmin={isAdmin}>
                             <TableHeaderCell>Name</TableHeaderCell>
                             <TableHeaderCell>Status</TableHeaderCell>
-                                        {isAdmin && <TableHeaderCell>Actions</TableHeaderCell>}
-                        </TableHeaderRow>
+                            {isAdmin && <TableHeaderCell>Actions</TableHeaderCell>}
+                        </TableHeaderRowPending>
                         {pendingPlayerData().map((player, idx) => (
-                                <TableRow key={idx} isAdmin={isAdmin}>
+                            <TableRowPending key={idx} isAdmin={isAdmin}>
                                 <TableCell sx={{ justifyContent: { xs: 'flex-start', sm: 'center' } }}>
                                     <Typography variant="body1" fontWeight={600}>
                                         {player.name}
@@ -472,25 +524,25 @@ export default function NewLeague( userData ) {
                                         size="small"
                                     />
                                 </TableCell>
-                                        {isAdmin && (
-                                            <TableCell>
-                                                {player.status === 'invited' && (
-                                                    <Tooltip title="Revoke Invite">
-                                                        <IconButton
-                                                            size="small"
-                                                            sx={{
-                                                                color: '#f44336',
-                                                                '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
-                                                            }}
-                                                            onClick={() => handleKickRequest(player)}
-                                                        >
-                                                            <CloseIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                )}
-                                            </TableCell>
+                                {isAdmin && (
+                                    <TableCell>
+                                        {player.status === 'invited' && (
+                                            <Tooltip title="Revoke Invite">
+                                                <IconButton
+                                                    size="small"
+                                                    sx={{
+                                                        color: '#f44336',
+                                                        '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
+                                                    }}
+                                                    onClick={() => handleKickRequest(player)}
+                                                >
+                                                    <CloseIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
                                         )}
-                            </TableRow>
+                                    </TableCell>
+                                )}
+                            </TableRowPending>
                         ))}
                     </TableContainer>
                 ) : (
@@ -521,6 +573,17 @@ export default function NewLeague( userData ) {
                 confirmText={popUpTitle === 'Delete League?' ? 'Delete' : popUpTitle === 'Start League?' ? 'Start' : popUpTitle === 'Invite Player' ? 'Send Invite' : 'Confirm'}
                 cancelText="Cancel"
                 loading={confirmLoading}
+                confirmVariant={popUpTitle === 'Delete League?' ? 'danger' : popUpTitle === 'Start League?' ? 'success' : popUpTitle === 'Invite Player' ? 'primary' : popUpTitle === 'Promote to Admin' ? 'primary' : popUpTitle === 'Accept player?' ? 'primary' : popUpTitle === 'Decline player?' ? 'danger' : popUpTitle === 'Revoke invite?' ? 'danger' : popUpTitle === 'Kick player?' ? 'danger' : 'primary'}
+                icon={
+                    popUpTitle === 'Delete League?' ? <CloseIcon sx={{ color: '#cc0000' }} /> :
+                        popUpTitle === 'Start League?' ? <EmojiEventsIcon sx={{ color: '#1e7e34' }} /> :
+                            popUpTitle === 'Invite Player' ? <GroupAddIcon sx={{ color: '#FF1493' }} /> :
+                                popUpTitle === 'Promote to Admin' ? <PersonAddAltSharpIcon sx={{ color: '#FF1493' }} /> :
+                                    popUpTitle === 'Accept player?' ? <CheckIcon sx={{ color: '#4caf50' }} /> :
+                                        popUpTitle === 'Decline player?' ? <CloseIcon sx={{ color: '#f44336' }} /> :
+                                            popUpTitle === 'Revoke invite?' ? <CloseIcon sx={{ color: '#f44336' }} /> :
+                                                popUpTitle === 'Kick player?' ? <CloseIcon sx={{ color: '#f44336' }} /> : null
+                }
                 onCancel={() => {
                     setConfirmOpen(false);
                     setPopUpNameInput('');
@@ -807,14 +870,31 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
-                            console.log('Player promoted to admin:', promoteResult);
+                            console.log('Player promoted to admin (league updated):', promoteResult);
+
+                            // Also update the player's plStatus so UI reflects admin role
+                            try {
+                                await client.graphql({
+                                    query: updatePlayer,
+                                    variables: {
+                                        input: {
+                                            id: pickedPlayer,
+                                            plStatus: 'Admin'
+                                        }
+                                    }
+                                });
+                                console.log('Player record updated to Admin:', pickedPlayer);
+                            } catch (errUpdatePlayer) {
+                                console.warn('Failed to update player status:', errUpdatePlayer);
+                            }
+
                             router.reload();
                         } else if(popUpTitle === 'Accept player?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
-                                    const pl = p.split('|').map(s => s.trim()).filter(Boolean)
-                                    // compare by email (pl[1]) to avoid name mismatches
-                                    return pl[1]?.toLowerCase() !== pickedPlayer?.toLowerCase();
-                                });
+                                const pl = p.split('|').map(s => s.trim()).filter(Boolean)
+                                // compare by email (pl[1]) to avoid name mismatches
+                                return pl[1]?.toLowerCase() !== pickedPlayer?.toLowerCase();
+                            });
 
                             const createPlayerResult = await client.graphql({
                                 query: createPlayer,
@@ -839,10 +919,10 @@ export default function NewLeague( userData ) {
                             router.reload();
                         } else if(popUpTitle === 'Revoke invite?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
-                                    const pl = p.split('|').map(s => s.trim()).filter(Boolean)
-                                    // compare by email (pl[1]) to avoid name mismatches
-                                    return pl[1]?.toLowerCase() !== displayName?.toLowerCase() && pl[1]?.toLowerCase() !== pickedPlayer?.toLowerCase();
-                                });
+                                const pl = p.split('|').map(s => s.trim()).filter(Boolean)
+                                // compare by email (pl[1]) to avoid name mismatches
+                                return pl[1]?.toLowerCase() !== displayName?.toLowerCase() && pl[1]?.toLowerCase() !== pickedPlayer?.toLowerCase();
+                            });
 
                             const currentHistory = League.lgHistory || [];
                             const historyEntry = new Date().toISOString() + '. Invite revoked for ' + displayName;
@@ -858,6 +938,27 @@ export default function NewLeague( userData ) {
                                 }
                             });
                             console.log('Invite revoked:', revokeResult);
+
+                            // Also remove this league from the invited user's pendingLeagues (if user exists)
+                            try {
+                                const targetEmail = pickedPlayer ? String(pickedPlayer).toLowerCase().trim() : displayName?.toLowerCase();
+                                const userRes = await client.graphql({ query: getUsers, variables: { id: targetEmail } });
+                                const userObj = userRes?.data?.getUsers;
+                                if (userObj) {
+                                    const userPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
+                                    const filteredPending = userPending.filter(pid => String(pid) !== String(League.id));
+                                    if (filteredPending.length !== userPending.length) {
+                                        await client.graphql({
+                                            query: updateUsers,
+                                            variables: { input: { id: userObj.id, pendingLeagues: filteredPending } }
+                                        });
+                                        console.log('Removed pending league reference from user:', userObj.id);
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('Failed to remove pending league from user record:', e);
+                            }
+
                             // Refresh the page so UI reflects the revoked invite
                             router.reload();
                         }else if(popUpTitle === 'Decline player?'){
@@ -889,16 +990,49 @@ export default function NewLeague( userData ) {
                             });
                             console.log('Player kicked:', kickResult);
 
+                            // Remove this league from the user's `leagues` array
+                            try {
+                                const userRes = await client.graphql({ query: getUsers, variables: { id: pickedPlayer } });
+                                const userObj = userRes?.data?.getUsers;
+                                if (userObj) {
+                                    const userLeagues = Array.isArray(userObj.leagues) ? userObj.leagues.slice() : [];
+                                    const filteredLeagues = userLeagues.filter(entry => {
+                                        const parts = String(entry || '').split('|').map(s => s.trim());
+                                        return parts[1] !== League.id;
+                                    });
+                                    if (filteredLeagues.length !== userLeagues.length) {
+                                        await client.graphql({
+                                            query: updateUsers,
+                                            variables: { input: { id: userObj.id, leagues: filteredLeagues } }
+                                        });
+                                        console.log('Removed league reference from user:', userObj.id);
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('Failed to remove league from user record:', e);
+                            }
+
                             const currentHistory = League.lgHistory || [];
                             const historyEntry = new Date().toISOString() + '. Player ' + displayName + ' was removed from the league';
+
+                            // Also remove from admins list if the removed player was an admin
+                            const admins = Array.isArray(League.lgAdmin) ? League.lgAdmin.slice() : [];
+                            const normalizedPicked = pickedPlayer ? String(pickedPlayer).toLowerCase().trim() : '';
+                            const updatedAdmins = admins.filter(a => (a ? String(a).toLowerCase().trim() : '') !== normalizedPicked);
+
+                            const updateInput = {
+                                id: League.id,
+                                lgHistory: [...currentHistory, historyEntry]
+                            };
+                            if (updatedAdmins.length !== admins.length) {
+                                updateInput.lgAdmin = updatedAdmins;
+                                console.log('Removed from admins:', normalizedPicked);
+                            }
 
                             await client.graphql({
                                 query: updateLeague,
                                 variables: {
-                                    input: {
-                                        id: League.id,
-                                        lgHistory: [...currentHistory, historyEntry]
-                                    }
+                                    input: updateInput
                                 }
                             });
                             router.reload();
@@ -915,7 +1049,7 @@ export default function NewLeague( userData ) {
                     }
                 }}
             >
-                <Typography variant="body2">{popUpDescription}</Typography>
+                {popUpDescription}
                 {popUpError ? (
                     <Box sx={{ mt: 1 }}>
                         <Alert severity="error">{popUpError}</Alert>

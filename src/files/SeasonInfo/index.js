@@ -162,7 +162,7 @@ export default function SeasonInfo(props) {
                                                 sx={{ 
                                                     fontWeight: 500,
                                                     fontSize: '1rem',
-                                                    color: isTie ? '#FF1493' : 'inherit'
+                                                    color: 'inherit'
                                                 }}
                                             >
                                                 {winners.length === 1 
@@ -269,7 +269,7 @@ export default function SeasonInfo(props) {
                                                     sx={{ 
                                                         fontWeight: 500,
                                                         fontSize: '1rem',
-                                                        color: isTie ? '#FF1493' : 'inherit'
+                                                        color: 'inherit'
                                                     }}
                                                 >
                                                     {winners.length === 1 

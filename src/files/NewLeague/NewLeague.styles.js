@@ -292,9 +292,40 @@ export const TableContainer = styled(Box)(({ theme }) => ({
 }));
 
 // Table Header Row
-export const TableHeaderRow = styled(Box)(({ theme }) => ({
+export const TableHeaderRow = styled(Box)(({ theme, isAdmin }) => ({
     display: 'grid',
-    gridTemplateColumns: '2fr 1.5fr 1.5fr',
+    gridTemplateColumns: isAdmin ? '2fr 1fr 1fr 1fr' : '2fr 1fr 1fr',
+    gap: theme.spacing(1),
+    padding: theme.spacing(2),
+    background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.1) 0%, rgba(155, 48, 255, 0.1) 100%)',
+    borderBottom: `2px solid ${theme.palette.primary.main}`,
+    fontWeight: 700,
+    [theme.breakpoints.down('sm')]: {
+        gridTemplateColumns: '1fr',
+        padding: theme.spacing(1.5),
+        gap: 0,
+    },
+}));
+
+// Duplicate header rows so current and pending can be styled separately if needed
+export const TableHeaderRowCurrent = styled(Box)(({ theme, isAdmin }) => ({
+    display: 'grid',
+    gridTemplateColumns: isAdmin ? '2fr 1.5fr 1.5fr 1.5fr' : '2fr 1fr 1fr',
+    gap: theme.spacing(1),
+    padding: theme.spacing(2),
+    background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.1) 0%, rgba(155, 48, 255, 0.1) 100%)',
+    borderBottom: `2px solid ${theme.palette.primary.main}`,
+    fontWeight: 700,
+    [theme.breakpoints.down('sm')]: {
+        gridTemplateColumns: '1fr',
+        padding: theme.spacing(1.5),
+        gap: 0,
+    },
+}));
+
+export const TableHeaderRowPending = styled(Box)(({ theme, isAdmin }) => ({
+    display: 'grid',
+    gridTemplateColumns: isAdmin ? '2fr 1.5fr 1.5fr' : '2fr 1fr',
     gap: theme.spacing(1),
     padding: theme.spacing(2),
     background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.1) 0%, rgba(155, 48, 255, 0.1) 100%)',
@@ -321,9 +352,51 @@ export const TableHeaderCell = styled(Typography)(({ theme }) => ({
 }));
 
 // Table Data Row
-export const TableRow = styled(Box)(({ theme }) => ({
+export const TableRow = styled(Box)(({ theme, isAdmin }) => ({
     display: 'grid',
-    gridTemplateColumns: '2fr 1.5fr 1.5fr',
+    gridTemplateColumns: isAdmin ? '2fr 1fr 1fr 1fr' : '2fr 1fr 1fr',
+    gap: theme.spacing(1),
+    padding: theme.spacing(2),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    alignItems: 'center',
+    transition: 'background-color 0.2s ease',
+    '&:hover': {
+        backgroundColor: 'rgba(255, 20, 147, 0.03)',
+    },
+    '&:last-child': {
+        borderBottom: 'none',
+    },
+    [theme.breakpoints.down('sm')]: {
+        gridTemplateColumns: '1fr',
+        padding: theme.spacing(1.5),
+        gap: theme.spacing(1),
+    },
+}));
+
+export const TableRowCurrent = styled(Box)(({ theme, isAdmin }) => ({
+    display: 'grid',
+    gridTemplateColumns: isAdmin ? '2fr 1.5fr 1.5fr 1.5fr' : '2fr 1fr 1fr',
+    gap: theme.spacing(1),
+    padding: theme.spacing(2),
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    alignItems: 'center',
+    transition: 'background-color 0.2s ease',
+    '&:hover': {
+        backgroundColor: 'rgba(255, 20, 147, 0.03)',
+    },
+    '&:last-child': {
+        borderBottom: 'none',
+    },
+    [theme.breakpoints.down('sm')]: {
+        gridTemplateColumns: '1fr',
+        padding: theme.spacing(1.5),
+        gap: theme.spacing(1),
+    },
+}));
+
+export const TableRowPending = styled(Box)(({ theme, isAdmin }) => ({
+    display: 'grid',
+    gridTemplateColumns: isAdmin ? '2fr 1.5fr 1.5fr' : '2fr 1fr',
     gap: theme.spacing(1),
     padding: theme.spacing(2),
     borderBottom: `1px solid ${theme.palette.divider}`,
