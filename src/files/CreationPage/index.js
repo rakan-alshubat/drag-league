@@ -266,7 +266,6 @@ export default function CreationPage(){
             lgQueenNames: queenArray,
             lgPublic: publicLeague,
             lgPrivate: !publicLeague,
-            lgFullyPrivate: false,
             lgChallengePoints: Number(pointValue) || 0,
             lgLipSyncPoints: lipSyncAssassin && Number(lipSyncPoints) || 0,
             lgBonusPoints: bonusArray.length ? bonusArray : null,

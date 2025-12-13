@@ -92,21 +92,60 @@ export default function NewLeague( userData ) {
                 const currentHistory = League.lgHistory || [];
                 const historyEntry = new Date().toISOString() + '. Ranking deadline passed - league automatically started';
 
-                client.graphql({
-                    query: updateLeague,
-                    variables: {
-                        input: {
-                            id: League.id,
-                            lgFinished: 'active',
-                            lgHistory: [...currentHistory, historyEntry]
+                (async () => {
+                    try {
+                        // fetch players for this league
+                        const playersResult = await client.graphql({ query: playersByLeagueId, variables: { leagueId: League.id, limit: 1000 } });
+                        const players = playersResult?.data?.playersByLeagueId?.items || [];
+
+                        // delete players who didn't submit
+                        const toDelete = players.filter(p => !p.plRankings || (Array.isArray(p.plRankings) && p.plRankings.length === 0));
+                        for (const p of toDelete) {
+                            try {
+                                await client.graphql({ query: deletePlayer, variables: { input: { id: p.id } } });
+                            } catch (e) {
+                                console.warn('Failed to delete player during auto-start cleanup:', p.id, e);
+                            }
+
+                            // remove league from user's leagues array if present
+                            try {
+                                const targetEmail = String(p.plEmail || p.id || '').toLowerCase().trim();
+                                if (targetEmail) {
+                                    const userRes = await client.graphql({ query: getUsers, variables: { id: targetEmail } });
+                                    const userObj = userRes?.data?.getUsers;
+                                    if (userObj) {
+                                        const userLeagues = Array.isArray(userObj.leagues) ? userObj.leagues.slice() : [];
+                                        const filteredLeagues = userLeagues.filter(entry => {
+                                            const parts = String(entry || '').split('|').map(s => s.trim());
+                                            return parts[1] !== League.id;
+                                        });
+                                        if (filteredLeagues.length !== userLeagues.length) {
+                                            await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, leagues: filteredLeagues } } });
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('Failed to update user record during auto-start cleanup:', e);
+                            }
                         }
+
+                        const result = await client.graphql({
+                            query: updateLeague,
+                            variables: {
+                                input: {
+                                    id: League.id,
+                                    lgFinished: 'active',
+                                    lgPendingPlayers: [],
+                                    lgHistory: [...currentHistory, historyEntry]
+                                }
+                            }
+                        });
+                        console.log('League auto-started:', result);
+                        router.push(`/League/${League.id}`);
+                    } catch (err) {
+                        console.error('Error auto-starting league (cleanup):', err);
                     }
-                }).then((result) => {
-                    console.log('League auto-started:', result);
-                    router.push(`/League/${League.id}`)
-                }).catch(err => {
-                    console.error('Error auto-starting league:', err);
-                });
+                })();
             }
         };
 
@@ -119,11 +158,12 @@ export default function NewLeague( userData ) {
     const currentPlayerData = () => {
         if (Player && Array.isArray(Player)) {
             return Player.map((player) => {
+                const emailRaw = player.plEmail || player.id || '';
                 const row = {
                     name: player.plName,
                     role: player.plStatus,
                     submitted: player.plRankings ? 'Submitted' : 'Pending',
-                    email: player.id.toLowerCase()
+                    email: String(emailRaw).toLowerCase()
                 };
                 return row;
             });
@@ -221,8 +261,30 @@ export default function NewLeague( userData ) {
     };
 
     const handleStartLeague = () => {
+        // Determine players who have not submitted (exclude 'requested' entries)
+        const allPlayers = Array.isArray(Player) ? Player.filter(p => String((p.plStatus || '')).toLowerCase() !== 'requested') : [];
+        const notSubmitted = allPlayers.filter(p => {
+            return !p.plRankings || (Array.isArray(p.plRankings) && p.plRankings.length === 0);
+        });
+
+        if (notSubmitted.length > 0) {
+            const previewNames = notSubmitted.map(p => p.plName || p.plEmail || p.id).slice(0, 10).join(', ');
+            setPopUpTitle('Start League?')
+            setPopUpDescription(
+                <Box>
+                    <InviteSectionTitle>Starting the league will close registrations and freeze the player list for {League?.lgName}. This cannot be undone.</InviteSectionTitle>
+                    <Box sx={{ mt: 2 }}>
+                        <Alert severity="warning">{notSubmitted.length} player{notSubmitted.length > 1 ? 's' : ''} have not submitted rankings: {previewNames}{notSubmitted.length > 10 ? ', ...' : ''}</Alert>
+                        <Typography variant="body2" sx={{ mt: 1 }}>You can still start the league, but missing submissions will not be counted.</Typography>
+                    </Box>
+                </Box>
+            )
+            setConfirmOpen(true)
+            return;
+        }
+
         setPopUpTitle('Start League?')
-        setPopUpDescription(<InviteSectionTitle>Starting the league will close registrations and freeze the player list for ${League?.lgName}. Make sure you&apos;re ready — this cannot be undone.</InviteSectionTitle>)
+        setPopUpDescription(<InviteSectionTitle>Starting the league will close registrations and freeze the player list for {League?.lgName}. Make sure you&apos;re ready — this cannot be undone.</InviteSectionTitle>)
         setConfirmOpen(true)
     };
 
@@ -268,12 +330,6 @@ export default function NewLeague( userData ) {
             {isAdmin && (
                 <ActionRow>
                     <SecondaryButton
-                        startIcon={<EditIcon />}
-                        onClick={() => { /* noop for now */ }}
-                    >
-                        Edit League
-                    </SecondaryButton>
-                    <SecondaryButton
                         startIcon={<EmojiEventsIcon />}
                         onClick={() => handleStartLeague()}
                     >
@@ -305,7 +361,7 @@ export default function NewLeague( userData ) {
                             <TableHeaderCell>Rankings</TableHeaderCell>
                             {isAdmin && <TableHeaderCell>Actions</TableHeaderCell>}
                         </TableHeaderRowCurrent>
-                        {currentPlayerData().map((player, idx) => (
+                        {currentPlayerData().reverse().map((player, idx) => (
                             <TableRowCurrent key={idx} isAdmin={isAdmin}>
                                 <TableCell sx={{ justifyContent: { xs: 'flex-start', sm: 'center' } }}>
                                     <Typography variant="body1" fontWeight={600}>
@@ -633,12 +689,53 @@ export default function NewLeague( userData ) {
                             const currentHistory = League.lgHistory || [];
                             const historyEntry = new Date().toISOString() + '. League manually started by admin';
 
+                            try {
+                                // fetch players and delete those who didn't submit
+                                const playersResult = await client.graphql({ query: playersByLeagueId, variables: { leagueId: League.id, limit: 1000 } });
+                                const players = playersResult?.data?.playersByLeagueId?.items || [];
+                                const toDelete = players.filter(p => !p.plRankings || (Array.isArray(p.plRankings) && p.plRankings.length === 0));
+
+                                for (const p of toDelete) {
+                                    try {
+                                        await client.graphql({ query: deletePlayer, variables: { input: { id: p.id } } });
+                                        console.log('Deleted unsubmitted player:', p.id);
+                                    } catch (e) {
+                                        console.warn('Failed to delete unsubmitted player:', p.id, e);
+                                    }
+
+                                    // remove league from user's leagues array if present
+                                    try {
+                                        const targetEmail = String(p.plEmail || p.id || '').toLowerCase().trim();
+                                        if (targetEmail) {
+                                            const userRes = await client.graphql({ query: getUsers, variables: { id: targetEmail } });
+                                            const userObj = userRes?.data?.getUsers;
+                                            if (userObj) {
+                                                const userLeagues = Array.isArray(userObj.leagues) ? userObj.leagues.slice() : [];
+                                                const filteredLeagues = userLeagues.filter(entry => {
+                                                    const parts = String(entry || '').split('|').map(s => s.trim());
+                                                    return parts[1] !== League.id;
+                                                });
+                                                if (filteredLeagues.length !== userLeagues.length) {
+                                                    await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, leagues: filteredLeagues } } });
+                                                    console.log('Removed league reference from user:', userObj.id);
+                                                }
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.warn('Failed to update user after deleting unsubmitted player:', e);
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('Error during start-league cleanup:', e);
+                            }
+
                             const startResult = await client.graphql({
                                 query: updateLeague,
                                 variables: {
                                     input: {
                                         id: League.id,
                                         lgFinished: 'active',
+                                        lgPendingPlayers: [],
                                         lgHistory: [...currentHistory, historyEntry]
                                     }
                                 }
@@ -782,9 +879,12 @@ export default function NewLeague( userData ) {
                                     }
                                 }
 
-                                // Get the current user's name from Player data
-                                const currentUserPlayer = Player?.find(p => p.id?.toLowerCase() === userEmail?.toLowerCase());
-                                const currentUserName = currentUserPlayer?.plName || 'A league admin';
+                                // Get the current user's name from Player data (match by plEmail first, fallback to id), then fallback to User.name
+                                const currentUserPlayer = Player?.find(p => {
+                                    const emailOrId = String(p.plEmail || p.id || '').toLowerCase();
+                                    return emailOrId === String(userEmail || '').toLowerCase();
+                                });
+                                const currentUserName = currentUserPlayer?.plName || User?.name || 'A league admin';
 
                                 try {
                                     const inviteHtml = `
@@ -929,11 +1029,43 @@ export default function NewLeague( userData ) {
                                 return pl[1]?.toLowerCase() !== pickedPlayer?.toLowerCase();
                             });
 
+                            const normalizedEmail = pickedPlayer ? String(pickedPlayer).toLowerCase().trim() : '';
                             const createPlayerResult = await client.graphql({
                                 query: createPlayer,
-                                variables: { input: { leagueId: League.id, plEmail: pickedPlayer, plName: displayName, plStatus: 'Player' } }
+                                variables: { input: { id: normalizedEmail, leagueId: League.id, plEmail: normalizedEmail, plName: displayName, plStatus: 'Player' } }
                             });
                             console.log('Player accepted and created:', createPlayerResult);
+
+                            // Update the requesting user's record: add this league to `leagues` and remove from `pendingLeagues`
+                            try {
+                                const userRes = await client.graphql({ query: getUsers, variables: { id: pickedPlayer } });
+                                const userObj = userRes?.data?.getUsers;
+                                const leagueEntry = `${new Date().toISOString()}|${League.id}|${League?.lgName || ''}`;
+
+                                if (!userObj) {
+                                    // create a minimal user record with this league
+                                    await client.graphql({ query: createUsers, variables: { input: { id: pickedPlayer, leagues: [leagueEntry], pendingLeagues: [] } } });
+                                    console.log('Created user record for accepted player:', pickedPlayer);
+                                } else {
+                                    const existingLeagues = Array.isArray(userObj.leagues) ? userObj.leagues.slice() : [];
+                                    const existingPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
+
+                                    // Add league to leagues array if not present
+                                    const alreadyInLeagues = existingLeagues.some(l => {
+                                        const parts = String(l || '').split('|').map(s => s.trim());
+                                        return parts[1] === League.id;
+                                    });
+                                    if (!alreadyInLeagues) existingLeagues.push(leagueEntry);
+
+                                    // Remove this league from pendingLeagues
+                                    const filteredPending = existingPending.filter(pid => String(pid) !== String(League.id));
+
+                                    await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, leagues: existingLeagues, pendingLeagues: filteredPending } } });
+                                    console.log('Updated user leagues/pendingLeagues for:', userObj.id);
+                                }
+                            } catch (e) {
+                                console.warn('Failed to update user record after accepting request:', e);
+                            }
 
                             const currentHistory = League.lgHistory || [];
                             const historyEntry = new Date().toISOString() + '. ' + displayName + ' accepted and joined the league';

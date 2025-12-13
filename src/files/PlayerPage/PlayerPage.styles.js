@@ -97,6 +97,17 @@ export const LeagueList = styled(Box)(({ theme }) => ({
         padding: theme.spacing(2),
         marginTop: theme.spacing(1.5),
     },
+    // Limit height and allow scrolling when there are many leagues
+    maxHeight: '360px',
+    overflowY: 'auto',
+    // subtle scrollbar styling
+    '&::-webkit-scrollbar': {
+        width: '10px',
+    },
+    '&::-webkit-scrollbar-thumb': {
+        background: 'rgba(0,0,0,0.12)',
+        borderRadius: '6px',
+    },
 }));
 
 export const LeagueLink = styled(Typography)(({ theme }) => ({

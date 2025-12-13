@@ -37,7 +37,7 @@
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-dragleague-dev-041d3-deployment/amplify-cfn-templates/api/cloudformation-template.json",
         "logicalId": "apidragLeagueDev"
       },
-      "lastPushTimeStamp": "2025-12-09T21:33:13.717Z",
+      "lastPushTimeStamp": "2025-12-13T04:34:12.058Z",
       "lastPushDirHash": "2GIWRH10IsovHNz2FeV2F5sWm9E="
     }
   },
@@ -76,7 +76,7 @@
         "IdentityPoolName": "dragleaguedf3b00a0_identitypool_df3b00a0__dev",
         "UserPoolName": "dragleaguedf3b00a0_userpool_df3b00a0"
       },
-      "lastPushTimeStamp": "2025-12-09T21:33:11.770Z",
+      "lastPushTimeStamp": "2025-12-13T04:34:12.075Z",
       "providerMetadata": {
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-dragleague-dev-041d3-deployment/amplify-cfn-templates/auth/dragleaguedf3b00a0-cloudformation-template.json",
         "logicalId": "authdragleaguedf3b00a0"
