@@ -537,7 +537,7 @@ export default function League(){
                                                     // Update league pending players (avoid duplicates)
                                                     const leaguePending = Array.isArray(leagueData?.lgPendingPlayers) ? leagueData.lgPendingPlayers.slice() : [];
                                                     const already = leaguePending.some(p => {
-                                                        const parts = String(p || '').split('|').map(s => s.trim()).f1ilter(Boolean);
+                                                        const parts = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
                                                         return parts[1]?.toLowerCase() === userEmail;
                                                     });
 
