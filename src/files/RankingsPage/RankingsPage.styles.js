@@ -242,6 +242,21 @@ export const TitleRow = styled(Box)(({ theme }) => ({
     width: '100%'
 }));
 
+// Back button for navigation to league
+export const BackButton = styled(Button)(({ theme }) => ({
+    position: 'absolute',
+    left: theme.spacing(2),
+    top: theme.spacing(2),
+    padding: theme.spacing(0.5, 1.25),
+    minWidth: 'auto',
+    borderRadius: theme.spacing(1),
+    textTransform: 'none',
+    [theme.breakpoints.down('sm')]: {
+        left: theme.spacing(1),
+        top: theme.spacing(1),
+    },
+}));
+
 export const ErrorAlert = styled(Alert)(({ theme }) => ({
     display: 'flex',
     alignItems: 'center',

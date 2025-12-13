@@ -43,8 +43,10 @@ import {
     StatusChip,
     EmptyState,
     EmptyStateText,
+    InviteText,
     BottomActionBar,
-    InviteSectionHeader
+    InviteSectionHeader,
+    InviteSectionTitle
 } from "./NewLeague.styles";
 
 const DEADLINE_CHECK_INTERVAL_MS = 60000; // Check deadline every 60 seconds
@@ -181,13 +183,14 @@ export default function NewLeague( userData ) {
         return bonuses
     }
 
-    const handlePlayerSubmit = () => {
-        router.push(`/Rank/${League.id}`)
+    const handlePlayerSubmit = (name) => {
+        const query = name ? `?displayName=${encodeURIComponent(name)}` : '';
+        router.push(`/Rank/${League.id}${query}`)
     };
 
     const handleAcceptRequest = (player) => {
         setPopUpTitle('Accept player?')
-        setPopUpDescription(`${player.name} has requested to join. Accepting will add them as a player who can submit rankings immediately. Continue?`)
+        setPopUpDescription(<InviteSectionTitle>{player.name} has requested to join. Accepting will add them as a player who can submit rankings immediately. Continue?</InviteSectionTitle>)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -195,7 +198,7 @@ export default function NewLeague( userData ) {
 
     const handleDeclineRequest = (player) => {
         setPopUpTitle('Decline player?')
-        setPopUpDescription(`Decline ${player.name}'s request to join? They won't be added to the league and won't be notified further.`)
+        setPopUpDescription(<InviteSectionTitle>Decline {player.name}&apos;s request to join? They won&apos;t be added to the league and won&apos;t be notified further.</InviteSectionTitle>)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -203,7 +206,7 @@ export default function NewLeague( userData ) {
 
     const handleKickRequest = (player) => {
         setPopUpTitle('Revoke invite?')
-        setPopUpDescription(`Revoke the invite for ${player.name}? They will no longer be able to accept the invitation using the invite link.`)
+        setPopUpDescription(<InviteSectionTitle>Revoke the invite for {player.name}? They will no longer be able to accept the invitation using the invite link.</InviteSectionTitle>)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -211,7 +214,7 @@ export default function NewLeague( userData ) {
 
     const handleRemovePlayer = (player) => {
         setPopUpTitle('Kick player?')
-        setPopUpDescription(`Remove ${player.name} from the league? This will delete their player record and submissions.`)
+        setPopUpDescription(<InviteSectionTitle>Remove {player.name} from the league? This will delete their player record and submissions.</InviteSectionTitle>)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -219,25 +222,25 @@ export default function NewLeague( userData ) {
 
     const handleStartLeague = () => {
         setPopUpTitle('Start League?')
-        setPopUpDescription(`Starting the league will close registrations and freeze the player list for ${League?.lgName}. Make sure you're ready — this cannot be undone.`)
+        setPopUpDescription(<InviteSectionTitle>Starting the league will close registrations and freeze the player list for ${League?.lgName}. Make sure you&apos;re ready — this cannot be undone.</InviteSectionTitle>)
         setConfirmOpen(true)
     };
 
     const handleDeleteLeague = () => {
         setPopUpTitle('Delete League?')
-        setPopUpDescription(`This will permanently delete "${League?.lgName}" and all its data (players, submissions, settings). This action cannot be undone. Are you sure you want to proceed?`)
+        setPopUpDescription(<InviteSectionTitle>This will permanently delete {League?.lgName} and all its data (players, submissions, settings). This action cannot be undone. Are you sure you want to proceed?</InviteSectionTitle>)
         setConfirmOpen(true)
     }
 
     const handleInvitePlayer = () => {
         setPopUpTitle('Invite Player')
-        setPopUpDescription('Invite a new player by entering their name and email, or share the invite link below. Invited players can accept to join your league.')
+        setPopUpDescription(<InviteSectionTitle>Invite a new player by entering their name and email, or share the invite link below. Invited players can accept to join your league.</InviteSectionTitle>)
         setConfirmOpen(true)
     }
 
     const handlePromoteRequest = (player) => {
         setPopUpTitle('Promote to Admin')
-        setPopUpDescription(`Promote ${player.name} to league admin? They'll get permissions to manage invites, start the league, and update settings.`)
+        setPopUpDescription(<InviteSectionTitle>Promote {player.name} to league admin? They&apos;ll get permissions to manage invites, start the league, and update settings.</InviteSectionTitle>)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -373,7 +376,7 @@ export default function NewLeague( userData ) {
                                                 return (
                                                     <PrimaryButton
                                                         size="small"
-                                                        onClick={() => handlePlayerSubmit()}
+                                                        onClick={() => handlePlayerSubmit(player.name)}
                                                     >
                                                         Submit Rankings
                                                     </PrimaryButton>
@@ -526,20 +529,50 @@ export default function NewLeague( userData ) {
                                 </TableCell>
                                 {isAdmin && (
                                     <TableCell>
-                                        {player.status === 'invited' && (
-                                            <Tooltip title="Revoke Invite">
-                                                <IconButton
-                                                    size="small"
-                                                    sx={{
-                                                        color: '#f44336',
-                                                        '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
-                                                    }}
-                                                    onClick={() => handleKickRequest(player)}
-                                                >
-                                                    <CloseIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                        )}
+                                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                            {player.status === 'invited' ? (
+                                                <Tooltip title="Revoke Invite">
+                                                    <IconButton
+                                                        size="small"
+                                                        sx={{
+                                                            color: '#f44336',
+                                                            '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
+                                                        }}
+                                                        onClick={() => handleKickRequest(player)}
+                                                    >
+                                                        <CloseIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            ) : (
+                                                // pending/requested -> show accept/decline icons
+                                                <>
+                                                    <Tooltip title="Accept Request">
+                                                        <IconButton
+                                                            size="small"
+                                                            sx={{
+                                                                color: '#4caf50',
+                                                                '&:hover': { backgroundColor: 'rgba(76, 175, 80, 0.08)' }
+                                                            }}
+                                                            onClick={() => handleAcceptRequest(player)}
+                                                        >
+                                                            <CheckIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Decline Request">
+                                                        <IconButton
+                                                            size="small"
+                                                            sx={{
+                                                                color: '#f44336',
+                                                                '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.08)' }
+                                                            }}
+                                                            onClick={() => handleDeclineRequest(player)}
+                                                        >
+                                                            <CloseIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </>
+                                            )}
+                                        </Box>
                                     </TableCell>
                                 )}
                             </TableRowPending>
@@ -982,6 +1015,28 @@ export default function NewLeague( userData ) {
                                 }
                             });
                             console.log('Player declined:', declineResult);
+                            // Also remove this league from the requesting user's pendingLeagues (if user exists)
+                            try {
+                                const targetEmail = pickedPlayer ? String(pickedPlayer).toLowerCase().trim() : null;
+                                if (targetEmail) {
+                                    const userRes = await client.graphql({ query: getUsers, variables: { id: targetEmail } });
+                                    const userObj = userRes?.data?.getUsers;
+                                    if (userObj) {
+                                        const userPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
+                                        const filteredPending = userPending.filter(pid => String(pid) !== String(League.id));
+                                        if (filteredPending.length !== userPending.length) {
+                                            await client.graphql({
+                                                query: updateUsers,
+                                                variables: { input: { id: userObj.id, pendingLeagues: filteredPending } }
+                                            });
+                                            console.log('Removed pending league reference from requester:', userObj.id);
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('Failed to remove pending league from requester record:', e);
+                            }
+
                             router.reload();
                         } else if(popUpTitle === 'Kick player?'){
                             const kickResult = await client.graphql({
@@ -1073,7 +1128,7 @@ export default function NewLeague( userData ) {
                             onChange={(e) => setPopUpEmailInput(filterPipeCharacter(e.target.value))}
                         />
                         <Box sx={{ mt: 1, mb: 1, textAlign: 'center' }}>
-                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>or share invite link</Typography>
+                            <InviteText variant="body2">or share invite link</InviteText>
                         </Box>
                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                             <TextField
@@ -1105,9 +1160,9 @@ export default function NewLeague( userData ) {
                             </Tooltip>
                         </Box>
                         {popUpCopySuccess && (
-                            <Typography variant="caption" sx={{ color: 'success.main', textAlign: 'center' }}>
+                            <InviteText variant="caption" sx={{ color: 'success.main' }}>
                                 {popUpCopySuccess}
-                            </Typography>
+                            </InviteText>
                         )}
                     </Box>
                 )}

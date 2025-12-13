@@ -8,7 +8,7 @@ import { createPlayer, updateLeague, updateUsers } from "@/graphql/mutations";
 import LoadingWheel from "@/files/LoadingWheel";
 import ErrorPopup from "@/files/ErrorPopUp";
 import PopUp from "@/files/PopUp";
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, TextField } from '@mui/material';
 import { useEffect, useState, useRef } from "react";
 import {
     onCreatePlayer,
@@ -34,6 +34,12 @@ export default function League(){
     const [isPlayerOrAdmin, setIsPlayerOrAdmin] = useState(false);
     const [showRequestPopup, setShowRequestPopup] = useState(false);
     const [isInvited, setIsInvited] = useState(false);
+    const [pendingType, setPendingType] = useState(null); // 'invited' | 'requested' | null
+    const [requestName, setRequestName] = useState('');
+    const [requestError, setRequestError] = useState('');
+
+    // disable request button when name is empty (only for request-to-join variant)
+    const requestDisabled = !isInvited && (!requestName || String(requestName).trim() === '');
     
     const router = useRouter();
     const client = generateClient()
@@ -86,12 +92,30 @@ export default function League(){
                             const isAuthorized = userIsAdmin || userPlayer;
                             setIsPlayerOrAdmin(!!isAuthorized);
 
-                            // Check if user is invited (in pending players list)
-                            const userIsInvited = league.lgPendingPlayers?.includes(userEmail) ||
-                                                  userResults.data.getUsers?.pendingLeagues?.includes(id);
-                            setIsInvited(userIsInvited);
+                            // Determine pending type for the current user (invited vs requested)
+                            let pendingForUser = null;
+                            const pendingList = Array.isArray(league.lgPendingPlayers) ? league.lgPendingPlayers : [];
+                            for (const p of pendingList) {
+                                const parts = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
+                                // parts format: [type, email, name]
+                                if (parts[1] && parts[1].toLowerCase() === userEmail) {
+                                    const t = (parts[0] || '').toLowerCase();
+                                    pendingForUser = t === 'requested' ? 'requested' : 'invited';
+                                    break;
+                                }
+                                // fallback: plain email stored directly
+                                if (String(p).toLowerCase() === userEmail) {
+                                    pendingForUser = 'invited';
+                                    break;
+                                }
+                            }
+                            // If not found in league pending list, but user's pendingLeagues includes the league, treat as requested
+                            if (!pendingForUser && userResults.data.getUsers?.pendingLeagues?.includes(id)) {
+                                pendingForUser = 'requested';
+                            }
 
-                            console.log('Privacy check:', { leagueIsPrivate, isAuthorized, userIsAdmin, hasPlayer: !!userPlayer, userIsInvited });
+                            setPendingType(pendingForUser);
+                            setIsInvited(pendingForUser === 'invited');
 
                             // If private and user is not authorized
                             if (leagueIsPrivate && !isAuthorized) {
@@ -430,46 +454,156 @@ export default function League(){
                             }}
                         >
                             <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#FF1493' }}>
-                                {isInvited ? '✉️ League Invitation' : '🔒 Private League'}
+                                {pendingType === 'invited' ? '✉️ League Invitation' : (pendingType === 'requested' ? '⏳ Request Pending' : '🔒 Private League')}
                             </Typography>
                             <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
-                                {isInvited
+                                {pendingType === 'invited'
                                     ? 'You have been invited to join this league! Would you like to accept or decline the invitation?'
-                                    : 'This league is private. Would you like to request to join?'}
+                                    : (pendingType === 'requested'
+                                        ? 'Your request to join this league is pending. The admins have not accepted you yet.'
+                                        : 'This league is private. Would you like to request to join?')}
                             </Typography>
-                            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-                                <button
-                                    onClick={isInvited ? handleDeclineInvitation : handleRequestClose}
-                                    style={{
-                                        padding: '10px 24px',
-                                        borderRadius: 8,
-                                        border: '2px solid #FF1493',
-                                        backgroundColor: 'white',
-                                        color: '#FF1493',
-                                        cursor: 'pointer',
-                                        fontWeight: 600
-                                    }}
-                                >
-                                    {isInvited ? 'Decline' : 'Cancel'}
-                                </button>
-                                <button
-                                    onClick={isInvited ? handleAcceptInvitation : () => {
-                                        // Will use the NewLeague component's request to join function
-                                        setShowRequestPopup(false);
-                                        setLeagueNotStarted(true);
-                                    }}
-                                    style={{
-                                        padding: '10px 24px',
-                                        borderRadius: 8,
-                                        border: 'none',
-                                        backgroundColor: '#FF1493',
-                                        color: 'white',
-                                        cursor: 'pointer',
-                                        fontWeight: 600
-                                    }}
-                                >
-                                    {isInvited ? 'Accept Invitation' : 'Request to Join'}
-                                </button>
+                            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexDirection: 'column', alignItems: 'stretch' }}>
+                                {pendingType === null && (
+                                    <Box sx={{ mb: 2 }}>
+                                        <TextField
+                                            fullWidth
+                                            label="Your display name"
+                                            value={requestName}
+                                            onChange={(e) => { setRequestName(e.target.value); setRequestError(''); }}
+                                            placeholder="How should other players see you?"
+                                            variant="outlined"
+                                            error={!!requestError}
+                                            helperText={requestError || ''}
+                                        />
+                                    </Box>
+                                )}
+                                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                                    <button
+                                        onClick={pendingType === 'invited' ? handleDeclineInvitation : handleRequestClose}
+                                        style={{
+                                            padding: '10px 24px',
+                                            borderRadius: 8,
+                                            border: '2px solid #FF1493',
+                                            backgroundColor: 'white',
+                                            color: '#FF1493',
+                                            cursor: 'pointer',
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        {pendingType === 'invited' ? 'Decline' : 'Back to My Leagues'}
+                                    </button>
+
+                                    {pendingType === 'invited' && (
+                                        <button
+                                            disabled={requestDisabled}
+                                            onClick={async () => { await handleAcceptInvitation(); }}
+                                            style={{
+                                                padding: '10px 24px',
+                                                borderRadius: 8,
+                                                border: 'none',
+                                                backgroundColor: '#FF1493',
+                                                color: 'white',
+                                                cursor: requestDisabled ? 'not-allowed' : 'pointer',
+                                                opacity: requestDisabled ? 0.6 : 1,
+                                                fontWeight: 600
+                                            }}
+                                        >
+                                            Accept Invitation
+                                        </button>
+                                    )}
+
+                                    {pendingType === 'requested' && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary', pl: 1 }}>
+                                            <Typography variant="body2">Your request is pending — admins have not accepted you yet.</Typography>
+                                        </Box>
+                                    )}
+
+                                    {pendingType === null && (
+                                        <button
+                                            disabled={requestDisabled}
+                                            onClick={async () => {
+                                                // Request to join flow: require a display name
+                                                if (!requestName || String(requestName).trim() === '') {
+                                                    setRequestError('Please enter a display name to request to join.');
+                                                    return;
+                                                }
+
+                                                setLoading(true);
+                                                try {
+                                                    const userEmail = (userData?.id || '').toLowerCase();
+                                                    const userName = String(requestName).trim();
+
+                                                    // Update league pending players (avoid duplicates)
+                                                    const leaguePending = Array.isArray(leagueData?.lgPendingPlayers) ? leagueData.lgPendingPlayers.slice() : [];
+                                                    const already = leaguePending.some(p => {
+                                                        const parts = String(p || '').split('|').map(s => s.trim()).f1ilter(Boolean);
+                                                        return parts[1]?.toLowerCase() === userEmail;
+                                                    });
+
+                                                    if (!already) {
+                                                        leaguePending.push(`requested|${userEmail}|${userName}`);
+                                                        const currentHistory = leagueData?.lgHistory || [];
+                                                        const historyEntry = new Date().toISOString() + '. ' + userName + ' requested to join the league';
+
+                                                        await client.graphql({
+                                                            query: updateLeague,
+                                                            variables: {
+                                                                input: {
+                                                                    id: leagueData.id,
+                                                                    lgPendingPlayers: leaguePending,
+                                                                    lgHistory: [...currentHistory, historyEntry]
+                                                                }
+                                                            }
+                                                        });
+                                                    }
+
+                                                    // Update user's pendingLeagues (avoid duplicates)
+                                                    try {
+                                                        const userPending = Array.isArray(userData?.pendingLeagues) ? userData.pendingLeagues.slice() : [];
+                                                        if (!userPending.includes(leagueData.id)) {
+                                                            await client.graphql({
+                                                                query: updateUsers,
+                                                                variables: {
+                                                                    input: {
+                                                                        id: userEmail,
+                                                                        pendingLeagues: [...userPending, leagueData.id]
+                                                                    }
+                                                                }
+                                                            });
+                                                        }
+                                                    } catch (e) {
+                                                        console.warn('Failed to update user pendingLeagues:', e);
+                                                    }
+
+                                                    // Store entered name locally and redirect user back to Player page
+                                                    setUserData(prev => ({ ...(prev || {}), name: userName }));
+                                                    setRequestName('');
+                                                    setRequestError('');
+                                                    setShowRequestPopup(false);
+                                                    router.push('/Player');
+                                                } catch (err) {
+                                                    console.error('Failed to submit join request:', err);
+                                                    setRequestError('Failed to submit request. Try again.');
+                                                } finally {
+                                                    setLoading(false);
+                                                }
+                                            }}
+                                            style={{
+                                                padding: '10px 24px',
+                                                borderRadius: 8,
+                                                border: 'none',
+                                                backgroundColor: '#FF1493',
+                                                color: 'white',
+                                                cursor: requestDisabled ? 'not-allowed' : 'pointer',
+                                                opacity: requestDisabled ? 0.6 : 1,
+                                                fontWeight: 600
+                                            }}
+                                        >
+                                            Request to Join
+                                        </button>
+                                    )}
+                                </Box>
                             </Box>
                         </Box>
                     </Box>

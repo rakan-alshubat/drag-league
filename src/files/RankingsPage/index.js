@@ -20,6 +20,8 @@ import { FormContainer,
     DescriptionText,
     StyledLink,
     TitleRow,} from "./RankingsPage.styles";
+import { BackButton } from "./RankingsPage.styles";
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import { MenuItem } from "@mui/material";
 import { useEffect, useState, useRef } from "react";
 
@@ -94,12 +96,14 @@ export default function RankingsPage(props){
     useEffect(() => {
         const hasNoRankings = !Player?.plRankings || !Array.isArray(Player.plRankings) || Player.plRankings.length === 0;
         if (!isEditMode && hasNoRankings) {
-            if (User?.name) {
-
+            const fromQuery = router?.query?.displayName;
+            if (fromQuery) {
+                setDisplayName(String(fromQuery));
+            } else if (User?.name) {
                 setDisplayName(User.name);
             }
         }
-    }, [isEditMode, Player?.plRankings, User?.name]);
+    }, [isEditMode, Player?.plRankings, User?.name, router?.query?.displayName]);
 
     // Populate form in edit mode
     useEffect(() => {
@@ -352,6 +356,12 @@ export default function RankingsPage(props){
 
     return(
         <FormContainer>
+            <BackButton
+                startIcon={<ArrowBackIosNewIcon fontSize="small" />}
+                onClick={() => router.push('/League/' + (League?.id || id))}
+            >
+                Back
+            </BackButton>
             <CreationTitleBox>{isEditMode ? `Edit Rankings - ${League?.lgName}` : League?.lgName}</CreationTitleBox>
             <DescriptionBox>
                 <DescriptionText>

@@ -21,20 +21,21 @@ export const Header = styled(Box)(({ theme }) => ({
 
 export const HeaderTitle = styled(Typography)(({ theme }) => ({
     margin: 0,
-    fontSize: 22,
+    fontSize: 30,
     fontWeight: 700,
+    color: '#FF1493',
     lineHeight: 1.1,
     [theme.breakpoints.down('sm')]: {
-        fontSize: 18,
+        fontSize: 22,
     },
 }));
 
 export const HeaderSubtitle = styled(Typography)(({ theme }) => ({
     marginTop: 6,
     color: theme.palette.text.secondary,
-    fontSize: 13,
+    fontSize: 18,
     [theme.breakpoints.down('sm')]: {
-        fontSize: 12,
+        fontSize: 16,
     },
 }));
 
@@ -115,7 +116,7 @@ export const WinnerLabel = styled(Typography)(({ theme }) => ({
     color: theme.palette.text.secondary,
     marginBottom: theme.spacing(0.5),
     [theme.breakpoints.down('sm')]: {
-        fontSize: 12,
+        fontSize: 18,
     },
 }));
 

@@ -310,7 +310,7 @@ export const TableHeaderRow = styled(Box)(({ theme, isAdmin }) => ({
 // Duplicate header rows so current and pending can be styled separately if needed
 export const TableHeaderRowCurrent = styled(Box)(({ theme, isAdmin }) => ({
     display: 'grid',
-    gridTemplateColumns: isAdmin ? '2fr 1.5fr 1.5fr 1.5fr' : '2fr 1fr 1fr',
+    gridTemplateColumns: isAdmin ? '2fr 1.5fr 1.5fr 1.5fr' : '1fr 1fr 1fr',
     gap: theme.spacing(1),
     padding: theme.spacing(2),
     background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.1) 0%, rgba(155, 48, 255, 0.1) 100%)',
@@ -325,7 +325,7 @@ export const TableHeaderRowCurrent = styled(Box)(({ theme, isAdmin }) => ({
 
 export const TableHeaderRowPending = styled(Box)(({ theme, isAdmin }) => ({
     display: 'grid',
-    gridTemplateColumns: isAdmin ? '2fr 1.5fr 1.5fr' : '2fr 1fr',
+    gridTemplateColumns: isAdmin ? '2fr 1.5fr 1.5fr' : '1fr 1fr',
     gap: theme.spacing(1),
     padding: theme.spacing(2),
     background: 'linear-gradient(135deg, rgba(255, 20, 147, 0.1) 0%, rgba(155, 48, 255, 0.1) 100%)',
@@ -375,7 +375,7 @@ export const TableRow = styled(Box)(({ theme, isAdmin }) => ({
 
 export const TableRowCurrent = styled(Box)(({ theme, isAdmin }) => ({
     display: 'grid',
-    gridTemplateColumns: isAdmin ? '2fr 1.5fr 1.5fr 1.5fr' : '2fr 1fr 1fr',
+    gridTemplateColumns: isAdmin ? '2fr 1.5fr 1.5fr 1.5fr' : '1fr 1fr 1fr',
     gap: theme.spacing(1),
     padding: theme.spacing(2),
     borderBottom: `1px solid ${theme.palette.divider}`,
@@ -396,7 +396,7 @@ export const TableRowCurrent = styled(Box)(({ theme, isAdmin }) => ({
 
 export const TableRowPending = styled(Box)(({ theme, isAdmin }) => ({
     display: 'grid',
-    gridTemplateColumns: isAdmin ? '2fr 1.5fr 1.5fr' : '2fr 1fr',
+    gridTemplateColumns: isAdmin ? '2fr 1.5fr 1.5fr' : '1fr 1fr',
     gap: theme.spacing(1),
     padding: theme.spacing(2),
     borderBottom: `1px solid ${theme.palette.divider}`,
@@ -477,6 +477,17 @@ export const EmptyStateText = styled(Typography)(({ theme }) => ({
     marginTop: theme.spacing(1),
 }));
 
+// Invite popup typography (used for invite description and small notes)
+export const InviteText = styled(Typography)(({ theme }) => ({
+    color: theme.palette.text.secondary,
+    textAlign: 'center',
+    fontWeight: 500,
+    lineHeight: 1.4,
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '0.9rem',
+    },
+}));
+
 // Bottom Action Bar
 export const BottomActionBar = styled(Box)(({ theme }) => ({
     display: 'flex',
@@ -506,5 +517,14 @@ export const InviteSectionHeader = styled(Box)(({ theme }) => ({
     [theme.breakpoints.down('sm')]: {
         flexDirection: 'column',
         alignItems: 'stretch',
+    },
+}));
+
+export const InviteSectionTitle = styled(Typography)(({ theme }) => ({
+    fontWeight: 500,
+    fontSize: '1rem',
+    color: theme.palette.primary.secondary,
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '0.90rem',
     },
 }));
