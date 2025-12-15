@@ -36,7 +36,7 @@ export const ContentBox = styled(DialogContent)(({ theme }) => ({
 }));
 
 export const DescriptionText = styled(Typography)(({ theme }) => ({
-    fontSize: '3.95rem',
+    fontSize: '1.2rem',
     color: theme.palette.text.primary,
     lineHeight: 1.45,
     margin: theme.spacing(0, 0, 1.5, 0),

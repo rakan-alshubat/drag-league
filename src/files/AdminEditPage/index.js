@@ -895,6 +895,15 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
     // Render player editor
     if (mode === 'player' && selectedPlayer) {
         const totalQueens = allQueens.length;
+        const handleRankingChange = (index, value) => {
+            const next = [...editedRankings];
+            // Clear any other occurrences of this queen to prevent duplication
+            for (let i = 0; i < next.length; i++) {
+                if (i !== index && next[i] === value) next[i] = '';
+            }
+            next[index] = value;
+            setEditedRankings(next);
+        };
         
         return (
             <>
@@ -921,17 +930,24 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                             <FormControl fullWidth>
                                                 <Select
                                                     value={queen || ''}
-                                                    onChange={(e) => {
-                                                        const newRankings = [...editedRankings];
-                                                        newRankings[index] = e.target.value;
-                                                        setEditedRankings(newRankings);
-                                                    }}
+                                                    onChange={(e) => handleRankingChange(index, e.target.value)}
                                                 >
-                                                    {allQueens.map((q) => (
-                                                        <MenuItem key={q} value={q}>
-                                                            {q}
-                                                        </MenuItem>
-                                                    ))}
+                                                    <MenuItem value="">
+                                                        <em style={{ color: '#999' }}>Select a queen</em>
+                                                    </MenuItem>
+                                                    {allQueens.map((q) => {
+                                                        const otherSelected = new Set(editedRankings.map((val, i) => (i !== index ? val : null)).filter(Boolean));
+                                                        const isTaken = otherSelected.has(q);
+                                                        return (
+                                                            <MenuItem
+                                                                key={q}
+                                                                value={q}
+                                                                sx={isTaken ? { color: '#999', opacity: 0.7 } : {}}
+                                                            >
+                                                                {q}
+                                                            </MenuItem>
+                                                        );
+                                                    })}
                                                 </Select>
                                             </FormControl>
                                         </EntryRow>

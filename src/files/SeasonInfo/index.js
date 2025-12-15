@@ -2,6 +2,7 @@
 import React from 'react';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
+import Box from '@mui/material/Box';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import mostFrequentName from '../../helpers/lipSyncAssassin';
 import {
@@ -165,12 +166,22 @@ export default function SeasonInfo(props) {
                                                     color: 'inherit'
                                                 }}
                                             >
-                                                {winners.length === 1 
-                                                    ? winners[0]
-                                                    : winners.length === 2
-                                                        ? `${winners[0]} & ${winners[1]}`
-                                                        : `${winners.slice(0, -1).join(', ')}, & ${winners[winners.length - 1]}`
-                                                }
+                                                {(() => {
+                                                    // Build counts preserving first-appearance order
+                                                    const counts = new Map();
+                                                    const order = [];
+                                                    winners.forEach(name => {
+                                                        const n = String(name || '').trim();
+                                                        if (!counts.has(n)) order.push(n);
+                                                        counts.set(n, (counts.get(n) || 0) + 1);
+                                                    });
+
+                                                    const parts = order.map(n => counts.get(n) > 1 ? `${n} x${counts.get(n)}` : n);
+                                                    if (parts.length === 0) return '';
+                                                    if (parts.length === 1) return parts[0];
+                                                    if (parts.length === 2) return `${parts[0]} & ${parts[1]}`;
+                                                    return `${parts.slice(0, -1).join(', ')}, & ${parts[parts.length - 1]}`;
+                                                })()}
                                             </Typography>
                                         </div>
                                     );
@@ -195,6 +206,8 @@ export default function SeasonInfo(props) {
                                 {lipSyncWinners.length > 0 && mostFrequentName(lipSyncWinners) && (() => {
                                     const assassinText = mostFrequentName(lipSyncWinners);
                                     const hasMultiple = assassinText.includes('&');
+                                    const leagueActive = !(leagueData && leagueData.lgFinished === 'finished');
+                                    const labelPrefix = leagueActive ? 'Current ' : '';
                                     return (
                                         <div style={{
                                             padding: '10px 14px',
@@ -211,7 +224,7 @@ export default function SeasonInfo(props) {
                                                 color: '#666',
                                                 fontWeight: 500 
                                             }}>
-                                                Current Lip Sync Assassin{hasMultiple ? 's' : ''}:
+                                                {labelPrefix}Lip Sync Assassin{hasMultiple ? 's' : ''}:
                                             </Typography>
                                             <Chip
                                                 label={assassinText}
@@ -264,20 +277,67 @@ export default function SeasonInfo(props) {
                                                 >
                                                 Week {weekNumber}
                                                 </Typography>
-                                                <Typography 
+                                                <Typography
                                                     component="span"
-                                                    sx={{ 
+                                                    sx={{
                                                         fontWeight: 500,
                                                         fontSize: '1rem',
-                                                        color: 'inherit'
+                                                        color: 'inherit',
+                                                        display: 'inline-flex',
+                                                        flexWrap: 'wrap',
+                                                        gap: '6px',
+                                                        alignItems: 'center'
                                                     }}
                                                 >
-                                                    {winners.length === 1 
-                                                        ? winners[0]
-                                                        : winners.length === 2
-                                                            ? `${winners[0]} & ${winners[1]}`
-                                                            : `${winners.slice(0, -1).join(', ')}, & ${winners[winners.length - 1]}`
-                                                    }
+                                                    {(() => {
+                                                        // Aggregate duplicates preserving first appearance order
+                                                        const counts = new Map();
+                                                        const order = [];
+                                                        winners.forEach(name => {
+                                                            const n = String(name || '').trim();
+                                                            if (!counts.has(n)) order.push(n);
+                                                            counts.set(n, (counts.get(n) || 0) + 1);
+                                                        });
+
+                                                        if (order.length === 0) return null;
+
+                                                        // Build array of {name,count,index} then sort by count desc, then original order
+                                                        const entries = order.map((n, idx) => ({ name: n, count: counts.get(n) || 0, index: idx }));
+                                                        entries.sort((a, b) => {
+                                                            if (b.count !== a.count) return b.count - a.count;
+                                                            return a.index - b.index;
+                                                        });
+
+                                                        const nodes = [];
+                                                        entries.forEach((e, idx) => {
+                                                            nodes.push(
+                                                                <Box key={`entry-${idx}`} sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mr: 1, mb: 0.5 }}>
+                                                                    <span style={{ fontWeight: 600 }}>{e.name}</span>
+                                                                    {e.count > 1 && (
+                                                                        <Chip
+                                                                            label={`x${e.count}`}
+                                                                            size="small"
+                                                                            sx={{
+                                                                                background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)',
+                                                                                color: '#fff',
+                                                                                fontWeight: 700,
+                                                                                height: 22,
+                                                                                '& .MuiChip-label': { px: 1 }
+                                                                            }}
+                                                                        />
+                                                                    )}
+                                                                </Box>
+                                                            );
+
+                                                            if (idx < entries.length - 2) {
+                                                                nodes.push(<span key={`sep-${idx}`} style={{ color: '#666', marginRight: 6 }}>,</span>);
+                                                            } else if (idx === entries.length - 2) {
+                                                                nodes.push(<span key={`sep-${idx}`} style={{ color: '#666', margin: '0 6px' }}>&amp;</span>);
+                                                            }
+                                                        });
+
+                                                        return nodes;
+                                                    })()}
                                                 </Typography>
                                             </div>
                                         );

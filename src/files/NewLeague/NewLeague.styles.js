@@ -367,9 +367,21 @@ export const TableRow = styled(Box)(({ theme, isAdmin }) => ({
         borderBottom: 'none',
     },
     [theme.breakpoints.down('sm')]: {
-        gridTemplateColumns: '1fr',
-        padding: theme.spacing(1.5),
-        gap: theme.spacing(1),
+        gridTemplateColumns: '1fr 1fr',
+        padding: theme.spacing(2),
+        gap: theme.spacing(1.5),
+        marginBottom: theme.spacing(1.5),
+        border: `1px solid ${theme.palette.divider}`,
+        borderRadius: theme.spacing(1),
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(250, 245, 255, 0.6) 100%)',
+        boxShadow: '0 6px 18px rgba(0,0,0,0.03)',
+        // Admin rows: position items in corners (top-left, top-right, bottom-left, bottom-right)
+        ...(isAdmin && {
+            '& > *:nth-of-type(1)': { gridColumn: '1 / 2', gridRow: '1', justifySelf: 'start', alignSelf: 'center' },
+            '& > *:nth-of-type(2)': { gridColumn: '2 / 3', gridRow: '1', justifySelf: 'end', alignSelf: 'center' },
+            '& > *:nth-of-type(3)': { gridColumn: '1 / 2', gridRow: '2', justifySelf: 'start', alignSelf: 'center' },
+            '& > *:nth-of-type(4)': { gridColumn: '2 / 3', gridRow: '2', justifySelf: 'end', alignSelf: 'center' },
+        }),
     },
 }));
 
@@ -388,9 +400,20 @@ export const TableRowCurrent = styled(Box)(({ theme, isAdmin }) => ({
         borderBottom: 'none',
     },
     [theme.breakpoints.down('sm')]: {
-        gridTemplateColumns: '1fr',
-        padding: theme.spacing(1.5),
-        gap: theme.spacing(1),
+        gridTemplateColumns: '1fr 1fr',
+        padding: theme.spacing(2),
+        gap: theme.spacing(1.5),
+        marginBottom: theme.spacing(1.5),
+        border: `1px solid ${theme.palette.divider}`,
+        borderRadius: theme.spacing(1),
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(250, 245, 255, 0.6) 100%)',
+        boxShadow: '0 6px 18px rgba(0,0,0,0.03)',
+        ...(isAdmin && {
+            '& > *:nth-of-type(1)': { gridColumn: '1 / 2', gridRow: '1', justifySelf: 'start', alignSelf: 'center' },
+            '& > *:nth-of-type(2)': { gridColumn: '2 / 3', gridRow: '1', justifySelf: 'end', alignSelf: 'center' },
+            '& > *:nth-of-type(3)': { gridColumn: '1 / 2', gridRow: '2', justifySelf: 'start', alignSelf: 'center' },
+            '& > *:nth-of-type(4)': { gridColumn: '2 / 3', gridRow: '2', justifySelf: 'end', alignSelf: 'center' },
+        }),
     },
 }));
 
@@ -409,9 +432,20 @@ export const TableRowPending = styled(Box)(({ theme, isAdmin }) => ({
         borderBottom: 'none',
     },
     [theme.breakpoints.down('sm')]: {
-        gridTemplateColumns: '1fr',
-        padding: theme.spacing(1.5),
-        gap: theme.spacing(1),
+        gridTemplateColumns: '1fr 1fr',
+        padding: theme.spacing(2),
+        gap: theme.spacing(1.5),
+        marginBottom: theme.spacing(1.5),
+        border: `1px solid ${theme.palette.divider}`,
+        borderRadius: theme.spacing(1),
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(250, 245, 255, 0.6) 100%)',
+        boxShadow: '0 6px 18px rgba(0,0,0,0.03)',
+        ...(isAdmin && {
+            '& > *:nth-of-type(1)': { gridColumn: '1 / 2', gridRow: '1', justifyContent: 'flex-start' },
+            '& > *:nth-of-type(2)': { gridColumn: '2 / 3', gridRow: '1', justifyContent: 'flex-end' },
+            '& > *:nth-of-type(3)': { gridColumn: '1 / 2', gridRow: '2', justifyContent: 'flex-start' },
+            '& > *:nth-of-type(4)': { gridColumn: '2 / 3', gridRow: '2', justifyContent: 'flex-end' },
+        }),
     },
 }));
 
@@ -423,7 +457,7 @@ export const TableCell = styled(Box)(({ theme }) => ({
     textAlign: 'center',
     fontSize: '0.9375rem',
     [theme.breakpoints.down('sm')]: {
-        justifyContent: 'flex-start',
+        justifyContent: 'stretch',
         fontSize: '0.875rem',
     },
 }));

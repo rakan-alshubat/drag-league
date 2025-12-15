@@ -23,6 +23,10 @@ export const Title = styled(Typography)(({ theme }) => ({
     WebkitTextFillColor: 'transparent',
     marginBottom: theme.spacing(3),
     textAlign: 'center',
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '1.4rem',
+        marginBottom: theme.spacing(2),
+    },
 }));
 
 export const ChoiceContainer = styled(Box)(({ theme }) => ({
@@ -50,6 +54,11 @@ export const ChoiceCard = styled(Paper)(({ theme }) => ({
         boxShadow: '0 8px 24px rgba(255, 20, 147, 0.3)',
         border: '2px solid rgba(255, 20, 147, 0.5)',
     },
+    [theme.breakpoints.down('sm')]: {
+        padding: theme.spacing(2),
+        minWidth: '100%',
+        borderRadius: '12px',
+    },
 }));
 
 export const ChoiceTitle = styled(Typography)(({ theme }) => ({
@@ -59,12 +68,18 @@ export const ChoiceTitle = styled(Typography)(({ theme }) => ({
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     marginBottom: theme.spacing(2),
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '1.1rem',
+    },
 }));
 
 export const ChoiceDescription = styled(Typography)(({ theme }) => ({
     fontSize: '1rem',
     color: '#666',
     marginBottom: theme.spacing(2),
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '0.9rem',
+    },
 }));
 
 export const BackButton = styled(Button)(({ theme }) => ({
@@ -83,6 +98,10 @@ export const EditorContainer = styled(Paper)(({ theme }) => ({
     border: '2px solid rgba(255, 20, 147, 0.2)',
     borderRadius: '16px',
     marginTop: theme.spacing(3),
+    [theme.breakpoints.down('sm')]: {
+        padding: theme.spacing(2),
+        borderRadius: '12px',
+    },
 }));
 
 export const Section = styled(Box)(({ theme }) => ({
@@ -91,6 +110,9 @@ export const Section = styled(Box)(({ theme }) => ({
     background: 'rgba(255, 245, 248, 0.3)',
     borderRadius: '12px',
     border: '1px solid rgba(255, 20, 147, 0.2)',
+    [theme.breakpoints.down('sm')]: {
+        padding: theme.spacing(2),
+    },
 }));
 
 export const SectionTitle = styled(Typography)(({ theme }) => ({
@@ -111,6 +133,11 @@ export const EntryRow = styled(Box)(({ theme }) => ({
     background: 'white',
     borderRadius: '8px',
     border: '1px solid rgba(255, 20, 147, 0.1)',
+    [theme.breakpoints.down('sm')]: {
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        padding: theme.spacing(1.5),
+    },
 }));
 
 export const EntryLabel = styled(Typography)(({ theme }) => ({
@@ -118,6 +145,10 @@ export const EntryLabel = styled(Typography)(({ theme }) => ({
     fontWeight: 500,
     minWidth: '120px',
     color: '#333',
+    [theme.breakpoints.down('sm')]: {
+        minWidth: 'auto',
+        fontSize: '0.95rem',
+    },
 }));
 
 export const PlayerListContainer = styled(Box)(({ theme }) => ({
@@ -125,6 +156,10 @@ export const PlayerListContainer = styled(Box)(({ theme }) => ({
     gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
     gap: theme.spacing(2),
     marginTop: theme.spacing(3),
+    [theme.breakpoints.down('sm')]: {
+        gridTemplateColumns: '1fr',
+        gap: theme.spacing(1.5),
+    },
 }));
 
 export const PlayerCard = styled(Paper)(({ theme }) => ({
@@ -139,6 +174,10 @@ export const PlayerCard = styled(Paper)(({ theme }) => ({
         boxShadow: '0 6px 20px rgba(255, 20, 147, 0.2)',
         border: '2px solid rgba(255, 20, 147, 0.4)',
     },
+    [theme.breakpoints.down('sm')]: {
+        padding: theme.spacing(1.5),
+        borderRadius: '10px',
+    },
 }));
 
 export const PlayerName = styled(Typography)(({ theme }) => ({
@@ -148,6 +187,9 @@ export const PlayerName = styled(Typography)(({ theme }) => ({
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     marginBottom: theme.spacing(0.5),
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '1rem',
+    },
 }));
 
 export const PlayerEmail = styled(Typography)(({ theme }) => ({
@@ -162,6 +204,13 @@ export const ActionButtons = styled(Box)(({ theme }) => ({
     marginTop: theme.spacing(4),
     paddingTop: theme.spacing(3),
     borderTop: '1px solid rgba(255, 20, 147, 0.2)',
+    [theme.breakpoints.down('sm')]: {
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        gap: theme.spacing(1),
+        marginTop: theme.spacing(2),
+        paddingTop: theme.spacing(2),
+    },
 }));
 
 export const ConfirmButton = styled(Button)(({ theme }) => ({
@@ -179,6 +228,11 @@ export const ConfirmButton = styled(Button)(({ theme }) => ({
         background: '#ccc',
         color: '#666',
     },
+    [theme.breakpoints.down('sm')]: {
+        width: '100%',
+        padding: theme.spacing(1, 2),
+        fontSize: '0.95rem',
+    },
 }));
 
 export const CancelButton = styled(Button)(({ theme }) => ({
@@ -192,6 +246,11 @@ export const CancelButton = styled(Button)(({ theme }) => ({
     '&:hover': {
         borderColor: '#9B30FF',
         background: 'rgba(255, 20, 147, 0.05)',
+    },
+    [theme.breakpoints.down('sm')]: {
+        width: '100%',
+        padding: theme.spacing(1, 2),
+        fontSize: '0.95rem',
     },
 }));
 

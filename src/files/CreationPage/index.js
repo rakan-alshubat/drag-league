@@ -265,7 +265,7 @@ export default function CreationPage(){
             lgHistory: [new Date().toISOString() + '. League created by ' + displayName],
             lgQueenNames: queenArray,
             lgPublic: publicLeague,
-            lgPrivate: !publicLeague,
+            lgFullyPrivate: !publicLeague,
             lgChallengePoints: Number(pointValue) || 0,
             lgLipSyncPoints: lipSyncAssassin && Number(lipSyncPoints) || 0,
             lgBonusPoints: bonusArray.length ? bonusArray : null,
@@ -365,13 +365,13 @@ export default function CreationPage(){
             <SectionWrapper>
                 <FormSection>
                     <TitleRow>
-                        <SectionTitle>League Name</SectionTitle>
+                        <SectionTitle>League Name/Title</SectionTitle>
                         {nameError && (
-                            <ErrorAlert severity="error">Missing league name</ErrorAlert>
+                            <ErrorAlert severity="error">Missing league name/title</ErrorAlert>
                         )}
                     </TitleRow>
-                    <ExplanationText>Give your league a fun name. This is visible to other users.</ExplanationText>
-                    <StyledTextField placeholder="Name" onChange={(e) => {
+                    <ExplanationText>Give your league a fun name/title. This will be at the top of the league page.</ExplanationText>
+                    <StyledTextField placeholder="League Name" onChange={(e) => {
                         const filtered = filterPipeCharacter(e.target.value);
                         setLeagueName(filtered);
                         if(filtered.trim() !== ''){
@@ -389,7 +389,7 @@ export default function CreationPage(){
                             <ErrorAlert severity="error">Missing your name</ErrorAlert>
                         )}
                     </TitleRow>
-                    <ExplanationText>This is the name you will use for this league. You can use different display names for different leagues.</ExplanationText>
+                    <ExplanationText>This is YOUR name that you will use for this league and how people will know who you are in the ranking. You can use different display names for different leagues.</ExplanationText>
                     <StyledTextField placeholder="e.g. Sam, Hannah, MM flip it around? WW!!! Anything!" onChange={(e) => {
                         const filtered = filterPipeCharacter(e.target.value);
                         setDisplayName(filtered);
@@ -425,7 +425,7 @@ export default function CreationPage(){
                             <ErrorAlert severity="error">Missing number of queens</ErrorAlert>
                         )}
                     </TitleRow>
-                    <ExplanationText>Choose the number of queens participating in the season you&apos;re watching.</ExplanationText>
+                    <ExplanationText>Choose the number of drag queens participating in the season you&apos;re watching. If you&apos;re ranking them after the first episode airs, feel free to have the number be the total queens minus one, or have that queen be a freebie for everyone.</ExplanationText>
                     <InputGroup>
                         <StyledSelect
                             value={queensNumber}
@@ -551,7 +551,7 @@ export default function CreationPage(){
                         )}
                     </TitleRow>
                     <ExplanationText>
-                        Select a set date and time for players to submit their weekly Maxi Challenge predictions. Ideally, the deadline for player submissions should be before the episode airs and after the ranking deadline by a day or two.
+                        Select a set date and time for players to submit their weekly Maxi Challenge predictions.This deadline will repeat every week at the same time until the season ends. Ideally, the deadline for player submissions should be before the episode airs and after the ranking deadline by a day or two.
                     </ExplanationText>
                     {deadlineMatchError && (
                         <ErrorAlert severity="error">Points deadline must be after ranking deadline</ErrorAlert>

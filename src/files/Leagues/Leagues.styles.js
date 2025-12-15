@@ -17,6 +17,43 @@ export const Header = styled(Box)(({ theme }) => ({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: theme.spacing(2),
+    // ensure right-side contents (timer + buttons) layout nicely
+    '& > div:last-child': {
+        display: 'flex',
+        gap: theme.spacing(1),
+        alignItems: 'center',
+        '& button': {
+            minWidth: 120,
+        },
+    },
+    // mobile: stack title/description above timer + buttons and make buttons full width
+    [theme.breakpoints.down('sm')]: {
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        gap: theme.spacing(1),
+        '& > div:last-child': {
+            // override any inline marginLeft set in JSX (use !important)
+            marginLeft: '0 !important',
+            marginTop: theme.spacing(0),
+            display: 'flex',
+            gap: theme.spacing(1),
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'column',
+            '& .buttonsRow': {
+                display: 'flex',
+                gap: theme.spacing(1),
+                width: '100%',
+                justifyContent: 'center',
+                alignItems: 'center',
+            },
+            '& .buttonsRow > button': {
+                flex: '1 1 auto',
+                minWidth: 0,
+                maxWidth: '50%',
+            }
+        }
+    },
 }));
 
 export const HeaderTitle = styled(Typography)(({ theme }) => ({

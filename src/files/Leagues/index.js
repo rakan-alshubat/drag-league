@@ -8,6 +8,7 @@ import Countdown from "../Countdown";
 import History from "../History";
 import calculatePoints from '../../helpers/calculatePoints';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import { Box, Alert } from '@mui/material';
 import {
     Container,
     Header,
@@ -54,6 +55,34 @@ export default function Leagues({ userData, leagueData, playersData }) {
     });
 
     const isFinished = League?.lgFinished === 'finished';
+
+    // Detect admin edits between previous and current deadline (used to show a banner)
+    const adminEditBetweenDeadlines = (() => {
+        try {
+            const history = League?.lgHistory || [];
+            if (!League?.lgDeadline || !history || history.length === 0) return false;
+
+            const currentDeadline = new Date(League.lgDeadline);
+            const lastDeadline = new Date(currentDeadline);
+            lastDeadline.setDate(lastDeadline.getDate() - 7);
+
+            for (const entry of history) {
+                if (!entry || typeof entry !== 'string') continue;
+                const parts = entry.split('. ');
+                const dateStr = parts[0];
+                const text = parts.slice(1).join('. ') || '';
+                const parsed = new Date(dateStr);
+                if (isNaN(parsed.getTime())) continue;
+
+                if (!text.startsWith('[ADMIN EDIT]')) continue;
+
+                if (parsed > lastDeadline && parsed <= currentDeadline) return true;
+            }
+        } catch (e) {
+            console.warn('Error checking admin edit history:', e);
+        }
+        return false;
+    })();
 
     // compute display name(s) for the season winner(s) by points
     let winnerDisplay = '';
@@ -232,7 +261,7 @@ export default function Leagues({ userData, leagueData, playersData }) {
                     <HeaderTitle>{League?.lgName || ''}</HeaderTitle>
                     <HeaderSubtitle>{League?.lgDescription || ''}</HeaderSubtitle>
                 </div>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div className="headerRight" style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                     {League?.lgDeadline && (
                         <Countdown
                             deadline={League.lgDeadline}
@@ -242,30 +271,38 @@ export default function Leagues({ userData, leagueData, playersData }) {
                     )}
                     {!isFinished && (
                         <>
-                            <button
-                                onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Submissions'); }}
-                                aria-label="Add"
-                                disabled={isDeadlinePassed()}
-                                style={{
-                                    padding: '8px 12px',
-                                    borderRadius: 6,
-                                    cursor: isDeadlinePassed() ? 'not-allowed' : 'pointer',
-                                    opacity: isDeadlinePassed() ? 0.5 : 1,
-                                    background: isDeadlinePassed() ? '#ccc' : ''
-                                }}
-                                title={isDeadlinePassed() ? 'Deadline has passed - waiting for admin to submit results' : 'Submit your weekly pick'}
-                            >
-                                Submit your weekly pick
-                            </button>
-                            {isAdmin && (
-                                <button onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Weekly Results'); }} aria-label="Export" style={{ padding: '8px 12px', borderRadius: 6, cursor: 'pointer' }}>
-                                    Submit weekly results
+                            <div className="buttonsRow" style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                    onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Submissions'); }}
+                                    aria-label="Add"
+                                    disabled={isDeadlinePassed()}
+                                    style={{
+                                        padding: '8px 12px',
+                                        borderRadius: 6,
+                                        cursor: isDeadlinePassed() ? 'not-allowed' : 'pointer',
+                                        opacity: isDeadlinePassed() ? 0.5 : 1,
+                                        background: isDeadlinePassed() ? '#ccc' : ''
+                                    }}
+                                    title={isDeadlinePassed() ? 'Deadline has passed - waiting for admin to submit results' : 'Submit your weekly pick'}
+                                >
+                                    Submit your weekly pick
                                 </button>
-                            )}
+                                {isAdmin && (
+                                    <button onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Weekly Results'); }} aria-label="Export" style={{ padding: '8px 12px', borderRadius: 6, cursor: 'pointer' }}>
+                                        Submit weekly results
+                                    </button>
+                                )}
+                            </div>
                         </>
                     )}
                 </div>
             </Header>
+
+            {adminEditBetweenDeadlines && (
+                <Box sx={{ mt: 1, mb: 2 }}>
+                    <Alert severity="info">An admin made changes since the last deadline — check the History tab for details.</Alert>
+                </Box>
+            )}
 
             {isFinished && winnerDisplay && (
                 <>

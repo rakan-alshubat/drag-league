@@ -14,6 +14,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { Typography } from "@mui/material";
 import { generateClient } from 'aws-amplify/api';
 import { updatePlayer, updateLeague } from "@/graphql/mutations";
+import { getLeague } from "@/graphql/queries";
 import {
     StyledDialog,
     StyledDialogTitle,
@@ -71,6 +72,7 @@ export default function SubmissionsPopup({
     // Weekly Results State (redesigned with multi-select)
     const [challengeWinners, setChallengeWinners] = useState([]);
     const [lipSyncWinners, setLipSyncWinners] = useState([]);
+    const [lipSyncSelected, setLipSyncSelected] = useState('');
     const [eliminatedQueens, setEliminatedQueens] = useState([]);
 
     const [errorMessage, setErrorMessage] = useState('');
@@ -151,6 +153,39 @@ export default function SubmissionsPopup({
         }
     }, [isOpen, initialVersion, leagueData]);
 
+    // Show a warning immediately when admin opens Weekly Results if players are missing submissions
+    useEffect(() => {
+        if (!isOpen) return;
+        if (version !== "Weekly Results") return;
+        if (isFinalEpisode) return;
+        if (!leagueData?.players) return;
+
+        const submissions = leagueData.lgSubmissions || [];
+        const submissionMap = {};
+        submissions.forEach(sub => {
+            const parts = String(sub || '').split('|').map(s => s.trim());
+            if (parts.length === 2) {
+                const [queenName, userEmail] = parts;
+                if (userEmail) submissionMap[userEmail.toLowerCase()] = queenName;
+            }
+        });
+
+        const leaguePlayers = leagueData.players || [];
+        if (Array.isArray(leaguePlayers) && leaguePlayers.length > 0) {
+            const missing = leaguePlayers.filter(player => {
+                const pid = String(player.id || '').toLowerCase();
+                const pemail = String(player.plEmail || '').toLowerCase();
+                return !(submissionMap[pid] || submissionMap[pemail]);
+            });
+            if (missing.length > 0) {
+                const names = missing.map(p => p.plName || p.plEmail || p.id).join(', ');
+                setErrorMessage(`Warning: ${missing.length} player(s) have not submitted: ${names}`);
+            } else {
+                setErrorMessage('');
+            }
+        }
+    }, [isOpen, version, isFinalEpisode, leagueData]);
+
     // compute swappedResult when two distinct picks are present
     useEffect(() => {
         if (firstSwap && secondSwap && firstSwap !== secondSwap) {
@@ -193,7 +228,7 @@ export default function SubmissionsPopup({
             const remaining = swapValue - episodesPassed;
             return { 
                 allowed: true, 
-                message: `You can swap for the first ${swapValue}. (${remaining} episode${remaining === 1 ? '' : 's'} remaining)` 
+                message: `You can swap two queens positions in your rankings for the first ${swapValue} episode${remaining === 1 ? '' : 's'}. You can only do this once so use it wisely! You will see a reminder when its your last chance to submit. (${remaining} episode${remaining === 1 ? '' : 's'} remaining)` 
             };
         } else {
             const totalQueens = (leagueData.lgQueenNames || []).length;
@@ -206,23 +241,36 @@ export default function SubmissionsPopup({
             const episodesLeft = remainingQueens - swapValue;
             return { 
                 allowed: true, 
-                message: `You can swap until there are ${swapValue} queens remaining. (${episodesLeft} Queen${episodesLeft === 1 ? '' : 's'} left)` 
+                message: `You can swap until there are ${swapValue} queens remaining. You can only do this once so use it wisely! You will see a reminder when its your last chance to submit. (${episodesLeft} Queen${episodesLeft === 1 ? '' : 's'} left)` 
             };
         }
     };
     
     const swapEligibility = checkSwapEligibility();
 
+    
+
+    // Styles for swapped list display (used in the swap preview)
+    const list = {
+        listStyle: 'none',
+        padding: 0,
+        margin: 0,
+    };
+
+    const listItem = {
+        marginBottom: '6px'
+    };
     // helpers
     const getSelectedSet = (rows, ignoreIndex = -1) => {
         const s = new Set();
         rows.forEach((r, idx) => {
             if (idx === ignoreIndex) return;
             if (r.disabled) return;
-            if (r.multi) {
-                (r.values || []).forEach(v => { if (v) s.add(v); });
-            } else {
-                if (r.value) s.add(r.value);
+            // Support rows that store selections in `values` (multi-select) or `value` (single-select)
+            if (Array.isArray(r.values) && r.values.length > 0) {
+                r.values.forEach(v => { if (v) s.add(v); });
+            } else if (r.value) {
+                s.add(r.value);
             }
         });
         return s;
@@ -343,20 +391,32 @@ export default function SubmissionsPopup({
             if (selected.length > 0 && leagueData?.id && userData?.id) {
                 try {
                     const userEmail = userData.id; // User ID is their email
-                    const currentSubmissions = leagueData.lgSubmissions || [];
 
-                    // Remove any existing submissions from this user
+                    // Fetch latest league from server to avoid overwriting other players' submissions
+                    let latestLeague = leagueData;
+                    try {
+                        const leagueRes = await client.graphql({ query: getLeague, variables: { id: leagueData.id } });
+                        if (leagueRes && leagueRes.data && leagueRes.data.getLeague) {
+                            latestLeague = leagueRes.data.getLeague;
+                        }
+                    } catch (fetchErr) {
+                        console.warn('Could not fetch latest league before updating submissions:', fetchErr);
+                    }
+
+                    const currentSubmissions = latestLeague.lgSubmissions || [];
+
+                    // Remove any existing submissions from this user (preserve others)
                     const filteredSubmissions = currentSubmissions.filter(submission => {
-                        const parts = submission.split('|');
-                        const submissionEmail = parts[1]; // Email is the second part
-                        return submissionEmail !== userEmail;
+                        const parts = String(submission || '').split('|').map(s => s.trim());
+                        const submissionEmail = parts[1] || '';
+                        return (submissionEmail || '').toLowerCase() !== String(userEmail || '').toLowerCase();
                     });
 
                     // Create new submission entries as "queenName|userEmail"
                     const newSubmissions = selected.map(queenName => `${queenName}|${userEmail}`);
 
                     // Create history entry for weekly picks submission
-                    const currentHistory = leagueData.lgHistory || [];
+                    const currentHistory = latestLeague.lgHistory || [];
                     const historyEntry = new Date().toISOString() + '. ' + (playerData?.plName || userEmail) + ' submitted weekly pick: ' + selected.join(', ');
 
                     const leagueInput = {
@@ -386,6 +446,17 @@ export default function SubmissionsPopup({
 
         // Handle final episode
         if (version === "Weekly Results" && isFinalEpisode && leagueData?.id) {
+            // Ensure admin ranked all remaining queens before allowing final submission
+            const eliminatedListForCheck = getEliminatedQueensList();
+            const totalQueens = (leagueData.lgQueenNames || []).length;
+            const remainingCount = Math.max(0, totalQueens - eliminatedListForCheck.length);
+            const providedList = finalRankingRows.flatMap(r => r.values || []).filter(Boolean);
+            const uniqueProvided = Array.from(new Set(providedList));
+            if (uniqueProvided.length !== remainingCount) {
+                setErrorMessage(`You ranked ${uniqueProvided.length} of ${remainingCount} remaining queen${remainingCount === 1 ? '' : 's'}. Please rank all remaining queens before submitting the final episode.`);
+                return;
+            }
+
             try {
                 // Get all rankings from finalRankingRows - each row can have multiple values (ties)
                 const rankings = finalRankingRows
@@ -504,6 +575,22 @@ export default function SubmissionsPopup({
                         submissionMap[userEmail.toLowerCase()] = queenName;
                     }
                 });
+                // Ensure every player has submitted a weekly pick before admin submits results
+                const leaguePlayers = leagueData.players || [];
+                if (Array.isArray(leaguePlayers) && leaguePlayers.length > 0) {
+                    const missing = leaguePlayers.filter(player => {
+                        const pid = String(player.id || '').toLowerCase();
+                        const pemail = String(player.plEmail || '').toLowerCase();
+                        return !(submissionMap[pid] || submissionMap[pemail]);
+                    });
+                    if (missing.length > 0) {
+                        const names = missing.map(p => p.plName || p.plEmail || p.id).join(', ');
+                        // Show a warning but DO NOT block admin from submitting
+                        setErrorMessage(`Warning: ${missing.length} player(s) have not submitted: ${names}`);
+                    } else {
+                        setErrorMessage('');
+                    }
+                }
                 console.log('Submission map:', submissionMap);
 
                 const allPlayers = leagueData.players || [];
@@ -622,14 +709,14 @@ export default function SubmissionsPopup({
                             {submissionRows.map((row, idx) => (
                                 <Box key={`submission-${idx}-${row.id}`} sx={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                                     <FormControl fullWidth variant="outlined" size="small" disabled={row.disabled}>
-                                        <InputLabel id={`label-${row.id}`}>-- select --</InputLabel>
+                                        <InputLabel id={`label-${row.id}`}>-- Queens --</InputLabel>
                                         <Select
                                             labelId={`label-${row.id}`}
                                             value={row.value}
-                                            label="-- select --"
+                                            label="-- Queens --"
                                             onChange={(e) => updateSubmissionRow(idx, { value: e.target.value })}
                                         >
-                                            <MenuItem value="" disabled>-- select --</MenuItem>
+                                            <MenuItem value="" disabled>-- Queens --</MenuItem>
                                             {renderOptionsFor(submissionRows, idx)}
                                         </Select>
                                     </FormControl>
@@ -637,34 +724,34 @@ export default function SubmissionsPopup({
                             ))}
                         </Box>
 
-                        {swapEligibility.allowed && (
+                        {swapEligibility.allowed && (!playerData?.plSwap || String(playerData.plSwap).trim() === '') && (
                             <Box sx={{ mt: 2 }}>
-                                <SectionTitle>Swap two names</SectionTitle>
+                                <SectionTitle>Do you want to swap two queens?</SectionTitle>
                                 <SectionDesc>{swapEligibility.message}</SectionDesc>
 
                                 <Box sx={{ display: "flex", gap: 2, mt: 1 }}>
                                     <FormControl fullWidth size="small">
-                                        <InputLabel id="first-swap-label">First</InputLabel>
+                                        <InputLabel id="first-swap-label">Queen #1</InputLabel>
                                         <Select
                                             labelId="first-swap-label"
                                             value={firstSwap}
-                                            label="First"
+                                            label="Queen #1"
                                             onChange={(e) => setFirstSwap(e.target.value)}
                                         >
-                                            <MenuItem value="" disabled>-- select first --</MenuItem>
+                                            <MenuItem value="" disabled>-- Queen #1 --</MenuItem>
                                             {filteredOptionsList().map((opt, i) => <MenuItem key={`first-${i}-${String(opt)}`} value={opt}>{opt}</MenuItem>)}
                                         </Select>
                                     </FormControl>
 
                                     <FormControl fullWidth size="small">
-                                        <InputLabel id="second-swap-label">Second</InputLabel>
+                                        <InputLabel id="second-swap-label">Queen #2</InputLabel>
                                         <Select
                                             labelId="second-swap-label"
                                             value={secondSwap}
-                                            label="Second"
+                                            label="Queen #2"
                                             onChange={(e) => setSecondSwap(e.target.value)}
                                         >
-                                            <MenuItem value="" disabled>-- select second --</MenuItem>
+                                            <MenuItem value="" disabled>-- Queen #2 --</MenuItem>
                                             {filteredOptionsList().map((opt, i) => <MenuItem key={`second-${i}-${String(opt)}`} value={opt} disabled={opt === firstSwap}>{opt}</MenuItem>)}
                                         </Select>
                                     </FormControl>
@@ -672,7 +759,7 @@ export default function SubmissionsPopup({
 
                                 {firstSwap && secondSwap && firstSwap !== secondSwap && (
                                     <Box sx={{ mt: 2 }}>
-                                        <Typography variant="subtitle2">Swapped list</Typography>
+                                        <Typography variant="subtitle2">Your new rankings</Typography>
                                         <Box component="ul" sx={list}>
                                             {swappedResult.map((name, i) => <li key={`swapped-${i}-${String(name)}`} style={listItem}>{getOrdinal(i + 1)} - {name}</li>)}
                                         </Box>
@@ -691,7 +778,7 @@ export default function SubmissionsPopup({
                     <Box>
                         {errorMessage && (
                             <Box sx={{ mb: 2 }}>
-                                <Alert severity="error">{errorMessage}</Alert>
+                                <Alert severity={errorMessage.startsWith('Warning:') ? "warning" : "error"}>{errorMessage}</Alert>
                             </Box>
                         )}
                         
@@ -706,51 +793,54 @@ export default function SubmissionsPopup({
                                     </SectionHeader>
                                     
                                     <SectionDesc variant="body2">
-                                        Enter the final rankings in order from 1st place to last place. Select multiple queens for ties.
+                                        Enter the final rankings of the season. Select multiple queens for ties.
                                     </SectionDesc>
 
                                     <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
-                                        {finalRankingRows.map((row, rowIndex) => (
-                                            <FinalRankingRow key={`final-${rowIndex}-${row.id}`}>
-                                                <PositionLabel>
-                                                    {getOrdinal(rowIndex + 1)}
-                                                </PositionLabel>
-                                                <FormControl fullWidth size="small">
-                                                    <InputLabel>Select Queen(s)</InputLabel>
-                                                    <Select
-                                                        multiple
-                                                        value={row.values || []}
-                                                        label="Select Queen(s)"
-                                                        onChange={(e) => updateFinalRankingValue(row.id, e.target.value)}
-                                                        renderValue={(selected) => (
-                                                            <ChipWrapper>
-                                                                {selected.length === 0 ? (
-                                                                    <em style={{ color: '#999' }}>Select queen(s)</em>
-                                                                ) : (
-                                                                    selected.map((value) => (
-                                                                        <Chip key={value} label={value} size="small" />
-                                                                    ))
-                                                                )}
-                                                            </ChipWrapper>
-                                                        )}
-                                                    >
-                                                        {filteredOptionsList().map((n, i) => (
-                                                            <MenuItem key={`final-${rowIndex}-${row.id}-${i}-${String(n)}`} value={n}>
-                                                                <Checkbox checked={(row.values || []).includes(n)} />
-                                                                {n}
-                                                            </MenuItem>
-                                                        ))}
-                                                    </Select>
-                                                </FormControl>
+                                        {finalRankingRows.map((row, rowIndex) => {
+                                            const selectedSet = getSelectedSet(finalRankingRows, rowIndex);
+                                            return (
+                                                <FinalRankingRow key={`final-${rowIndex}-${row.id}`}>
+                                                    <PositionLabel>
+                                                        {getOrdinal(rowIndex + 1)}
+                                                    </PositionLabel>
+                                                    <FormControl fullWidth size="small">
+                                                        <InputLabel>Select Queen(s)</InputLabel>
+                                                        <Select
+                                                            multiple
+                                                            value={row.values || []}
+                                                            label="Select Queen(s)"
+                                                            onChange={(e) => updateFinalRankingValue(row.id, e.target.value)}
+                                                            renderValue={(selected) => (
+                                                                <ChipWrapper>
+                                                                    {selected.length === 0 ? (
+                                                                        <em style={{ color: '#999' }}>Select queen(s)</em>
+                                                                    ) : (
+                                                                        selected.map((value) => (
+                                                                            <Chip key={value} label={value} size="small" />
+                                                                        ))
+                                                                    )}
+                                                                </ChipWrapper>
+                                                            )}
+                                                        >
+                                                            {filteredOptionsList().map((n, i) => (
+                                                                <MenuItem key={`final-${rowIndex}-${row.id}-${i}-${String(n)}`} value={n} disabled={selectedSet.has(n)}>
+                                                                    <Checkbox checked={(row.values || []).includes(n)} />
+                                                                    {n}
+                                                                </MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    </FormControl>
 
-                                                <DeleteIconButton
-                                                    onClick={() => deleteFinalRankingRow(row.id)}
-                                                    size="small"
-                                                >
-                                                    <DeleteIcon />
-                                                </DeleteIconButton>
-                                            </FinalRankingRow>
-                                        ))}
+                                                    <DeleteIconButton
+                                                        onClick={() => deleteFinalRankingRow(row.id)}
+                                                        size="small"
+                                                    >
+                                                        <DeleteIcon />
+                                                    </DeleteIconButton>
+                                                </FinalRankingRow>
+                                            );
+                                        })}
                                     </Box>
                                 </Section>
                                 
@@ -823,7 +913,7 @@ export default function SubmissionsPopup({
                                 <Section>
                                     <SectionTitle>Maxi Challenge Winner</SectionTitle>
                                     <SectionDesc>
-                                        Select who won the maxi challenge. Select multiple for ties, or leave empty for no winner.
+                                        Select who won the maxi challenge this week. Select multiple for ties, or leave empty if nobody won.
                                     </SectionDesc>
                                     <FormControl fullWidth size="medium">
                                         <InputLabel>Select Winner(s)</InputLabel>
@@ -831,7 +921,12 @@ export default function SubmissionsPopup({
                                             multiple
                                             value={challengeWinners}
                                             label="Select Winner(s)"
-                                            onChange={(e) => setChallengeWinners(e.target.value)}
+                                            onChange={(e) => {
+                                                const newChallenges = e.target.value || [];
+                                                setChallengeWinners(newChallenges);
+                                                // remove any newly-chosen challenge winners from eliminated list
+                                                setEliminatedQueens(prev => (Array.isArray(prev) ? prev.filter(q => !newChallenges.includes(q)) : prev));
+                                            }}
                                             renderValue={(selected) => (
                                                 <ChipWrapper>
                                                     {selected.length === 0 ? (
@@ -844,12 +939,15 @@ export default function SubmissionsPopup({
                                                 </ChipWrapper>
                                             )}
                                         >
-                                            {filteredOptionsList().map((queen, i) => (
-                                                <MenuItem key={i} value={queen}>
-                                                    <Checkbox checked={challengeWinners.includes(queen)} />
-                                                    {queen}
-                                                </MenuItem>
-                                            ))}
+                                            {filteredOptionsList().map((queen, i) => {
+                                                const disabled = eliminatedQueens.includes(queen);
+                                                return (
+                                                    <MenuItem key={i} value={queen} disabled={disabled}>
+                                                        <Checkbox checked={challengeWinners.includes(queen)} />
+                                                        {queen}
+                                                    </MenuItem>
+                                                );
+                                            })}
                                         </Select>
                                     </FormControl>
                                 </Section>
@@ -858,34 +956,57 @@ export default function SubmissionsPopup({
                                 <Section>
                                     <SectionTitle>Lip Sync Winner</SectionTitle>
                                     <SectionDesc>
-                                        Select who won the lip sync. Select multiple for ties, or leave empty for no lip sync.
+                                        Select who won the lip sync. Don&apos;t forget to press the + to add their names after selecting them. Select multiple for ties, or leave empty for no lip sync wins. if a queen won multiple times in the same episode, add her name multiple times.
                                     </SectionDesc>
                                     <FormControl fullWidth size="medium">
-                                        <InputLabel>Select Winner(s)</InputLabel>
-                                        <Select
-                                            multiple
-                                            value={lipSyncWinners}
-                                            label="Select Winner(s)"
-                                            onChange={(e) => setLipSyncWinners(e.target.value)}
-                                            renderValue={(selected) => (
-                                                <ChipWrapper>
-                                                    {selected.length === 0 ? (
-                                                        <em style={{ color: '#999' }}>No winner</em>
-                                                    ) : (
-                                                        selected.map((value) => (
-                                                            <Chip key={value} label={value} size="small" />
-                                                        ))
-                                                    )}
-                                                </ChipWrapper>
+                                        <InputLabel id="lip-sync-select-label">Add Winner</InputLabel>
+                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                            <Select
+                                                labelId="lip-sync-select-label"
+                                                value={lipSyncSelected}
+                                                label="Add Winner"
+                                                onChange={(e) => setLipSyncSelected(e.target.value)}
+                                                sx={{ flex: 1 }}
+                                            >
+                                                <MenuItem value="">-- Select --</MenuItem>
+                                                {filteredOptionsList().map((queen, i) => {
+                                                    const disabled = eliminatedQueens.includes(queen);
+                                                    return (
+                                                        <MenuItem key={i} value={queen} disabled={disabled}>
+                                                            {queen}
+                                                        </MenuItem>
+                                                    );
+                                                })}
+                                            </Select>
+                                            <AddButton size="small" onClick={() => {
+                                                if (!lipSyncSelected) return;
+                                                if (eliminatedQueens.includes(lipSyncSelected)) return;
+                                                setLipSyncWinners(prev => [...prev, lipSyncSelected]);
+                                                // if this queen was previously selected as eliminated, remove that eliminated selection
+                                                setEliminatedQueens(prev => (Array.isArray(prev) ? prev.filter(q => q !== lipSyncSelected) : prev));
+                                                setLipSyncSelected('');
+                                            }}>
+                                                <AddIcon />
+                                            </AddButton>
+                                        </Box>
+
+                                        <ChipWrapper sx={{ mt: 1 }}>
+                                            {lipSyncWinners.length === 0 ? (
+                                                <em style={{ color: '#999' }}>No winner</em>
+                                            ) : (
+                                                lipSyncWinners.map((value, idx) => (
+                                                    <Box key={`${value}-${idx}`} sx={{ display: 'inline-flex', mr: 0.5 }}>
+                                                        <Chip label={value} size="small" />
+                                                        <DeleteIconButton size="small" onClick={() => {
+                                                            // remove only the specific instance at idx
+                                                            setLipSyncWinners(prev => prev.filter((_, i) => i !== idx));
+                                                        }}>
+                                                            <DeleteIcon fontSize="small" />
+                                                        </DeleteIconButton>
+                                                    </Box>
+                                                ))
                                             )}
-                                        >
-                                            {filteredOptionsList().map((queen, i) => (
-                                                <MenuItem key={i} value={queen}>
-                                                    <Checkbox checked={lipSyncWinners.includes(queen)} />
-                                                    {queen}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
+                                        </ChipWrapper>
                                     </FormControl>
                                 </Section>
 
@@ -893,7 +1014,7 @@ export default function SubmissionsPopup({
                                 <Section>
                                     <SectionTitle>Eliminated Queen(s)</SectionTitle>
                                     <SectionDesc>
-                                        Select who was eliminated. Select multiple for ties.
+                                        Select the queen(s) that got eliminated. Select multiple for ties.
                                     </SectionDesc>
                                     <FormControl fullWidth size="medium">
                                         <InputLabel>Select Eliminated</InputLabel>
@@ -901,7 +1022,13 @@ export default function SubmissionsPopup({
                                             multiple
                                             value={eliminatedQueens}
                                             label="Select Eliminated"
-                                            onChange={(e) => setEliminatedQueens(e.target.value)}
+                                            onChange={(e) => {
+                                                const newElims = e.target.value || [];
+                                                setEliminatedQueens(newElims);
+                                                // ensure eliminated queens are removed from challenge and lip sync winners
+                                                setChallengeWinners(prev => (Array.isArray(prev) ? prev.filter(q => !newElims.includes(q)) : prev));
+                                                setLipSyncWinners(prev => (Array.isArray(prev) ? prev.filter(q => !newElims.includes(q)) : prev));
+                                            }}
                                             renderValue={(selected) => (
                                                 <ChipWrapper>
                                                     {selected.length === 0 ? (
@@ -914,12 +1041,15 @@ export default function SubmissionsPopup({
                                                 </ChipWrapper>
                                             )}
                                         >
-                                            {filteredOptionsList().map((queen, i) => (
-                                                <MenuItem key={i} value={queen}>
-                                                    <Checkbox checked={eliminatedQueens.includes(queen)} />
-                                                    {queen}
-                                                </MenuItem>
-                                            ))}
+                                            {filteredOptionsList().map((queen, i) => {
+                                                const disabled = challengeWinners.includes(queen) || lipSyncWinners.includes(queen);
+                                                return (
+                                                    <MenuItem key={i} value={queen} disabled={disabled}>
+                                                        <Checkbox checked={eliminatedQueens.includes(queen)} />
+                                                        {queen}
+                                                    </MenuItem>
+                                                );
+                                            })}
                                         </Select>
                                     </FormControl>
                                 </Section>
@@ -933,26 +1063,39 @@ export default function SubmissionsPopup({
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                     {(version === "Weekly Results" || version === "Submissions") && (
                         <>
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={isFinalEpisode}
-                                        onChange={(e) => setIsFinalEpisode(e.target.checked)}
-                                        color="primary"
-                                    />
-                                }
-                                label="Final Episode?"
-                            />
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={showEliminatedQueens}
-                                        onChange={(e) => setShowEliminatedQueens(e.target.checked)}
-                                        color="secondary"
-                                    />
-                                }
-                                label="Show Eliminated Queens"
-                            />
+                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={isFinalEpisode}
+                                            onChange={(e) => setIsFinalEpisode(e.target.checked)}
+                                            color="primary"
+                                        />
+                                    }
+                                    label="Final Episode?"
+                                />
+                                {version === "Weekly Results" && (
+                                    <Typography variant="caption" sx={{ color: 'text.secondary', ml: 5 }}>
+                                        Mark if this submission is for the season finale (rank all remaining queens & enter the bonus results).
+                                    </Typography>
+                                )}
+                            </Box>
+
+                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={showEliminatedQueens}
+                                            onChange={(e) => setShowEliminatedQueens(e.target.checked)}
+                                            color="secondary"
+                                        />
+                                    }
+                                    label="Show Eliminated Queens"
+                                />
+                                <Typography variant="caption" sx={{ color: 'text.secondary', ml: 5 }}>
+                                    If the eleminated queens are back to compete for whatever reason.
+                                </Typography>
+                            </Box>
                         </>
                     )}
                 </Box>

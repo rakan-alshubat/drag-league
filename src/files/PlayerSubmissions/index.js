@@ -109,37 +109,54 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
             <StyledSummary expandIcon={<ExpandMoreIcon />}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 1 }}>
                     <SummaryText>{item.plName}</SummaryText>
-                    {currentWeekSubmission && (
-                        <Chip 
-                            label={isCorrect !== null ? `${currentWeekSubmission} ${isCorrect ? '✓' : '✗'}` : currentWeekSubmission}
-                            size="medium" 
-                            sx={{ 
-                                background: isCorrect === true 
-                                    ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)' // Gold gradient for correct
-                                    : isCorrect === false 
-                                        ? 'linear-gradient(135deg, #9B30FF 0%, #6A0DAD 100%)' // Purple gradient for incorrect
-                                        : 'linear-gradient(135deg, #FF1493 0%, #C71585 100%)', // Pink gradient for no data
-                                color: 'white',
-                                fontWeight: 600,
-                                fontSize: '0.85rem',
-                                height: '28px',
-                                border: isCorrect === true 
-                                    ? '1px solid #FFD700'
-                                    : isCorrect === false
-                                        ? '1px solid #9B30FF'
-                                        : '1px solid #FF1493',
-                                boxShadow: isCorrect === true
-                                    ? '0 2px 8px rgba(255, 215, 0, 0.3)'
-                                    : isCorrect === false
-                                        ? '0 2px 8px rgba(155, 48, 255, 0.3)'
-                                        : '0 2px 8px rgba(255, 20, 147, 0.3)',
-                                textShadow: '0 1px 2px rgba(0,0,0,0.2)',
-                                '& .MuiChip-label': {
-                                    px: 2
-                                }
-                            }} 
-                        />
-                    )}
+                    {/* Always show a chip: show pick + correctness if available, otherwise show 'No pick ✗' as incorrect */}
+                    {(() => {
+                        const hasPick = !!currentWeekSubmission;
+                        const isTrue = isCorrect === true;
+                        const isFalse = isCorrect === false;
+                        // Determine label
+                        const label = hasPick ? (isCorrect !== null ? `${currentWeekSubmission} ${isCorrect ? '✓' : '✗'}` : currentWeekSubmission) : 'No pick ✗';
+
+                        // Styling: preserve original colors
+                        const bg = isTrue
+                            ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)' // gold for correct
+                            : isFalse
+                                ? 'linear-gradient(135deg, #9B30FF 0%, #6A0DAD 100%)' // purple for incorrect
+                                : 'linear-gradient(135deg, #FF1493 0%, #C71585 100%)'; // pink for unknown
+
+                        // If no pick, style like unknown (pink)
+                        const finalBg = hasPick ? bg : 'linear-gradient(135deg, #9B30FF 0%, #6A0DAD 100%)';
+
+                        const border = finalBg === 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)'
+                            ? '1px solid #FFD700'
+                            : finalBg === 'linear-gradient(135deg, #9B30FF 0%, #6A0DAD 100%)'
+                                ? '1px solid #9B30FF'
+                                : '1px solid #FF1493';
+
+                        const boxShadow = finalBg === 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)'
+                            ? '0 2px 8px rgba(255, 215, 0, 0.3)'
+                            : finalBg === 'linear-gradient(135deg, #9B30FF 0%, #6A0DAD 100%)'
+                                ? '0 2px 8px rgba(155, 48, 255, 0.3)'
+                                : '0 2px 8px rgba(255, 20, 147, 0.3)';
+
+                        return (
+                            <Chip
+                                label={label}
+                                size="medium"
+                                sx={{
+                                    background: finalBg,
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    fontSize: '0.85rem',
+                                    height: '28px',
+                                    border,
+                                    boxShadow,
+                                    textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                                    '& .MuiChip-label': { px: 2 }
+                                }}
+                            />
+                        );
+                    })()}
                 </Box>
             </StyledSummary>
 
@@ -373,17 +390,44 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
                                                         Week {i + 1}
                                                     </Typography>
                                                     
-                                                    <Typography 
-                                                        sx={{ 
-                                                            flex: 1,
-                                                            fontWeight: 500,
-                                                            fontSize: '1rem',
-                                                            color: hasPrediction ? '#333' : '#999',
-                                                            fontStyle: hasPrediction ? 'normal' : 'italic'
-                                                        }}
-                                                    >
-                                                        {hasPrediction ? prediction : 'No pick'}
-                                                    </Typography>
+                                                    {hasPrediction ? (
+                                                        <Typography 
+                                                            sx={{ 
+                                                                flex: 1,
+                                                                fontWeight: 500,
+                                                                fontSize: '1rem',
+                                                                color: '#333'
+                                                            }}
+                                                        >
+                                                            {prediction}
+                                                        </Typography>
+                                                    ) : (
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                                                            <Chip
+                                                                label="No pick"
+                                                                size="medium"
+                                                                sx={{
+                                                                    background: 'linear-gradient(135deg, #F0F0F0 0%, #E0E0E0 100%)',
+                                                                    color: '#666',
+                                                                    fontWeight: 600,
+                                                                    height: '28px',
+                                                                    '& .MuiChip-label': { px: 2 }
+                                                                }}
+                                                            />
+                                                            <Chip
+                                                                label="✗ Incorrect"
+                                                                size="small"
+                                                                sx={{
+                                                                    background: 'linear-gradient(135deg, #DC143C 0%, #B22222 100%)',
+                                                                    color: 'white',
+                                                                    fontWeight: 700,
+                                                                    fontSize: '0.75rem',
+                                                                    height: '24px',
+                                                                    '& .MuiChip-label': { px: 1 }
+                                                                }}
+                                                            />
+                                                        </Box>
+                                                    )}
                                                     
                                                     {isCorrect === true && (
                                                         <Chip
@@ -433,7 +477,9 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
                         </NestedDetails>
                     </NestedAccordion>
 
-                    {((item.plLipSyncAssassin && item.plLipSyncAssassin.trim() !== '') || (Array.isArray(item.plBonuses) && item.plBonuses.length > 0)) && (
+                    
+
+                    {Array.isArray(item.plBonuses) && item.plBonuses.length > 0 && (
                         <NestedAccordion
                             sx={{ width: '100%' }}
                             expanded={bonusesOpen}
@@ -445,172 +491,174 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
                             </NestedSummary>
 
                             <NestedDetails>
-                                {item.plLipSyncAssassin && item.plLipSyncAssassin.trim() !== '' && (
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, p: 1.5, borderRadius: 2, background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)', border: '1px solid rgba(255, 20, 147, 0.12)', mb: 1 }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: '#9B30FF' }}>
-                                            Lip Sync Assassin
-                                            </Typography>
-                                            <Chip
-                                                label={`${leagueData?.lgLipSyncPoints || 0} pts`}
-                                                size="medium"
-                                                sx={{ background: 'linear-gradient(135deg, #9B30FF 0%, #7A1CAC 100%)', color: 'white', fontWeight: 700, fontSize: '0.85rem', height: '28px', '& .MuiChip-label': { px: 2 } }}
-                                            />
-                                        </Box>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                                            <Typography sx={{ fontSize: '1rem', color: '#666', fontWeight: 500 }}>Prediction:</Typography>
-                                            <Chip label={item.plLipSyncAssassin} size="medium" sx={{ background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)', color: 'white', fontWeight: 600, fontSize: '0.85rem', height: '28px', boxShadow: '0 2px 4px rgba(255, 20, 147, 0.3)', '& .MuiChip-label': { px: 2 } }} />
-                                            {(() => {
-                                                const leagueAssassin = mostFrequentName(leagueData?.lgLipSyncWinners || []);
-                                                if (!leagueAssassin) return null;
-                                                const assassinNames = parseNames(leagueAssassin);
-                                                const playerPreds = parseNames(item.plLipSyncAssassin || '');
-                                                const correct = playerPreds.some(p => assassinNames.includes(p));
-                                                return (
-                                                    <Chip label={correct ? '✓ Correct' : '✗ Incorrect'} size="medium" sx={{ background: correct ? 'linear-gradient(135deg, #50C878 0%, #3CB371 100%)' : 'linear-gradient(135deg, #DC143C 0%, #B22222 100%)', color: 'white', fontWeight: 700, fontSize: '0.85rem', height: '28px', boxShadow: correct ? '0 2px 4px rgba(80, 200, 120, 0.4)' : '0 2px 4px rgba(220, 20, 60, 0.4)', '& .MuiChip-label': { px: 2 } }} />
-                                                );
-                                            })()}
-                                        </Box>
-                                    </Box>
-                                )}
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                    {item.plBonuses.map((b, i) => {
+                                        const playerParts = b.split('|').map(s => s.trim());
+                                        const categoryName = playerParts[0] || '';
+                                        // join remaining parts back in case prediction itself contained pipes
+                                        const prediction = playerParts.length > 1 ? playerParts.slice(1).join('|') : '';
 
-                                {Array.isArray(item.plBonuses) && item.plBonuses.length > 0 ? (
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                        {item.plBonuses.map((b, i) => {
-                                            const playerParts = b.split('|').map(s => s.trim());
-                                            const categoryName = playerParts[0] || '';
-                                            // join remaining parts back in case prediction itself contained pipes
-                                            const prediction = playerParts.length > 1 ? playerParts.slice(1).join('|') : '';
-                                        
-                                            // Find matching bonus in league data to get points and result
-                                            const leagueBonuses = leagueData?.lgBonusPoints || [];
-                                            const matchingBonus = leagueBonuses.find(lb => {
-                                                const lbParts = lb.split('|').map(s => s.trim());
-                                                return lbParts[0] === categoryName;
-                                            });
-                                        
-                                            let pointsWorth = 0;
-                                            let correctAnswer = null;
-                                            let isCorrect = null;
-                                        
-                                            if (matchingBonus) {
-                                                const bonusParts = matchingBonus.split('|').map(s => s.trim());
-                                                pointsWorth = parseInt(bonusParts[1]) || 0;
-                                                correctAnswer = bonusParts[3] || null; // Result is at index 3
-                                            
-                                                // Only evaluate correctness if there's a confirmed result
-                                                if (correctAnswer) {
-                                                    const correctList = parseNames(correctAnswer);
-                                                    const predList = parseNames(prediction);
-                                                    isCorrect = predList.some(p => correctList.includes(p));
-                                                }
+                                        // Find matching bonus in league data to get points and result
+                                        const leagueBonuses = leagueData?.lgBonusPoints || [];
+                                        const matchingBonus = leagueBonuses.find(lb => {
+                                            const lbParts = lb.split('|').map(s => s.trim());
+                                            return lbParts[0] === categoryName;
+                                        });
+
+                                        let pointsWorth = 0;
+                                        let correctAnswer = null;
+                                        let isCorrect = null;
+
+                                        if (matchingBonus) {
+                                            const bonusParts = matchingBonus.split('|').map(s => s.trim());
+                                            pointsWorth = parseInt(bonusParts[1]) || 0;
+                                            correctAnswer = bonusParts[3] || null; // Result is at index 3
+
+                                            // Only evaluate correctness if there's a confirmed result
+                                            if (correctAnswer) {
+                                                const correctList = parseNames(correctAnswer);
+                                                const predList = parseNames(prediction);
+                                                isCorrect = predList.some(p => correctList.includes(p));
                                             }
-                                        
-                                            return (
-                                                <Box 
-                                                    key={i}
-                                                    sx={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        gap: 0.75,
-                                                        p: 1.5,
-                                                        borderRadius: 2,
-                                                        background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
-                                                        border: '1px solid rgba(255, 20, 147, 0.2)',
-                                                        transition: 'all 0.2s ease',
-                                                        '&:hover': {
-                                                            background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.8) 0%, rgba(245, 235, 255, 0.8) 100%)',
-                                                            border: '1px solid rgba(255, 20, 147, 0.4)',
-                                                            transform: 'translateX(4px)',
-                                                            boxShadow: '0 2px 8px rgba(255, 20, 147, 0.15)'
-                                                        }
-                                                    }}
-                                                >
-                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <Typography 
-                                                            sx={{ 
-                                                                fontWeight: 700, 
-                                                                fontSize: '1rem',
-                                                                color: '#9B30FF',
-                                                            }}
-                                                        >
-                                                            {categoryName}
-                                                        </Typography>
+                                        }
+
+                                        return (
+                                            <Box 
+                                                key={i}
+                                                sx={{
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: 0.75,
+                                                    p: 1.5,
+                                                    borderRadius: 2,
+                                                    background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
+                                                    border: '1px solid rgba(255, 20, 147, 0.2)',
+                                                    transition: 'all 0.2s ease',
+                                                    '&:hover': {
+                                                        background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.8) 0%, rgba(245, 235, 255, 0.8) 100%)',
+                                                        border: '1px solid rgba(255, 20, 147, 0.4)',
+                                                        transform: 'translateX(4px)',
+                                                        boxShadow: '0 2px 8px rgba(255, 20, 147, 0.15)'
+                                                    }
+                                                }}
+                                            >
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 1 }}>
+                                                    <Typography 
+                                                        sx={{ 
+                                                            fontWeight: 700, 
+                                                            fontSize: '1rem',
+                                                            color: '#9B30FF',
+                                                        }}
+                                                    >
+                                                        {categoryName}
+                                                    </Typography>
+                                                    <Chip
+                                                        label={`${pointsWorth} pts`}
+                                                        size="medium"
+                                                        sx={{
+                                                            background: 'linear-gradient(135deg, #9B30FF 0%, #7A1CAC 100%)',
+                                                            color: 'white',
+                                                            fontWeight: 700,
+                                                            fontSize: '0.85rem',
+                                                            height: '28px',
+                                                            '& .MuiChip-label': {
+                                                                px: 2
+                                                            },
+                                                            mt: { xs: 0.5, sm: 0 }
+                                                        }}
+                                                    />
+                                                </Box>
+                                            
+                                                <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 1, flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap' }}>
+                                                    <Typography 
+                                                        sx={{ 
+                                                            fontSize: '1rem',
+                                                            color: '#666',
+                                                            fontWeight: 500,
+                                                            minWidth: { xs: '100%', sm: 'auto' }
+                                                        }}
+                                                    >
+                                                    Prediction:
+                                                    </Typography>
+                                                    <Chip
+                                                        label={capitalize(prediction)}
+                                                        size="medium"
+                                                        sx={{
+                                                            background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)',
+                                                            color: 'white',
+                                                            fontWeight: 600,
+                                                            fontSize: '0.85rem',
+                                                            height: '28px',
+                                                            boxShadow: '0 2px 4px rgba(255, 20, 147, 0.3)',
+                                                            '& .MuiChip-label': {
+                                                                px: 2
+                                                            },
+                                                            width: { xs: '100%', sm: 'auto' }
+                                                        }}
+                                                    />
+                                                
+                                                    {isCorrect !== null && (
                                                         <Chip
-                                                            label={`${pointsWorth} pts`}
+                                                            label={isCorrect ? '✓ Correct' : '✗ Incorrect'}
                                                             size="medium"
                                                             sx={{
-                                                                background: 'linear-gradient(135deg, #9B30FF 0%, #7A1CAC 100%)',
+                                                                background: isCorrect 
+                                                                    ? 'linear-gradient(135deg, #50C878 0%, #3CB371 100%)'
+                                                                    : 'linear-gradient(135deg, #DC143C 0%, #B22222 100%)',
                                                                 color: 'white',
                                                                 fontWeight: 700,
                                                                 fontSize: '0.85rem',
                                                                 height: '28px',
+                                                                boxShadow: isCorrect
+                                                                    ? '0 2px 4px rgba(80, 200, 120, 0.4)'
+                                                                    : '0 2px 4px rgba(220, 20, 60, 0.4)',
                                                                 '& .MuiChip-label': {
                                                                     px: 2
-                                                                }
+                                                                },
+                                                                mt: { xs: 0.5, sm: 0 }
                                                             }}
                                                         />
-                                                    </Box>
-                                                
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                                                        <Typography 
-                                                            sx={{ 
-                                                                fontSize: '1rem',
-                                                                color: '#666',
-                                                                fontWeight: 500
-                                                            }}
-                                                        >
-                                                        Prediction:
-                                                        </Typography>
-                                                        <Chip
-                                                            label={prediction}
-                                                            size="medium"
-                                                            sx={{
-                                                                background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)',
-                                                                color: 'white',
-                                                                fontWeight: 600,
-                                                                fontSize: '0.85rem',
-                                                                height: '28px',
-                                                                boxShadow: '0 2px 4px rgba(255, 20, 147, 0.3)',
-                                                                '& .MuiChip-label': {
-                                                                    px: 2
-                                                                }
-                                                            }}
-                                                        />
-                                                    
-                                                        {isCorrect !== null && (
-                                                            <Chip
-                                                                label={isCorrect ? '✓ Correct' : '✗ Incorrect'}
-                                                                size="medium"
-                                                                sx={{
-                                                                    background: isCorrect 
-                                                                        ? 'linear-gradient(135deg, #50C878 0%, #3CB371 100%)'
-                                                                        : 'linear-gradient(135deg, #DC143C 0%, #B22222 100%)',
-                                                                    color: 'white',
-                                                                    fontWeight: 700,
-                                                                    fontSize: '0.85rem',
-                                                                    height: '28px',
-                                                                    boxShadow: isCorrect
-                                                                        ? '0 2px 4px rgba(80, 200, 120, 0.4)'
-                                                                        : '0 2px 4px rgba(220, 20, 60, 0.4)',
-                                                                    '& .MuiChip-label': {
-                                                                        px: 2
-                                                                    }
-                                                                }}
-                                                            />
-                                                        )}
-                                                    </Box>
+                                                    )}
                                                 </Box>
-                                            );
-                                        })}
-                                    </Box>
-                                ) : (
-                                    <Typography variant="body2" color="text.secondary">
-                                    No bonus predictions submitted.
-                                    </Typography>
-                                )}
+                                            </Box>
+                                        );
+                                    })}
+                                </Box>
                             </NestedDetails>
                         </NestedAccordion>
+                    )}
+
+                    {item.plLipSyncAssassin && item.plLipSyncAssassin.trim() !== '' && (
+                        <Box sx={{ width: '100%', mt: 1 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, p: 1.5, borderRadius: 2, background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)', border: '1px solid rgba(255, 20, 147, 0.12)', mb: 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 1 }}>
+                                    <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: '#9B30FF' }}>
+                                        Lip Sync Assassin
+                                    </Typography>
+                                    <Chip
+                                        label={`${leagueData?.lgLipSyncPoints || 0} pts`}
+                                        size="medium"
+                                        sx={{ background: 'linear-gradient(135deg, #9B30FF 0%, #7A1CAC 100%)', color: 'white', fontWeight: 700, fontSize: '0.85rem', height: '28px', '& .MuiChip-label': { px: 2 }, mt: { xs: 0.5, sm: 0 } }}
+                                    />
+                                </Box>
+                                <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 1, flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap' }}>
+                                    <Typography sx={{ fontSize: '1rem', color: '#666', fontWeight: 500, minWidth: { xs: '100%', sm: 'auto' } }}>Prediction:</Typography>
+                                    <Chip label={item.plLipSyncAssassin} size="medium" sx={{ background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)', color: 'white', fontWeight: 600, fontSize: '0.85rem', height: '28px', boxShadow: '0 2px 4px rgba(255, 20, 147, 0.3)', '& .MuiChip-label': { px: 2 }, width: { xs: '100%', sm: 'auto' } }} />
+                                    {(() => {
+                                        const leagueAssassin = mostFrequentName(leagueData?.lgLipSyncWinners || []);
+                                        if (!leagueAssassin) return null;
+                                        const assassinNames = parseNames(leagueAssassin);
+                                        const playerPreds = parseNames(item.plLipSyncAssassin || '');
+                                        const correct = playerPreds.some(p => assassinNames.includes(p));
+                                        const leagueActive = !(leagueData && leagueData.lgFinished === 'finished');
+                                        const prefix = leagueActive ? 'Currently ' : '';
+                                        return (
+                                            <Chip label={prefix + (correct ? '✓ Correct' : '✗ Incorrect')} size="medium" sx={{ background: correct ? 'linear-gradient(135deg, #50C878 0%, #3CB371 100%)' : 'linear-gradient(135deg, #DC143C 0%, #B22222 100%)', color: 'white', fontWeight: 700, fontSize: '0.85rem', height: '28px', boxShadow: correct ? '0 2px 4px rgba(80, 200, 120, 0.4)' : '0 2px 4px rgba(220, 20, 60, 0.4)', '& .MuiChip-label': { px: 2 }, mt: { xs: 0.5, sm: 0 } }} />
+                                        );
+                                    })()}
+                                </Box>
+                            </Box>
+                        </Box>
                     )}
                 </div>
             </StyledDetails>
@@ -728,4 +776,10 @@ function parseNames(str) {
         .map(s => s.trim())
         .filter(Boolean)
         .map(s => s.toLowerCase());
+}
+
+function capitalize(s) {
+    if (typeof s !== 'string') return s;
+    if (!s) return s;
+    return s.charAt(0).toUpperCase() + s.slice(1);
 }

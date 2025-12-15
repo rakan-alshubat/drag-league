@@ -54,6 +54,7 @@ export default function PopUp({
 
             <ActionRow>
                 <CancelButton
+                    type="button"
                     onClick={onCancel}
                     variant="outlined"
                     disabled={loading}
@@ -62,6 +63,7 @@ export default function PopUp({
                 </CancelButton>
 
                 <ConfirmButton
+                    type="button"
                     onClick={onConfirm}
                     variant="contained"
                     disabled={loading}

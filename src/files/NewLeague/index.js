@@ -61,13 +61,23 @@ export default function NewLeague( userData ) {
     const client = generateClient();
 
     const [userEmail, setUserEmail] = useState(User?.id || '');
-    const [isAdmin, setIsAdmin] = useState(() => {
-        if(League?.lgAdmin.includes(userEmail)){
-            return true;
-        } else {
-            return false;
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    // Keep local userEmail and isAdmin in sync when props update (fixes invite button visibility)
+    useEffect(() => {
+        const normalized = String(User?.id || '').toLowerCase().trim();
+        setUserEmail(normalized);
+
+        try {
+            const admins = Array.isArray(League?.lgAdmin) ? League.lgAdmin : [];
+            const normalizedAdmins = admins.map(a => String(a || '').toLowerCase().trim());
+            setIsAdmin(normalized && normalizedAdmins.includes(normalized));
+        } catch (e) {
+            setIsAdmin(false);
         }
-    });
+    }, [User?.id, League?.lgAdmin]);
+
+    
 
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmLoading, setConfirmLoading] = useState(false);
@@ -187,15 +197,14 @@ export default function NewLeague( userData ) {
     }
 
     const rules = () => {
-        console.log('league: ',League)
-        console.log('player: ',Player)
-        console.log('user: ',User)
+        console.log(League?.lgSwap)
         const swap = League?.lgSwap?.split('|').map(s => s.trim()).filter(Boolean) || []
         return [
             (League?.lgChallengePoints > 0 ? `Predicting the weekly Maxi Challenge winners is worth <strong>${League?.lgChallengePoints} points</strong>` : 'Predicting weekly Maxi Challenge winners is disabled'),
-            (League?.lgDeadline === 'manual' ? 'The admin will manually stop taking submissions' : `The deadline to submit weekly Maxi Challenge predictions is <strong>${formatDeadline(League?.lgDeadline)}</strong>`),
-            (League?.lgLipSyncPoints > 0 ? `Predicting the lip sync assassin is worth <strong>${League?.lgLipSyncPoints} points</strong>` : 'Predicting the lip sync assassin is disabled'),
-            (League?.lgSwap === '' || !League?.lgSwap ? 'The admin has disabled swaps for this season' : `Swaps will happen ${swap[0] === 'Number of Episodes' ? `after <strong>${swap[1]} episodes</strong>` : `when there are <strong>${swap[1]} Queens remaining</strong>`}`)
+            (League?.lgChallengePoints > 0 ? `The deadline to submit weekly Maxi Challenge predictions is <strong>${formatDeadline(League?.lgDeadline)}</strong>` : ``),
+            (League?.lgLipSyncPoints > 0 ? `Predicting the Lip Sync Assassin is worth <strong>${League?.lgLipSyncPoints} points</strong>` : 'Predicting the Lip Sync Assassin is disabled'),
+            (League?.lgSwap === '' || !League?.lgSwap ? 'The admin has disabled swaps for this season' : `Swaps will happen ${swap[0] === 'NumberOfEpisodes' ? `after <strong>${swap[1]} Episodes</strong>` : `when there are <strong>${swap[1]} Queens remaining</strong>`}`),
+            (League?.lgPublic ? `The league is <strong>public</strong> and visible to anyone with the link` : `The league is <strong>private</strong> and only visible to players`),
         ]
     }
 
@@ -230,7 +239,7 @@ export default function NewLeague( userData ) {
 
     const handleAcceptRequest = (player) => {
         setPopUpTitle('Accept player?')
-        setPopUpDescription(<InviteSectionTitle>{player.name} has requested to join. Accepting will add them as a player who can submit rankings immediately. Continue?</InviteSectionTitle>)
+        setPopUpDescription(<InviteSectionTitle>{player.name} has requested to join. Do you want to accept them?</InviteSectionTitle>)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -238,7 +247,7 @@ export default function NewLeague( userData ) {
 
     const handleDeclineRequest = (player) => {
         setPopUpTitle('Decline player?')
-        setPopUpDescription(<InviteSectionTitle>Decline {player.name}&apos;s request to join? They won&apos;t be added to the league and won&apos;t be notified further.</InviteSectionTitle>)
+        setPopUpDescription(<InviteSectionTitle>Decline {player.name}&apos;s request to join?</InviteSectionTitle>)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -246,7 +255,7 @@ export default function NewLeague( userData ) {
 
     const handleKickRequest = (player) => {
         setPopUpTitle('Revoke invite?')
-        setPopUpDescription(<InviteSectionTitle>Revoke the invite for {player.name}? They will no longer be able to accept the invitation using the invite link.</InviteSectionTitle>)
+        setPopUpDescription(<InviteSectionTitle>Revoke the invite for {player.name}? They will no longer be able to accept the invitation.</InviteSectionTitle>)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -254,7 +263,7 @@ export default function NewLeague( userData ) {
 
     const handleRemovePlayer = (player) => {
         setPopUpTitle('Kick player?')
-        setPopUpDescription(<InviteSectionTitle>Remove {player.name} from the league? This will delete their player record and submissions.</InviteSectionTitle>)
+        setPopUpDescription(<InviteSectionTitle>Remove {player.name} from the league? This will delete their submissions and all their data from the league.</InviteSectionTitle>)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
@@ -272,10 +281,10 @@ export default function NewLeague( userData ) {
             setPopUpTitle('Start League?')
             setPopUpDescription(
                 <Box>
-                    <InviteSectionTitle>Starting the league will close registrations and freeze the player list for {League?.lgName}. This cannot be undone.</InviteSectionTitle>
+                    <InviteSectionTitle>Starting the league will close registrations for {League?.lgName} and you will not be able to add players or change certain settings. proceed?</InviteSectionTitle>
                     <Box sx={{ mt: 2 }}>
                         <Alert severity="warning">{notSubmitted.length} player{notSubmitted.length > 1 ? 's' : ''} have not submitted rankings: {previewNames}{notSubmitted.length > 10 ? ', ...' : ''}</Alert>
-                        <Typography variant="body2" sx={{ mt: 1 }}>You can still start the league, but missing submissions will not be counted.</Typography>
+                        <Typography variant="body2" sx={{ mt: 1 }}>You can still start the league, but players with missing submissions will be removed from the league.</Typography>
                     </Box>
                 </Box>
             )
@@ -284,7 +293,7 @@ export default function NewLeague( userData ) {
         }
 
         setPopUpTitle('Start League?')
-        setPopUpDescription(<InviteSectionTitle>Starting the league will close registrations and freeze the player list for {League?.lgName}. Make sure you&apos;re ready — this cannot be undone.</InviteSectionTitle>)
+        setPopUpDescription(<InviteSectionTitle>Starting the league will close registrations for {League?.lgName} and you will not be able to add players or change certain settings. Make sure you&apos;re ready — proceed?</InviteSectionTitle>)
         setConfirmOpen(true)
     };
 
@@ -296,16 +305,111 @@ export default function NewLeague( userData ) {
 
     const handleInvitePlayer = () => {
         setPopUpTitle('Invite Player')
-        setPopUpDescription(<InviteSectionTitle>Invite a new player by entering their name and email, or share the invite link below. Invited players can accept to join your league.</InviteSectionTitle>)
+        setPopUpDescription(<InviteSectionTitle>Invite a new player by entering their name and email, or share the invite link below.</InviteSectionTitle>)
         setConfirmOpen(true)
     }
 
     const handlePromoteRequest = (player) => {
         setPopUpTitle('Promote to Admin')
-        setPopUpDescription(<InviteSectionTitle>Promote {player.name} to league admin? They&apos;ll get permissions to manage invites, start the league, and update settings.</InviteSectionTitle>)
+        setPopUpDescription(<InviteSectionTitle>Promote {player.name} to league admin? They&apos;ll also get permissions to manage invites, start the league, and update settings as well as submitting the weekly results.</InviteSectionTitle>)
         setPickedPlayer(player.email)
         setDisplayName(player.name)
         setConfirmOpen(true)
+    }
+
+    const currentUserIsMember = () => {
+        const logged = String(userEmail || '').toLowerCase().trim();
+        if (!logged) return false;
+        return Array.isArray(Player) && Player.some(p => {
+            const emailOrId = String(p.plEmail || p.id || '').toLowerCase().trim();
+            return emailOrId === logged;
+        });
+    }
+
+    const currentUserIsPending = () => {
+        const logged = String(userEmail || '').toLowerCase().trim();
+        if (!logged) return false;
+        return (League?.lgPendingPlayers || []).some(p => {
+            const raw = String(p || '').trim();
+            if (!raw) return false;
+            // legacy plain-email entries
+            if (!raw.includes('|')) {
+                return raw.toLowerCase() === logged;
+            }
+            const parts = raw.split('|').map(s => s.trim()).filter(Boolean);
+            const email = parts[1] ? String(parts[1]).toLowerCase().trim() : '';
+            const name = parts[2] ? String(parts[2]).toLowerCase().trim() : '';
+            return email === logged || name === logged;
+        });
+    }
+
+
+    const handleRequestJoinOpen = () => {
+        setPopUpTitle('Request to join');
+        setPopUpDescription(<InviteSectionTitle>Please enter the name you&apos;d like to display in this league. This will help the admin identify you.</InviteSectionTitle>);
+        setPopUpNameInput('');
+        setPopUpError('');
+        setConfirmOpen(true);
+    }
+
+    const handleAcceptInviteUser = async () => {
+        try {
+            setConfirmLoading(true);
+            const normalized = String(userEmail || '').toLowerCase().trim();
+            const updatedPending = (League.lgPendingPlayers || []).filter(p => {
+                const pl = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
+                return pl[1]?.toLowerCase() !== normalized;
+            });
+
+            const createPlayerResult = await client.graphql({ query: createPlayer, variables: { input: { id: normalized, leagueId: League.id, plEmail: normalized, plName: User?.name || '', plStatus: 'Player' } } });
+            try {
+                const userRes = await client.graphql({ query: getUsers, variables: { id: normalized } });
+                const userObj = userRes?.data?.getUsers;
+                const leagueEntry = `${new Date().toISOString()}|${League.id}|${League?.lgName || ''}`;
+
+                if (!userObj) {
+                    await client.graphql({ query: createUsers, variables: { input: { id: normalized, leagues: [leagueEntry], pendingLeagues: [] } } });
+                } else {
+                    const existingLeagues = Array.isArray(userObj.leagues) ? userObj.leagues.slice() : [];
+                    const existingPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
+                    if (!existingLeagues.some(l => String(l||'').split('|')[1] === League.id)) existingLeagues.push(leagueEntry);
+                    const filteredPending = existingPending.filter(pid => String(pid) !== String(League.id));
+                    await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, leagues: existingLeagues, pendingLeagues: filteredPending } } });
+                }
+            } catch (e) {
+                console.warn('Failed to update user record after accepting invite:', e);
+            }
+
+            const currentHistory = League.lgHistory || [];
+            const historyEntry = new Date().toISOString() + '. ' + (User?.name || normalized) + ' accepted invite';
+            await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
+            router.reload();
+        } catch (err) {
+            console.error('Accept invite failed', err);
+            alert('Failed to accept invite.');
+        } finally {
+            setConfirmLoading(false);
+        }
+    }
+
+    const handleDeclineInviteUser = async () => {
+        try {
+            setConfirmLoading(true);
+            const normalized = String(userEmail || '').toLowerCase().trim();
+            const updatedPending = (League.lgPendingPlayers || []).filter(p => {
+                const pl = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
+                return pl[1]?.toLowerCase() !== normalized;
+            });
+            const currentHistory = League.lgHistory || [];
+            const historyEntry = new Date().toISOString() + '. ' + (User?.name || normalized) + ' declined invite';
+            await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
+            router.reload();
+        } catch (err) {
+            console.error('Decline invite failed', err);
+            alert('Failed to decline invite.');
+        } finally {
+            setConfirmLoading(false);
+        }
     }
 
     return (
@@ -325,6 +429,19 @@ export default function NewLeague( userData ) {
                         label="Ranking Submission Deadline"
                     />
                 </InfoBanner>
+            )}
+
+            {League?.lgPublic && !currentUserIsMember() && (
+                <ActionRow sx={{ mb: 2, justifyContent: 'center' }}>
+                    {currentUserIsPending() ? (
+                        <>
+                            <PrimaryButton size="small" onClick={handleAcceptInviteUser} disabled={confirmLoading}>Accept</PrimaryButton>
+                            <DangerButton size="small" onClick={handleDeclineInviteUser} disabled={confirmLoading}>Decline</DangerButton>
+                        </>
+                    ) : (
+                        <PrimaryButton size="small" onClick={handleRequestJoinOpen} disabled={confirmLoading}>Request to join</PrimaryButton>
+                    )}
+                </ActionRow>
             )}
 
             {isAdmin && (
@@ -353,10 +470,14 @@ export default function NewLeague( userData ) {
                         </PrimaryButton>
                     )}
                 </InviteSectionHeader>
+                
                 {currentPlayerData().length > 0 ? (
                     <TableContainer>
                         <TableHeaderRowCurrent isAdmin={isAdmin}>
-                            <TableHeaderCell>Name</TableHeaderCell>
+                            <TableHeaderCell>
+                                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Players</Box>
+                                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Name</Box>
+                            </TableHeaderCell>
                             <TableHeaderCell>Role</TableHeaderCell>
                             <TableHeaderCell>Rankings</TableHeaderCell>
                             {isAdmin && <TableHeaderCell>Actions</TableHeaderCell>}
@@ -430,12 +551,15 @@ export default function NewLeague( userData ) {
 
                                             if (canSubmit) {
                                                 return (
-                                                    <PrimaryButton
-                                                        size="small"
-                                                        onClick={() => handlePlayerSubmit(player.name)}
-                                                    >
-                                                        Submit Rankings
-                                                    </PrimaryButton>
+                                                    <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-start' }, width: { xs: '100%', sm: 'auto' } }}>
+                                                        <PrimaryButton
+                                                            size="small"
+                                                            onClick={() => handlePlayerSubmit(player.name)}
+                                                            sx={{ width: { xs: 'auto !important' }, padding: { xs: '8px 14px' }, whiteSpace: 'nowrap' }}
+                                                        >
+                                                            Submit Rankings
+                                                        </PrimaryButton>
+                                                    </Box>
                                                 );
                                             }
                                             return (
@@ -524,7 +648,7 @@ export default function NewLeague( userData ) {
                     <RuleIcon /> League Rules
                 </SectionHeader>
                 <GridLayout columns={2}>
-                    {rules().map((rule, idx) => (
+                    {rules().filter(Boolean).map((rule, idx) => (
                         <GridCard key={idx} elevation={0}>
                             <GridCardText dangerouslySetInnerHTML={{ __html: rule }} />
                         </GridCard>
@@ -659,14 +783,14 @@ export default function NewLeague( userData ) {
             <PopUp
                 open={confirmOpen}
                 title={popUpTitle}
-                confirmText={popUpTitle === 'Delete League?' ? 'Delete' : popUpTitle === 'Start League?' ? 'Start' : popUpTitle === 'Invite Player' ? 'Send Invite' : 'Confirm'}
+                confirmText={popUpTitle === 'Delete League?' ? 'Delete' : popUpTitle === 'Start League?' ? 'Start' : popUpTitle === 'Invite Player' ? 'Send Invite' : popUpTitle === 'Request to join' ? 'Request' : 'Confirm'}
                 cancelText="Cancel"
                 loading={confirmLoading}
                 confirmVariant={popUpTitle === 'Delete League?' ? 'danger' : popUpTitle === 'Start League?' ? 'success' : popUpTitle === 'Invite Player' ? 'primary' : popUpTitle === 'Promote to Admin' ? 'primary' : popUpTitle === 'Accept player?' ? 'primary' : popUpTitle === 'Decline player?' ? 'danger' : popUpTitle === 'Revoke invite?' ? 'danger' : popUpTitle === 'Kick player?' ? 'danger' : 'primary'}
                 icon={
                     popUpTitle === 'Delete League?' ? <CloseIcon sx={{ color: '#cc0000' }} /> :
                         popUpTitle === 'Start League?' ? <EmojiEventsIcon sx={{ color: '#1e7e34' }} /> :
-                            popUpTitle === 'Invite Player' ? <GroupAddIcon sx={{ color: '#FF1493' }} /> :
+                            popUpTitle === 'Invite Player' ? <GroupAddIcon sx={{ color: '#FF1493' }} /> : popUpTitle === 'Request to join' ? <GroupAddIcon sx={{ color: '#FF1493' }} /> :
                                 popUpTitle === 'Promote to Admin' ? <PersonAddAltSharpIcon sx={{ color: '#FF1493' }} /> :
                                     popUpTitle === 'Accept player?' ? <CheckIcon sx={{ color: '#4caf50' }} /> :
                                         popUpTitle === 'Decline player?' ? <CloseIcon sx={{ color: '#f44336' }} /> :
@@ -681,6 +805,7 @@ export default function NewLeague( userData ) {
                     setPopUpCopySuccess('');
                 }}
                 onConfirm={async () => {
+                    console.log('PopUp onConfirm triggered, title:', popUpTitle, 'picked:', pickedPlayer, 'displayName:', displayName);
                     try {
                         setConfirmLoading(true);
                         setPopUpError('');
@@ -741,7 +866,7 @@ export default function NewLeague( userData ) {
                                 }
                             });
                             console.log('League started:', startResult);
-                            router.push(`/League/${League.id}`)
+                            window.location.reload();
                         } else if(popUpTitle === 'Delete League?'){
                             // Comprehensive cascade delete
                             console.log('Starting league deletion cascade...');
@@ -837,7 +962,7 @@ export default function NewLeague( userData ) {
                                 updatedPending.push(`invited|${inviteEmail}|${inviteName}`);
 
                                 const currentHistory = League.lgHistory || [];
-                                const historyEntry = new Date().toISOString() + '. ' + inviteName + ' (' + inviteEmail + ') was invited to join';
+                                const historyEntry = new Date().toISOString() + '. ' + inviteName + ' was invited to join. by ' + displayName 
 
                                 const inviteResult = await client.graphql({
                                     query: updateLeague,
@@ -986,12 +1111,56 @@ export default function NewLeague( userData ) {
                                 return;
                             }
 
+                        } else if (popUpTitle === 'Request to join') {
+                            const requestName = popUpNameInput.trim();
+                            const requestEmail = String(userEmail || '').trim().toLowerCase();
+                            if (!requestName) {
+                                setPopUpError('Please enter a display name to request to join.');
+                                return;
+                            }
+
+                            const updatedPending = League.lgPendingPlayers || [];
+                            // avoid duplicate pending entries
+                            const alreadyPending = updatedPending.some(p => {
+                                const parts = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
+                                return parts[1] && parts[1].toLowerCase() === requestEmail;
+                            });
+                            if (alreadyPending) {
+                                setPopUpError('You already have a pending request.');
+                                return;
+                            }
+
+                            updatedPending.push(`requested|${requestEmail}|${requestName}`);
+                            const currentHistoryReq = League.lgHistory || [];
+                            const historyEntryReq = new Date().toISOString() + '. ' + requestName + ' (' + requestEmail + ') requested to join';
+
+                            await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistoryReq, historyEntryReq] } } });
+
+                            try {
+                                const userRes = await client.graphql({ query: getUsers, variables: { id: requestEmail } });
+                                const userObj = userRes?.data?.getUsers;
+                                if (!userObj) {
+                                    await client.graphql({ query: createUsers, variables: { input: { id: requestEmail, leagues: [], pendingLeagues: [League.id] } } });
+                                } else {
+                                    const existingPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
+                                    if (!existingPending.includes(League.id)) {
+                                        await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, pendingLeagues: [...existingPending, League.id] } } });
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('Failed to update user pending leagues for request:', e);
+                            }
+
+                            setPopUpNameInput('');
+                            setPopUpEmailInput('');
+                            router.push(`/League/${League.id}`)
+
                         } else if(popUpTitle === 'Promote to Admin'){
                             const updatedAdmins = League.lgAdmin || [];
                             updatedAdmins.push(pickedPlayer.trim().toLowerCase());
 
                             const currentHistory = League.lgHistory || [];
-                            const historyEntry = new Date().toISOString() + '. ' + displayName + ' was promoted to admin';
+                            const historyEntry = new Date().toISOString() + '. ' + displayName + ' was promoted to admin.';
 
                             const promoteResult = await client.graphql({
                                 query: updateLeague,
@@ -1084,9 +1253,13 @@ export default function NewLeague( userData ) {
                             router.reload();
                         } else if(popUpTitle === 'Revoke invite?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
-                                const pl = p.split('|').map(s => s.trim()).filter(Boolean)
-                                // compare by email (pl[1]) to avoid name mismatches
-                                return pl[1]?.toLowerCase() !== displayName?.toLowerCase() && pl[1]?.toLowerCase() !== pickedPlayer?.toLowerCase();
+                                const pl = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
+                                const email = pl[1] ? String(pl[1]).toLowerCase().trim() : '';
+                                const name = pl[2] ? String(pl[2]).toLowerCase().trim() : '';
+                                const picked = pickedPlayer ? String(pickedPlayer).toLowerCase().trim() : '';
+                                const disp = displayName ? String(displayName).toLowerCase().trim() : '';
+                                // Keep entries that do NOT match the invite being revoked (match by parsed email or name)
+                                return email !== picked && email !== disp && name !== picked && name !== disp;
                             });
 
                             const currentHistory = League.lgHistory || [];
@@ -1296,6 +1469,18 @@ export default function NewLeague( userData ) {
                                 {popUpCopySuccess}
                             </InviteText>
                         )}
+                    </Box>
+                )}
+
+                {popUpTitle === 'Request to join' && (
+                    <Box sx={{ mt: 2, display: 'grid', gap: 1 }}>
+                        <TextField
+                            fullWidth
+                            rows={3}
+                            label='Display name'
+                            value={popUpNameInput}
+                            onChange={(e) => setPopUpNameInput(filterPipeCharacter(e.target.value))}
+                        />
                     </Box>
                 )}
             </PopUp>

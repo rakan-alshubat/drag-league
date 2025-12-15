@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useTheme, useMediaQuery } from '@mui/material';
 import calculatePoints from "../../helpers/calculatePoints";
 import { BarChart } from "@mui/x-charts/BarChart";
 import {
@@ -77,6 +78,11 @@ export default function PlayerRankings(props) {
 
     const bottomPlayersChartHeight = Math.max(160, Math.min(360, bottomPlayers.length * 48));
 
+    const shouldShowBottomChart = (data || []).length > 3;
+
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
     return (
         <div>
             {isEveryoneZero && (
@@ -110,6 +116,7 @@ export default function PlayerRankings(props) {
                         borderRadius={19}
                         height={500}
                         sx={{
+                            pointerEvents: isMobile ? 'none' : 'auto',
                             "& .MuiChartsAxis-left .MuiChartsAxis-tickLabel": { display: 'none' },
                             "& .MuiChartsAxis-bottom .MuiChartsAxis-tickLabel": { display: "none" },
                             "& .MuiCharts-root": { paddingBottom: 6 },
@@ -132,33 +139,34 @@ export default function PlayerRankings(props) {
                             </div>
                         ))}
                     </div>
-                    <BarChart
-                        dataset={bottomPlayers}
-                        layout="horizontal"
-                        margin={{ left: 150 }}  // Add this line for more space
-                        yAxis={[{
-                            scaleType: 'band', 
-                            dataKey: 'playerName',
-                            tickLabelStyle: {
-                                angle: 0,  // Change from -50 to 0
-                                fontSize: 14,
-                                textAnchor: 'end',
-                            },
-                        }]}
-                        series={[{ dataKey: 'totalPoints' }]}
-                        barLabel={(v)=> `${v.value}`}
-                        height={bottomPlayersChartHeight}
-                        sx={{
-                            //change left yAxis label styles
-                            "& .MuiChartsAxis-left .MuiChartsAxis-tickLabel":{
-                                transform: 'translateX(-10px)',  // Add this line
-                                whiteSpace: 'normal',  // Add this line
-                                wordWrap: 'break-word',  // Add this line
-                                maxWidth: '140px',  // Add this line
-                            },
-                            // ...rest of your sx props
-                        }}
-                    />
+                    {shouldShowBottomChart && (
+                        <BarChart
+                            dataset={bottomPlayers}
+                            layout="horizontal"
+                            margin={{ left: 150 }}
+                            yAxis={[{
+                                scaleType: 'band', 
+                                dataKey: 'playerName',
+                                tickLabelStyle: {
+                                    angle: 0,
+                                    fontSize: 14,
+                                    textAnchor: 'end',
+                                },
+                            }]}
+                            series={[{ dataKey: 'totalPoints' }]}
+                            barLabel={(v)=> `${v.value}`}
+                            height={bottomPlayersChartHeight}
+                            sx={{
+                                pointerEvents: isMobile ? 'none' : 'auto',
+                                "& .MuiChartsAxis-left .MuiChartsAxis-tickLabel":{
+                                    transform: 'translateX(-10px)',
+                                    whiteSpace: 'normal',
+                                    wordWrap: 'break-word',
+                                    maxWidth: '140px',
+                                },
+                            }}
+                        />
+                    )}
                 </div>
             )}
         </div>

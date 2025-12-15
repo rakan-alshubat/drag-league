@@ -129,6 +129,9 @@ export const BonusPointRow = styled(Box)(({ theme }) => ({
             minWidth: 'auto',
             width: '100%',
         },
+        '& > *:nth-of-type(3n)': {
+            marginBottom: theme.spacing(4),
+        },
     },
 }));
 

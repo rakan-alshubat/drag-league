@@ -14,7 +14,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { generateClient } from 'aws-amplify/api';
-import { updatePlayer, updateLeague, deleteLeague, deletePlayer } from '@/graphql/mutations';
+import { updatePlayer, updateLeague, deleteLeague, deletePlayer, createPlayer } from '@/graphql/mutations';
 import { playersByLeagueId, listUsers } from '@/graphql/queries';
 import PopUp from '@/files/PopUp';
 import {
@@ -30,7 +30,7 @@ import {
 } from './LeagueSettings.styles';
 
 export default function LeagueSettings(props) {
-    const { leagueData } = props;
+    const { leagueData, userData, playersData } = props;
     const router = useRouter();
     
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -40,12 +40,26 @@ export default function LeagueSettings(props) {
     const [selectedPlayer, setSelectedPlayer] = useState(null);
     const [privacyAction, setPrivacyAction] = useState(null);
     const [deleteLeagueAction, setDeleteLeagueAction] = useState(false);
+    const [deletePlayerAction, setDeletePlayerAction] = useState(false);
 
     const client = generateClient();
 
-    // Get all players from the league
-    const players = leagueData?.players || [];
+    // Get all players from props (pages pass `playersData`) or fallback to leagueData.players
+    const allPlayers = Array.isArray(playersData) && playersData.length ? playersData : (leagueData?.players || []);
+    const currentUserId = (userData?.id || '').toLowerCase();
+    const players = (allPlayers || []).filter(p => {
+        const pid = (p.id || '').toLowerCase();
+        const pEmail = (p.plEmail || '').toLowerCase();
+        return pid !== currentUserId && pEmail !== currentUserId;
+    });
     const admins = leagueData?.lgAdmin || [];
+    const pending = leagueData?.lgPendingPlayers || [];
+    const currentUserIsMember = (allPlayers || []).some(p => {
+        const pid = (p.id || '').toLowerCase();
+        const pEmail = (p.plEmail || '').toLowerCase();
+        return pid === currentUserId || pEmail === currentUserId;
+    });
+    const currentUserIsPending = (pending || []).map(s=>String(s||'').toLowerCase()).includes(currentUserId);
     
     // Privacy states
     const isPublic = leagueData?.lgPublic ?? true;
@@ -55,6 +69,71 @@ export default function LeagueSettings(props) {
         setPopUpTitle('Promote to Admin');
         setPopUpDescription(`Are you sure you want to promote ${player.plName} to admin status?`);
         setConfirmOpen(true);
+    };
+
+    const handleKickPlayer = (player) => {
+        setSelectedPlayer(player);
+        setDeletePlayerAction(true);
+        setPopUpTitle('Kick Player');
+        setPopUpDescription(`Are you sure you want to remove ${player.plName} from this league? This action will delete their player entry.`);
+        setConfirmOpen(true);
+    };
+
+    const handleRequestJoin = async () => {
+        if (!userData?.id) return;
+        try {
+            setConfirmLoading(true);
+            const updatedPending = [...(leagueData.lgPendingPlayers || [])];
+            if (!updatedPending.includes(userData.id.toLowerCase())) updatedPending.push(userData.id.toLowerCase());
+            await client.graphql({
+                query: updateLeague,
+                variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending } }
+            });
+            window.location.reload();
+        } catch (err) {
+            console.error('Request join failed', err);
+            alert('Failed to request to join.');
+        } finally {
+            setConfirmLoading(false);
+        }
+    };
+
+    const handleAcceptInvite = async () => {
+        if (!userData?.id) return;
+        try {
+            setConfirmLoading(true);
+            // remove from pending
+            const updatedPending = (leagueData.lgPendingPlayers || []).filter(p => (p || '').toLowerCase() !== userData.id.toLowerCase());
+            // update league pending and history
+            const currentHistory = leagueData.lgHistory || [];
+            const historyEntry = new Date().toISOString() + '. ' + (userData.name || userData.id) + ' accepted invite';
+            await client.graphql({ query: updateLeague, variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
+            // create player record
+            await client.graphql({ query: createPlayer, variables: { input: { leagueId: leagueData.id, plEmail: userData.id, plName: userData.name || '', plStatus: 'Member' } } });
+            window.location.reload();
+        } catch (err) {
+            console.error('Accept invite failed', err);
+            alert('Failed to accept invite.');
+        } finally {
+            setConfirmLoading(false);
+        }
+    };
+
+    const handleDeclineInvite = async () => {
+        if (!userData?.id) return;
+        try {
+            setConfirmLoading(true);
+            const updatedPending = (leagueData.lgPendingPlayers || []).filter(p => (p || '').toLowerCase() !== userData.id.toLowerCase());
+            const currentHistory = leagueData.lgHistory || [];
+            const historyEntry = new Date().toISOString() + '. ' + (userData.name || userData.id) + ' declined invite';
+            await client.graphql({ query: updateLeague, variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
+            window.location.reload();
+        } catch (err) {
+            console.error('Decline invite failed', err);
+            alert('Failed to decline invite.');
+        } finally {
+            setConfirmLoading(false);
+        }
     };
 
     const handleConfirmPromote = async () => {
@@ -252,6 +331,22 @@ export default function LeagueSettings(props) {
     const handleConfirm = async () => {
         if (deleteLeagueAction) {
             await handleConfirmDeleteLeague();
+        } else if (deletePlayerAction && selectedPlayer) {
+            // delete selected player
+            try {
+                setConfirmLoading(true);
+                await client.graphql({
+                    query: deletePlayer,
+                    variables: { input: { id: selectedPlayer.id } }
+                });
+                // reload to refresh players list
+                window.location.reload();
+            } catch (err) {
+                console.error('Error deleting player:', err);
+                alert('Failed to remove player.');
+            } finally {
+                setConfirmLoading(false);
+            }
         } else if (selectedPlayer) {
             await handleConfirmPromote();
         } else if (privacyAction) {
@@ -266,75 +361,79 @@ export default function LeagueSettings(props) {
 
             <SettingSection>
                 <SectionTitle>Players ({players.length})</SectionTitle>
+                
                 <List>
                     {players.length > 0 ? (
-                        <StyledAccordion disableGutters>
-                            <StyledSummary expandIcon={<ExpandMoreIcon />}>
-                                <SummaryText>View All Players</SummaryText>
-                            </StyledSummary>
-                            <StyledDetails>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                    {players.map((player, idx) => {
-                                        const isAdmin = isPlayerAdmin(player);
-                                        return (
-                                            <Box
-                                                key={idx}
-                                                sx={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'space-between',
-                                                    padding: '12px 16px',
-                                                    borderRadius: '8px',
-                                                    background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
-                                                    border: '1px solid rgba(255, 20, 147, 0.2)',
-                                                    transition: 'all 0.2s ease',
-                                                    '&:hover': {
-                                                        borderColor: '#FFB6D9',
-                                                    },
-                                                }}
-                                            >
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                                                    <Typography sx={{ fontWeight: 600, color: '#333' }}>
-                                                        {player.plName}
-                                                    </Typography>
-                                                    <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
-                                                        {player.id}
-                                                    </Typography>
-                                                    {isAdmin && (
-                                                        <Chip
-                                                            label="Admin"
-                                                            size="small"
-                                                            sx={{
-                                                                background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-                                                                color: 'white',
-                                                                fontWeight: 600,
-                                                                fontSize: '0.75rem',
-                                                            }}
-                                                        />
-                                                    )}
-                                                </Box>
-                                                {!isAdmin && (
-                                                    <Tooltip title="Promote to Admin">
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => handlePromotePlayer(player)}
-                                                            sx={{
-                                                                color: '#9B30FF',
-                                                                '&:hover': {
-                                                                    background: 'rgba(155, 48, 255, 0.1)',
-                                                                },
-                                                            }}
-                                                        >
-                                                            <AdminPanelSettingsIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                )}
-                                            </Box>
-                                        );
-                                    })}
-                                </Box>
-                            </StyledDetails>
-                        </StyledAccordion>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            {players.map((player, idx) => {
+                                const isAdmin = isPlayerAdmin(player);
+                                return (
+                                    <Box
+                                        key={player.id || idx}
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: { xs: '10px', sm: '12px 16px' },
+                                            borderRadius: 8,
+                                            background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
+                                            border: '1px solid rgba(255, 20, 147, 0.12)',
+                                        }}
+                                    >
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Typography sx={{ fontWeight: 600, color: '#333', fontSize: { xs: '0.95rem', sm: '1rem' } }}>
+                                                {player.plName}
+                                            </Typography>
+                                            {isAdmin && (
+                                                <Chip
+                                                    label="Admin"
+                                                    size="small"
+                                                    sx={{
+                                                        background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                                                        color: 'white',
+                                                        fontWeight: 600,
+                                                        fontSize: '0.75rem',
+                                                    }}
+                                                />
+                                            )}
+                                        </Box>
+                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                            {!isAdmin && (
+                                                <Tooltip title="Promote to Admin">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handlePromotePlayer(player)}
+                                                        sx={{
+                                                            color: '#9B30FF',
+                                                            '&:hover': {
+                                                                background: 'rgba(155, 48, 255, 0.08)',
+                                                            },
+                                                        }}
+                                                    >
+                                                        <AdminPanelSettingsIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+
+                                            <Tooltip title="Kick player">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => handleKickPlayer(player)}
+                                                    sx={{
+                                                        color: '#ff4444',
+                                                        '&:hover': {
+                                                            background: 'rgba(255, 68, 68, 0.08)',
+                                                        },
+                                                    }}
+                                                >
+                                                    <DeleteForeverIcon />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
+                                    </Box>
+                                );
+                            })}
+                        </Box>
                     ) : (
                         <Typography variant="body2" color="text.secondary">
                             No players in the league.

@@ -75,6 +75,41 @@ export const StyledDialogActions = styled(DialogActions)(({ theme }) => ({
     padding: theme.spacing(1.5, 2),
     justifyContent: 'space-between',
     borderTop: '1px solid rgba(255, 20, 147, 0.2)',
+    '& > div:first-of-type': {
+        display: 'flex',
+        gap: theme.spacing(1),
+        flexWrap: 'wrap',
+        alignItems: 'center',
+    },
+    '& > div:last-of-type': {
+        display: 'flex',
+        gap: theme.spacing(1),
+        alignItems: 'center',
+    },
+    [theme.breakpoints.down('sm')]: {
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        gap: theme.spacing(1),
+        '& > div:first-of-type': {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: theme.spacing(1),
+            alignItems: 'stretch',
+            '& .MuiFormControlLabel-root': {
+                width: '100%'
+            }
+        },
+        '& > div:last-of-type': {
+            display: 'flex',
+            justifyContent: 'center',
+            gap: theme.spacing(1),
+            '& button': {
+                minWidth: 120,
+                flex: '1 1 auto',
+                maxWidth: '48%'
+            }
+        }
+    }
 }));
 
 export const SubmitButton = styled(Button)(({ theme }) => ({
