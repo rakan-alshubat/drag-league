@@ -24,7 +24,7 @@ export default function NavBar() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     // Pages where navbar should be hidden
-    const hideNavbarPages = ['/SignIn'];
+    const hideNavbarPages = [];
     const shouldHideNavbar = hideNavbarPages.includes(router.pathname);
 
     useEffect(() => {
@@ -46,7 +46,7 @@ export default function NavBar() {
         try {
             await signOut();
             setIsAuthenticated(false);
-            router.push('/SignIn');
+            router.push('/');
         } catch (error) {
             console.error('Error signing out:', error);
         }

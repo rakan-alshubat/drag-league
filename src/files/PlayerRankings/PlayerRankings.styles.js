@@ -165,7 +165,7 @@ export const customLabelRow = {
     gridTemplateColumns: "repeat(3, 1fr)", // three podium bars
     gap: 8,
     marginTop: 8,
-    padding: "0 6%",
+    padding: "0 4%", // slightly less horizontal padding so labels/chart gain width
     alignItems: "start", // allow items to grow downward
 };
 
@@ -181,6 +181,7 @@ export const customLabelItem = {
 export const customLabelText = {
     textAlign: "center",
     fontSize: 26,
+    fontFamily: "Inter, Arial, sans-serif",
     lineHeight: "1.2",
     whiteSpace: "normal",       // allow wrapping
     overflowWrap: "anywhere",   // break long words if needed
@@ -210,6 +211,7 @@ export const customLabelItemBottom = {
 export const customLabelTextBottom = {
     textAlign: "center",
     fontSize: 12,
+    fontFamily: "Inter, Arial, sans-serif",
     lineHeight: "1.1",
     whiteSpace: "normal",
     wordBreak: "break-word",
@@ -222,4 +224,28 @@ export const everyoneZeroMessage = {
     minHeight: 150,
     padding: 16,
     textAlign: 'center'
+};
+
+export const topLabelRow = {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 8,
+    padding: "0 4%",
+    marginBottom: 6,
+    marginTop: 8,
+    alignItems: 'center'
+};
+
+export const topLabelItem = {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 28,
+};
+
+export const topLabelText = {
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: 700,
+    color: '#9B30FF'
 };

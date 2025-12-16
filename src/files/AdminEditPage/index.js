@@ -66,11 +66,21 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
     const [editedEliminatedPlayers, setEditedEliminatedPlayers] = useState([]);
     const [editedChallengeWinners, setEditedChallengeWinners] = useState([]);
     const [editedLipSyncWinners, setEditedLipSyncWinners] = useState([]);
+    // League metadata state
+    const [editedLgName, setEditedLgName] = useState('');
+    const [editedLgDescription, setEditedLgDescription] = useState('');
+    const [editedChallengePoints, setEditedChallengePoints] = useState(null);
+    const [editedLipSyncPoints, setEditedLipSyncPoints] = useState(null);
+    const [editedBonusPoints, setEditedBonusPoints] = useState([]);
+    const [editedLgSwapType, setEditedLgSwapType] = useState('');
+    const [editedLgSwapPoints, setEditedLgSwapPoints] = useState('');
+    const [editedLgDeadline, setEditedLgDeadline] = useState('');
 
     // Player editing state
     const [editedRankings, setEditedRankings] = useState([]);
     const [editedWinners, setEditedWinners] = useState([]);
     const [editedBonuses, setEditedBonuses] = useState([]);
+    const [editedPlName, setEditedPlName] = useState('');
 
     const allQueens = leagueData?.lgQueenNames || [];
 
@@ -79,6 +89,62 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
         setEditedEliminatedPlayers([...(leagueData.lgEliminatedPlayers || [])]);
         setEditedChallengeWinners([...(leagueData.lgChallengeWinners || [])]);
         setEditedLipSyncWinners([...(leagueData.lgLipSyncWinners || [])]);
+        setEditedLgName(leagueData.lgName || '');
+        setEditedLgDescription(leagueData.lgDescription || '');
+        setEditedChallengePoints(leagueData.lgChallengePoints ?? null);
+        setEditedLipSyncPoints(leagueData.lgLipSyncPoints ?? null);
+        setEditedBonusPoints([...(leagueData.lgBonusPoints || [])]);
+        // parse lgSwap (format: type|points) and ensure numeric state for points
+        const swapRaw = (leagueData.lgSwap || '').trim();
+        if (!swapRaw) {
+            setEditedLgSwapType('');
+            setEditedLgSwapPoints('');
+        } else {
+            // split but keep empty parts so we can detect a trailing '|'
+            const rawParts = swapRaw.split('|').map(s => s.trim());
+            const swapParts = rawParts.filter((p) => p !== undefined && p !== null && p !== '');
+            let parsedType = '';
+            let parsedPoints;
+
+            // Legacy numeric-only (e.g., "3")
+            if (swapParts.length === 1 && !isNaN(parseInt(swapParts[0], 10)) && rawParts.length === 1) {
+                parsedType = '';
+                parsedPoints = parseInt(swapParts[0], 10);
+            } else {
+                // Expect format "Type|Points" or "Type|"
+                parsedType = swapParts[0] || '';
+                if (rawParts.length > 1 && rawParts[1] !== '' && !isNaN(parseInt(rawParts[1], 10))) {
+                    parsedPoints = parseInt(rawParts[1], 10);
+                } else {
+                    parsedPoints = undefined; // keep empty state when no explicit points provided
+                }
+            }
+
+            setEditedLgSwapType(parsedType);
+            setEditedLgSwapPoints(parsedPoints !== undefined ? parsedPoints : '');
+
+            // Auto-fill a sensible default when type exists but points are missing
+            if ((parsedPoints === undefined || parsedPoints === '') && parsedType) {
+                let defaultPoints = '';
+                if (parsedType === 'NumberOfEpisodes') {
+                    const weeks = Math.max((leagueData.lgChallengeWinners || []).length, (leagueData.lgLipSyncWinners || []).length);
+                    defaultPoints = weeks > 0 ? weeks : '';
+                } else if (parsedType === 'NumberOfQueensRemaining') {
+                    defaultPoints = allQueens.length || '';
+                }
+                if (defaultPoints !== '') {
+                    setEditedLgSwapPoints(defaultPoints);
+                }
+            }
+
+            // Debug log to inspect parsed swap values
+            try {
+                console.log('[AdminEdit] handleEditLeague parsed swap:', { swapRaw, parsedType, parsedPoints });
+            } catch (e) {
+                console.log('[AdminEdit] handleEditLeague swap parse error', e);
+            }
+        }
+        setEditedLgDeadline(leagueData.lgDeadline || '');
         setMode('league');
     };
 
@@ -88,6 +154,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
         setEditedRankings([...(player.plRankings || [])]);
         setEditedWinners([...(player.plWinners || [])]);
         setEditedBonuses([...(player.plBonuses || [])]);
+        setEditedPlName(player.plName || '');
         setMode('player');
     };
 
@@ -128,12 +195,40 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             };
         }
 
+        // Check league metadata fields
+        if ((leagueData.lgName || '') !== (editedLgName || '')) {
+            changes.lgName = { original: leagueData.lgName || '', new: editedLgName || '' };
+        }
+        if ((leagueData.lgDescription || '') !== (editedLgDescription || '')) {
+            changes.lgDescription = { original: leagueData.lgDescription || '', new: editedLgDescription || '' };
+        }
+        if ((leagueData.lgChallengePoints ?? null) !== (editedChallengePoints ?? null)) {
+            changes.lgChallengePoints = { original: leagueData.lgChallengePoints ?? null, new: editedChallengePoints ?? null };
+        }
+        if ((leagueData.lgLipSyncPoints ?? null) !== (editedLipSyncPoints ?? null)) {
+            changes.lgLipSyncPoints = { original: leagueData.lgLipSyncPoints ?? null, new: editedLipSyncPoints ?? null };
+        }
+        if (JSON.stringify(leagueData.lgBonusPoints || []) !== JSON.stringify(editedBonusPoints || [])) {
+            changes.lgBonusPoints = { original: leagueData.lgBonusPoints || [], new: editedBonusPoints || [] };
+        }
+        const composedSwap = editedLgSwapType ? `${editedLgSwapType}|${editedLgSwapPoints}` : '';
+        if ((leagueData.lgSwap || '') !== (composedSwap || '')) {
+            changes.lgSwap = { original: leagueData.lgSwap || '', new: composedSwap || '' };
+        }
+        if ((leagueData.lgDeadline || '') !== (editedLgDeadline || '')) {
+            changes.lgDeadline = { original: leagueData.lgDeadline || '', new: editedLgDeadline || '' };
+        }
+
         return changes;
     };
 
     // Detect changes for player
     const getPlayerChanges = () => {
         const changes = {};
+        // Check player name
+        if (selectedPlayer && (selectedPlayer.plName || '') !== (editedPlName || '')) {
+            changes.plName = { original: selectedPlayer.plName || '', new: editedPlName || '' };
+        }
         
         // Check rankings
         const originalRankings = selectedPlayer.plRankings || [];
@@ -163,6 +258,22 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
         }
 
         return changes;
+    };
+
+    // Validate league entries: eliminated players must not be empty
+    const validateLeague = () => {
+        const errors = [];
+        const entries = editedEliminatedPlayers || [];
+        if (entries.length === 0) {
+            errors.push('No elimination placements defined.');
+        } else {
+            entries.forEach((entry, idx) => {
+                if (!entry || entry.trim() === '') {
+                    errors.push(`Placement ${idx + 1} is empty.`);
+                }
+            });
+        }
+        return { valid: errors.length === 0, errors };
     };
 
     const handlePreviewChanges = () => {
@@ -272,17 +383,67 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             });
         }
 
+        // Format league metadata changes (name, description, points, bonuses, swap, deadline)
+        if (changes.lgName) {
+            changeDetails.push(`Changed League Name from ${changes.lgName.original || '(empty)'} to ${changes.lgName.new || '(empty)'}`);
+        }
+        if (changes.lgDescription) {
+            changeDetails.push(`Changed League Description`);
+        }
+        if (changes.lgChallengePoints) {
+            changeDetails.push(`Changed Challenge Points from ${changes.lgChallengePoints.original} to ${changes.lgChallengePoints.new}`);
+        }
+        if (changes.lgLipSyncPoints) {
+            changeDetails.push(`Changed Lip Sync Points from ${changes.lgLipSyncPoints.original} to ${changes.lgLipSyncPoints.new}`);
+        }
+        if (changes.lgBonusPoints) {
+            const orig = changes.lgBonusPoints.original || [];
+            const next = changes.lgBonusPoints.new || [];
+            next.forEach((n, idx) => {
+                const o = orig[idx] || '';
+                if (o !== n) {
+                    const oParts = (o || '').split('|');
+                    const nParts = (n || '').split('|');
+                    const category = nParts[0] || oParts[0] || `Bonus ${idx+1}`;
+                    const oldPoints = oParts[1] || '(none)';
+                    const newPoints = nParts[1] || '(none)';
+                    changeDetails.push(`Changed "${category}" bonus points from ${oldPoints} to ${newPoints}`);
+                }
+            });
+        }
+        if (changes.lgSwap) {
+            changeDetails.push(`Changed Swap Rules from ${changes.lgSwap.original || '(empty)'} to ${changes.lgSwap.new || '(empty)'}`);
+        }
+        if (changes.lgDeadline) {
+            const fmt = (s) => s ? new Date(s).toLocaleString() : '(empty)';
+            changeDetails.push(`Changed Submission Deadline from ${fmt(changes.lgDeadline.original)} to ${fmt(changes.lgDeadline.new)}`);
+        }
+
         const currentHistory = leagueData.lgHistory || [];
         const adminName = currentPlayer?.plName || 'Admin';
-        const historyEntry = `${new Date().toISOString()}. [ADMIN EDIT] Admin ${adminName} edited league entries: ${changeDetails.join('; ')}`;
+        let composedSwap = '';
+        if (editedLgSwapType) composedSwap = `${editedLgSwapType}|${editedLgSwapPoints}`;
+        else if (editedLgSwapPoints !== '' && editedLgSwapPoints !== null && editedLgSwapPoints !== undefined) composedSwap = String(editedLgSwapPoints);
 
         const leagueInput = {
             id: leagueData.id,
             lgEliminatedPlayers: editedEliminatedPlayers,
             lgChallengeWinners: editedChallengeWinners,
             lgLipSyncWinners: editedLipSyncWinners,
-            lgHistory: [...currentHistory, historyEntry],
+            lgName: editedLgName,
+            lgDescription: editedLgDescription,
+            lgChallengePoints: editedChallengePoints,
+            lgLipSyncPoints: editedLipSyncPoints,
+            lgBonusPoints: editedBonusPoints,
+            lgSwap: composedSwap,
+            lgDeadline: editedLgDeadline,
         };
+
+        // Append league history only when there are change details
+        if (changeDetails.length > 0) {
+            const historyEntry = `${new Date().toISOString()}. [ADMIN EDIT] Admin ${adminName} edited league entries: ${changeDetails.join('; ')}`;
+            leagueInput.lgHistory = [...currentHistory, historyEntry];
+        }
 
         await client.graphql({
             query: updateLeague,
@@ -359,17 +520,20 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                         changeDetails.push(`Changed "${category}" from ${oldAnswer} to ${newAnswer}`);
                     }
                 }
+
+                
             });
         }
 
         const currentHistory = leagueData.lgHistory || [];
         const adminName = currentPlayer?.plName || 'Admin';
-        const historyEntry = `${new Date().toISOString()}. [ADMIN EDIT] Admin ${adminName} edited player ${selectedPlayer.plName}'s entries: ${changeDetails.join('; ')}`;
+        const displayPlayerName = editedPlName || selectedPlayer.plName;
 
         // Update player
         const playerInput = {
             id: selectedPlayer.id,
             leagueId: selectedPlayer.leagueId,
+            plName: editedPlName,
             plRankings: editedRankings,
             plWinners: editedWinners,
             plBonuses: editedBonuses,
@@ -380,16 +544,24 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             variables: { input: playerInput }
         });
 
-        // Update league history
-        const leagueInput = {
-            id: leagueData.id,
-            lgHistory: [...currentHistory, historyEntry],
-        };
+        // Name change (add after updates so it's always recorded if present)
+        if (changes.plName) {
+            changeDetails.push(`Changed player name from ${changes.plName.original || '(empty)'} to ${changes.plName.new || '(empty)'}`);
+        }
 
-        await client.graphql({
-            query: updateLeague,
-            variables: { input: leagueInput }
-        });
+        // Update league history only if we have change details to record
+        if (changeDetails.length > 0) {
+            const historyEntry = `${new Date().toISOString()}. [ADMIN EDIT] Admin ${adminName} edited player ${displayPlayerName}'s entries: ${changeDetails.join('; ')}`;
+            const leagueInput = {
+                id: leagueData.id,
+                lgHistory: [...currentHistory, historyEntry],
+            };
+
+            await client.graphql({
+                query: updateLeague,
+                variables: { input: leagueInput }
+            });
+        }
     };
 
     // Format multiple queens with commas and ampersand
@@ -477,9 +649,119 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                     })}
                                 </SummarySection>
                             )}
+                            {changes.lgName && (
+                                <SummarySection>
+                                    <SummaryTitle>League Name</SummaryTitle>
+                                    <SummaryItem>
+                                        <ChangeIndicator>{changes.lgName.original || '(empty)'}</ChangeIndicator> → <ChangeIndicator>{changes.lgName.new || '(empty)'}</ChangeIndicator>
+                                    </SummaryItem>
+                                </SummarySection>
+                            )}
+                            {changes.lgDescription && (
+                                <SummarySection>
+                                    <SummaryTitle>Description</SummaryTitle>
+                                    <SummaryItem>
+                                        <ChangeIndicator>{changes.lgDescription.original || '(empty)'}</ChangeIndicator> → <ChangeIndicator>{changes.lgDescription.new || '(empty)'}</ChangeIndicator>
+                                    </SummaryItem>
+                                </SummarySection>
+                            )}
+                            {changes.lgChallengePoints && (
+                                <SummarySection>
+                                    <SummaryTitle>Challenge Points</SummaryTitle>
+                                    <SummaryItem>
+                                        <ChangeIndicator>{String(changes.lgChallengePoints.original)}</ChangeIndicator> → <ChangeIndicator>{String(changes.lgChallengePoints.new)}</ChangeIndicator>
+                                    </SummaryItem>
+                                </SummarySection>
+                            )}
+                            {changes.lgLipSyncPoints && (
+                                <SummarySection>
+                                    <SummaryTitle>Lip Sync Points</SummaryTitle>
+                                    <SummaryItem>
+                                        <ChangeIndicator>{String(changes.lgLipSyncPoints.original)}</ChangeIndicator> → <ChangeIndicator>{String(changes.lgLipSyncPoints.new)}</ChangeIndicator>
+                                    </SummaryItem>
+                                </SummarySection>
+                            )}
+                            {changes.lgBonusPoints && (
+                                <SummarySection>
+                                    <SummaryTitle>Bonus Points</SummaryTitle>
+                                    {changes.lgBonusPoints.original.map((orig, idx) => {
+                                        const newVal = changes.lgBonusPoints.new[idx];
+                                        if (orig !== newVal) {
+                                            const parse = (s) => {
+                                                const parts = (s || '').split('|');
+                                                return { category: parts[0] || '(unknown)', points: parts[1] || '(none)' };
+                                            };
+                                            const o = parse(orig);
+                                            const n = parse(newVal);
+                                            return (
+                                                <SummaryItem key={idx}>
+                                                    <ChangeIndicator>{o.category}: {o.points} points</ChangeIndicator> → <ChangeIndicator>{n.category}: {n.points} points</ChangeIndicator>
+                                                </SummaryItem>
+                                            );
+                                        }
+                                        return null;
+                                    })}
+                                </SummarySection>
+                            )}
+                            {changes.lgSwap && (
+                                <SummarySection>
+                                    <SummaryTitle>Swap Rules</SummaryTitle>
+                                    {(() => {
+                                        const fmt = (s, isOriginal = false) => {
+                                            if (!s) return '(empty)';
+                                            const parts = s.split('|');
+                                            if (parts.length === 1) {
+                                                // legacy numeric-only
+                                                return `Swap Number: ${parts[0]}`;
+                                            }
+                                            const [type, val] = parts;
+                                            // If val is missing, try to extract a number from the original string as fallback
+                                            let displayVal = val;
+                                            if ((!displayVal || displayVal === '') && typeof s === 'string') {
+                                                const m = s.match(/(\d+)/);
+                                                if (m) displayVal = m[1];
+                                            }
+                                            // If still missing and we're formatting the original value, derive from league data
+                                            if ((!displayVal || displayVal === '') && isOriginal) {
+                                                if (type === 'NumberOfEpisodes') {
+                                                    const weeks = Math.max((leagueData.lgChallengeWinners || []).length, (leagueData.lgLipSyncWinners || []).length);
+                                                    if (weeks > 0) displayVal = String(weeks);
+                                                } else if (type === 'NumberOfQueensRemaining') {
+                                                    const q = (leagueData.lgQueenNames || []).length;
+                                                    if (q > 0) displayVal = String(q);
+                                                }
+                                            }
+                                            if (type === 'NumberOfEpisodes') return `Number of Episodes: ${displayVal || '(not set)'}`;
+                                            if (type === 'NumberOfQueensRemaining') return `Number of Queens Remaining: ${displayVal || '(not set)'}`;
+                                            return s;
+                                        };
+                                        return (
+                                            <SummaryItem>
+                                                <ChangeIndicator>{fmt(changes.lgSwap.original, true)}</ChangeIndicator> → <ChangeIndicator>{fmt(changes.lgSwap.new, false)}</ChangeIndicator>
+                                            </SummaryItem>
+                                        );
+                                    })()}
+                                </SummarySection>
+                            )}
+                            {changes.lgDeadline && (
+                                <SummarySection>
+                                    <SummaryTitle>Weekly SubmissionDeadline</SummaryTitle>
+                                    <SummaryItem>
+                                        <ChangeIndicator>{changes.lgDeadline.original ? (new Date(changes.lgDeadline.original)).toLocaleString() : '(empty)'}</ChangeIndicator> → <ChangeIndicator>{changes.lgDeadline.new ? (new Date(changes.lgDeadline.new)).toLocaleString() : '(empty)'}</ChangeIndicator>
+                                    </SummaryItem>
+                                </SummarySection>
+                            )}
                         </>
                     ) : (
                         <>
+                            {changes.plName && (
+                                <SummarySection>
+                                    <SummaryTitle>Player Name</SummaryTitle>
+                                    <SummaryItem>
+                                        <ChangeIndicator>{changes.plName.original || '(empty)'}</ChangeIndicator> → <ChangeIndicator>{changes.plName.new || '(empty)'}</ChangeIndicator>
+                                    </SummaryItem>
+                                </SummarySection>
+                            )}
                             {changes.rankings && (
                                 <SummarySection>
                                     <SummaryTitle>Rankings Changes:</SummaryTitle>
@@ -534,7 +816,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                     <SummarySection sx={{ mt: 3, background: 'rgba(255, 20, 147, 0.1)' }}>
                         <SummaryTitle sx={{ color: '#9B30FF' }}>⚠️ Important</SummaryTitle>
                         <div style={{ fontSize: '0.95rem', color: '#666' }}>
-                            These changes will be recorded in the league history with your name for transparency.
+                            These changes will be recorded in the league history.
                             All players will be able to see that these edits were made.
                         </div>
                     </SummarySection>
@@ -567,12 +849,12 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                         >
                         ← Back to League
                         </BackButton>
-                        <Title>Admin Edit Panel</Title>
+                        <Title>Admin Editing Page</Title>
                         <ChoiceContainer>
                             <ChoiceCard onClick={handleEditLeague}>
                                 <ChoiceTitle>Edit League Entries</ChoiceTitle>
                                 <ChoiceDescription>
-                                Modify eliminated queens, challenge winners, and lip sync winners for all episodes
+                                Modify eliminated queens, challenge winners, lip sync winners, and more!
                                 </ChoiceDescription>
                             </ChoiceCard>
                             <ChoiceCard onClick={() => setMode('player-select')}>
@@ -640,6 +922,107 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                         <Title>Edit League Entries</Title>
                     
                         <EditorContainer>
+                            {(() => {
+                                const leagueValidation = validateLeague();
+                                return leagueValidation.errors.length > 0 ? (
+                                    <Box sx={{ mb: 2 }}>
+                                        {leagueValidation.errors.map((err, i) => (
+                                            <Typography key={i} sx={{ color: 'error.main', fontSize: '0.95rem' }}>{err}</Typography>
+                                        ))}
+                                    </Box>
+                                ) : null;
+                            })()}
+                            <Section>
+                                <SectionTitle>League Settings</SectionTitle>
+                                <Typography variant="body2" sx={{ mb: 2, color: '#666', fontSize: '0.9rem' }}>
+                                    Edit basic league details and scoring rules.
+                                </Typography>
+                                <EntryRow>
+                                    <EntryLabel>League Name:</EntryLabel>
+                                    <TextField fullWidth value={editedLgName} onChange={(e) => setEditedLgName(e.target.value)} />
+                                </EntryRow>
+                                <EntryRow>
+                                    <EntryLabel>Description:</EntryLabel>
+                                    <TextField fullWidth multiline rows={2} value={editedLgDescription} onChange={(e) => setEditedLgDescription(e.target.value)} />
+                                </EntryRow>
+                                <EntryRow>
+                                    <EntryLabel>Challenge Points:</EntryLabel>
+                                    <TextField type="number" value={editedChallengePoints ?? ''} onChange={(e) => setEditedChallengePoints(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
+                                    <EntryLabel sx={{ ml: 2 }}>Lip Sync Points:</EntryLabel>
+                                    <TextField type="number" value={editedLipSyncPoints ?? ''} onChange={(e) => setEditedLipSyncPoints(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
+                                </EntryRow>
+                                <SectionTitle sx={{ mt: 2 }}>Bonus Points</SectionTitle>
+                                {editedBonusPoints.map((bp, idx) => {
+                                    const parts = bp.split('|');
+                                    const category = parts[0] || '';
+                                    const points = parts[1] || '';
+                                    const btype = parts[2] || 'queens';
+                                    return (
+                                        <EntryRow key={idx} sx={{ alignItems: 'center' }}>
+                                            <EntryLabel sx={{ flex: 1, minWidth: 220 }}>{category}</EntryLabel>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Typography sx={{ whiteSpace: 'nowrap', color: '#333' }}>Points:</Typography>
+                                                <FormControl sx={{ minWidth: 160 }}>
+                                                    <Select
+                                                        displayEmpty
+                                                        value={points || ''}
+                                                        onChange={(e) => {
+                                                            const next = [...editedBonusPoints];
+                                                            next[idx] = `${category}|${e.target.value}|${btype}`;
+                                                            setEditedBonusPoints(next);
+                                                        }}
+                                                    >
+                                                        <MenuItem value="" disabled>Points</MenuItem>
+                                                        {Array.from({ length: 30 }, (_, i) => i + 1).map((number) => (
+                                                            <MenuItem key={number} value={number}>{number}</MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                            </Box>
+                                        </EntryRow>
+                                    );
+                                })}
+                                <EntryRow sx={{ mt: 2 }}>
+                                    <EntryLabel>Swap Rules:</EntryLabel>
+                                    <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center', width: '100%' }}>
+                                        <FormControl sx={{ minWidth: { xs: '100%', sm: 200 }, width: { xs: '100%', sm: 'auto' } }}>
+                                            <Select
+                                                displayEmpty
+                                                value={editedLgSwapType}
+                                                onChange={(e) => { setEditedLgSwapType(e.target.value); setEditedLgSwapPoints(''); }}
+                                            >
+                                                <MenuItem value="" disabled>Type</MenuItem>
+                                                <MenuItem value="NumberOfEpisodes">Number of Episodes</MenuItem>
+                                                <MenuItem value="NumberOfQueensRemaining">Number of Queens remaining</MenuItem>
+                                            </Select>
+                                        </FormControl>
+                                        <FormControl sx={{ minWidth: { xs: '100%', sm: 120 }, width: { xs: '100%', sm: 'auto' } }}>
+                                            {(() => { console.debug('[AdminEdit] swap render', editedLgSwapType, editedLgSwapPoints, typeof editedLgSwapPoints); return null; })()}
+                                            <Select
+                                                displayEmpty
+                                                value={editedLgSwapPoints ?? ''}
+                                                onChange={(e) => setEditedLgSwapPoints(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                                            >
+                                                <MenuItem value="" disabled>Number</MenuItem>
+                                                {(editedLgSwapType === 'NumberOfQueensRemaining'
+                                                    ? (allQueens.length > 0 ? Array.from({ length: allQueens.length }, (_, i) => i + 1) : [0])
+                                                    : Array.from({ length: 30 }, (_, i) => i + 1)
+                                                ).map((number) => (
+                                                    <MenuItem key={number} value={number}>{number}</MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    </Box>
+                                </EntryRow>
+                                <EntryRow>
+                                    <EntryLabel>Deadline:</EntryLabel>
+                                    <TextField
+                                        type="datetime-local"
+                                        value={editedLgDeadline ? editedLgDeadline.slice(0, 16) : ''}
+                                        onChange={(e) => setEditedLgDeadline(e.target.value ? new Date(e.target.value).toISOString() : '')}
+                                    />
+                                </EntryRow>
+                            </Section>
                             <Section>
                                 <SectionTitle>Eliminated Queens by Placement (First to Last)</SectionTitle>
                                 <Typography variant="body2" sx={{ mb: 2, color: '#666', fontSize: '0.9rem' }}>
@@ -669,8 +1052,9 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                     const alreadyEliminated = getAlreadyEliminatedQueens(index);
                                     const availableQueens = allQueens.filter(q => !alreadyEliminated.includes(q));
                                 
+                                    const isEmpty = !entry || entry.trim() === '';
                                     return (
-                                        <EntryRow key={index}>
+                                        <EntryRow key={index} sx={isEmpty ? { borderColor: 'error.main', background: 'rgba(255, 0, 0, 0.03)' } : {}}>
                                             <EntryLabel>{getOrdinal(placement)} Place:</EntryLabel>
                                             <FormControl fullWidth>
                                                 <Select
@@ -713,6 +1097,9 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                             >
                                                 <DeleteIcon />
                                             </IconButton>
+                                            {isEmpty && (
+                                                <Typography sx={{ color: 'error.main', ml: 1, fontSize: '0.85rem' }}>Required</Typography>
+                                            )}
                                         </EntryRow>
                                     );
                                 })}
@@ -879,7 +1266,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                 <ConfirmButton
                                     variant="contained"
                                     onClick={handlePreviewChanges}
-                                    disabled={Object.keys(getLeagueChanges()).length === 0}
+                                    disabled={Object.keys(getLeagueChanges()).length === 0 || !validateLeague().valid}
                                 >
                                 Review Changes
                                 </ConfirmButton>
@@ -895,6 +1282,21 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
     // Render player editor
     if (mode === 'player' && selectedPlayer) {
         const totalQueens = allQueens.length;
+        const validatePlayer = () => {
+            const errors = [];
+            if (!editedRankings || editedRankings.length === 0) {
+                errors.push('Elimination order cannot be empty.');
+            } else {
+                editedRankings.forEach((entry, idx) => {
+                    if (!entry || entry.trim() === '') {
+                        const placement = totalQueens - idx;
+                        errors.push(`${getOrdinal(placement)} place is empty.`);
+                    }
+                });
+            }
+            return { valid: errors.length === 0, errors };
+        };
+
         const handleRankingChange = (index, value) => {
             const next = [...editedRankings];
             // Clear any other occurrences of this queen to prevent duplication
@@ -909,50 +1311,62 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             <>
                 <Container>
                     <ContentWrapper>
-                        <BackButton variant="outlined" onClick={handleBack}>
+                        <BackButton variant="outlined" onClick={() => { setMode('player-select'); setSelectedPlayer(null); setChanges({}); }}>
                         ← Back to Player List
                         </BackButton>
-                        <Title>Edit {selectedPlayer.plName}&apos;s Entries</Title>
+                        <Title>Edit {editedPlName || selectedPlayer.plName}&apos;s Entries</Title>
                     
                         <EditorContainer>
+                            <EntryRow>
+                                <EntryLabel>Player Name:</EntryLabel>
+                                <TextField fullWidth value={editedPlName} onChange={(e) => setEditedPlName(e.target.value)} />
+                            </EntryRow>
                             <Section>
                                 <SectionTitle>Elimination Order Rankings (First Eliminated to Winner)</SectionTitle>
                                 <Typography variant="body2" sx={{ mb: 2, color: '#666', fontSize: '0.9rem' }}>
                                 Edit the player&apos;s predicted elimination order from first eliminated to winner.
                                 </Typography>
-                                {[...editedRankings].reverse().map((queen, reversedIndex) => {
-                                    const index = editedRankings.length - 1 - reversedIndex;
-                                    // Calculate placement from total queens
-                                    const placement = totalQueens - index;
-                                    return (
-                                        <EntryRow key={index}>
-                                            <EntryLabel>{getOrdinal(placement)} Place:</EntryLabel>
-                                            <FormControl fullWidth>
-                                                <Select
-                                                    value={queen || ''}
-                                                    onChange={(e) => handleRankingChange(index, e.target.value)}
-                                                >
-                                                    <MenuItem value="">
-                                                        <em style={{ color: '#999' }}>Select a queen</em>
-                                                    </MenuItem>
-                                                    {allQueens.map((q) => {
-                                                        const otherSelected = new Set(editedRankings.map((val, i) => (i !== index ? val : null)).filter(Boolean));
-                                                        const isTaken = otherSelected.has(q);
-                                                        return (
-                                                            <MenuItem
-                                                                key={q}
-                                                                value={q}
-                                                                sx={isTaken ? { color: '#999', opacity: 0.7 } : {}}
-                                                            >
-                                                                {q}
-                                                            </MenuItem>
-                                                        );
-                                                    })}
-                                                </Select>
-                                            </FormControl>
-                                        </EntryRow>
-                                    );
-                                })}
+                                {(() => {
+                                    const playerValidation = validatePlayer();
+                                    return [...editedRankings].reverse().map((queen, reversedIndex) => {
+                                        const index = editedRankings.length - 1 - reversedIndex;
+                                        // Calculate placement from total queens
+                                        const placement = totalQueens - index;
+                                        const isEmpty = !queen || queen.trim() === '';
+                                        return (
+                                            <EntryRow key={index} sx={isEmpty ? { borderColor: 'error.main', background: 'rgba(255, 0, 0, 0.03)' } : {}}>
+                                                <EntryLabel>{getOrdinal(placement)} Place:</EntryLabel>
+                                                <FormControl fullWidth>
+                                                    <Select
+                                                        value={queen || ''}
+                                                        onChange={(e) => handleRankingChange(index, e.target.value)}
+                                                    >
+                                                        <MenuItem value="">
+                                                            <em style={{ color: '#999' }}>Select a queen</em>
+                                                        </MenuItem>
+                                                        {allQueens.map((q) => {
+                                                            const otherSelected = new Set(editedRankings.map((val, i) => (i !== index ? val : null)).filter(Boolean));
+                                                            const isTaken = otherSelected.has(q);
+                                                            return (
+                                                                <MenuItem
+                                                                    key={q}
+                                                                    value={q}
+                                                                    sx={isTaken ? { color: '#999', opacity: 0.7 } : {}}
+                                                                >
+                                                                    {q}
+                                                                </MenuItem>
+                                                            );
+                                                        })}
+                                                    </Select>
+                                                </FormControl>
+                                                {isEmpty && (
+                                                    <Typography sx={{ color: 'error.main', ml: 1, fontSize: '0.85rem' }}>Required</Typography>
+                                                )}
+                                            </EntryRow>
+                                        );
+                                    });
+                                })()}
+
                             </Section>
 
                             <Section>
@@ -1074,7 +1488,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                 <ConfirmButton
                                     variant="contained"
                                     onClick={handlePreviewChanges}
-                                    disabled={Object.keys(getPlayerChanges()).length === 0}
+                                    disabled={Object.keys(getPlayerChanges()).length === 0 || !validatePlayer().valid}
                                 >
                                 Review Changes
                                 </ConfirmButton>

@@ -161,9 +161,10 @@ export default function LeagueSettings(props) {
             }
 
             const currentHistory = leagueData.lgHistory || [];
-            const historyEntry = new Date().toISOString() + '. ' + selectedPlayer.plName + ' was promoted to admin';
+            const adminName = (userData?.name || userData?.id) || 'Admin';
+            const historyEntry = `${new Date().toISOString()}. [ADMIN EDIT] Admin ${adminName} promoted ${selectedPlayer.plName} to admin`;
 
-            await client.graphql({
+            const resp = await client.graphql({
                 query: updateLeague,
                 variables: {
                     input: {
@@ -174,7 +175,7 @@ export default function LeagueSettings(props) {
                 }
             });
 
-            console.log('Player promoted to admin successfully');
+            console.log('Player promoted to admin (league update response):', resp);
             setConfirmOpen(false);
             // Refresh the page to show updated data
             window.location.reload();

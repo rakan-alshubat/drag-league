@@ -551,7 +551,7 @@ export default function CreationPage(){
                         )}
                     </TitleRow>
                     <ExplanationText>
-                        Select a set date and time for players to submit their weekly Maxi Challenge predictions.This deadline will repeat every week at the same time until the season ends. Ideally, the deadline for player submissions should be before the episode airs and after the ranking deadline by a day or two.
+                        Select a set date and time for players to submit their weekly Maxi Challenge predictions. This deadline will repeat every week at the same time until the season ends. Ideally, the deadline for player submissions should be before the episode airs and after the ranking deadline by a day or two.
                     </ExplanationText>
                     {deadlineMatchError && (
                         <ErrorAlert severity="error">Points deadline must be after ranking deadline</ErrorAlert>
@@ -755,7 +755,11 @@ export default function CreationPage(){
                             <FormSection>
                                 <SectionTitle>Bonus Categories</SectionTitle>
                                 <ExplanationText>
-                                    The types of categories can be a name of a queen (e.g. Miss Congeniality), a number (e.g. The Badonkadonk Tank lever number), or a yes/no question (e.g. Does a double elimination happen this season?).
+                                    Bonus categories accept three types:<br/>
+                                    • <strong>Queens</strong> — pick a queen by name (e.g. &quot;Miss Congeniality&quot;). Players select one of the season&apos;s queens; a correct pick earns the category points.<br/>
+                                    • <strong>Number</strong> — submit a numeric value (e.g. &quot;What&apos;s the Badonkadonk Tank lever number&quot;).<br/>
+                                    • <strong>Yes/No</strong> — a binary question (e.g. &quot;Will there be a double elimination this season?&quot;). Players answer Yes or No; correct answers earn the points.<br/>
+                                    For each category enter the <em>question/category</em>, assign the <em>points</em>, and choose the <em>type</em>.
                                 </ExplanationText>
                                 {Array.from({ length: bonusCategories }, (_, index) => (
                                     <BonusPointRow key={index}>

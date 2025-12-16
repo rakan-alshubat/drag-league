@@ -43,39 +43,46 @@ export default function History({ leagueData }) {
                         <Typography variant="body1">No history available yet</Typography>
                     </Box>
                 ) : (
-                    reversedHistory.map((entry, index) => {
-                        const parts = entry.split('. ');
-                        const dateStr = parts[0];
-                        const actionText = parts.slice(1).join('. ');
-                        
-                        // Check if this is an admin edit
-                        const isAdminEdit = actionText.startsWith('[ADMIN EDIT]');
-                        const displayText = isAdminEdit ? actionText.replace('[ADMIN EDIT] ', '') : actionText;
-                        
-                        return (
-                            <HistoryItem key={index} isAdminEdit={isAdminEdit}>
-                                <HistoryDate isAdminEdit={isAdminEdit}>{formatDate(dateStr)}</HistoryDate>
-                                <HistoryText isAdminEdit={isAdminEdit}>
-                                    {isAdminEdit && (
-                                        <Box component="span" sx={{ 
-                                            display: 'inline-block',
-                                            background: 'linear-gradient(135deg, #FF6B35 0%, #FF1493 100%)',
-                                            color: 'white',
-                                            padding: '2px 8px',
-                                            borderRadius: '4px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 700,
-                                            marginRight: '8px',
-                                            verticalAlign: 'middle'
-                                        }}>
-                                            ADMIN EDIT
-                                        </Box>
-                                    )}
-                                    {displayText}
-                                </HistoryText>
-                            </HistoryItem>
-                        );
-                    })
+                    // Filter out non-string or empty entries to avoid rendering blanks
+                    reversedHistory
+                        .filter(e => typeof e === 'string' && e.trim() !== '')
+                        .map((entry, index) => {
+                            // Support entries that may not include the expected ". " separator.
+                            const parts = entry.includes('. ') ? entry.split('. ') : [ '', entry ];
+                            const dateStr = parts[0];
+                            let actionText = parts.slice(1).join('. ');
+
+                            // If splitting didn't produce an action, fall back to the whole entry
+                            if (!actionText || actionText.trim() === '') actionText = entry;
+
+                            // Check if this is an admin edit
+                            const isAdminEdit = actionText.startsWith('[ADMIN EDIT]');
+                            const displayText = isAdminEdit ? actionText.replace('[ADMIN EDIT] ', '') : actionText;
+
+                            return (
+                                <HistoryItem key={index} isAdminEdit={isAdminEdit}>
+                                    <HistoryDate isAdminEdit={isAdminEdit}>{formatDate(dateStr)}</HistoryDate>
+                                    <HistoryText isAdminEdit={isAdminEdit}>
+                                        {isAdminEdit && (
+                                            <Box component="span" sx={{ 
+                                                display: 'inline-block',
+                                                background: 'linear-gradient(135deg, #FF6B35 0%, #FF1493 100%)',
+                                                color: 'white',
+                                                padding: '2px 8px',
+                                                borderRadius: '4px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 700,
+                                                marginRight: '8px',
+                                                verticalAlign: 'middle'
+                                            }}>
+                                                ADMIN EDIT
+                                            </Box>
+                                        )}
+                                        {displayText}
+                                    </HistoryText>
+                                </HistoryItem>
+                            );
+                        })
                 )}
             </HistoryList>
         </Root>

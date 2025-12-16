@@ -324,6 +324,7 @@ export default function SubmissionsPopup({
     // submit handler
     const handleSubmit = async () => {
         const client = generateClient();
+        const isDemo = String(leagueData?.id || '').toLowerCase().includes('demo');
         
         if (version === "Submissions") {
             const rows = submissionRows || [];
@@ -359,29 +360,41 @@ export default function SubmissionsPopup({
                         id: playerData.id,
                         ...playerUpdates
                     };
-                    
-                    const playerResult = await client.graphql({
-                        query: updatePlayer,
-                        variables: { input: playerInput }
-                    });
-                    console.log('Player updated with swap:', playerResult);
-                    
-                    // Add history entry for swap
-                    if (playerUpdates.plRankings && leagueData?.id) {
-                        const currentHistory = leagueData.lgHistory || [];
-                        const historyEntry = new Date().toISOString() + '. ' + (playerData.plName || 'Player') + ' swapped ' + firstSwap + ' with ' + secondSwap;
-                        await client.graphql({
-                            query: updateLeague,
-                            variables: {
-                                input: {
-                                    id: leagueData.id,
-                                    lgHistory: [...currentHistory, historyEntry]
-                                }
-                            }
+
+                    if (!isDemo) {
+                        const playerResult = await client.graphql({
+                            query: updatePlayer,
+                            variables: { input: playerInput }
                         });
-                        console.log('History updated for swap');
+                        console.log('Player updated with swap:', playerResult);
+
+                        // Add history entry for swap
+                        if (playerUpdates.plRankings && leagueData?.id) {
+                            const currentHistory = leagueData.lgHistory || [];
+                            const historyEntry = new Date().toISOString() + '. ' + (playerData.plName || 'Player') + ' swapped ' + firstSwap + ' with ' + secondSwap;
+                            await client.graphql({
+                                query: updateLeague,
+                                variables: {
+                                    input: {
+                                        id: leagueData.id,
+                                        lgHistory: [...currentHistory, historyEntry]
+                                    }
+                                }
+                            });
+                            console.log('History updated for swap');
+                        }
+                    } else {
+                        // Demo mode: mutate local objects and log instead of network calls
+                        if (playerUpdates.plRankings) playerData.plRankings = playerUpdates.plRankings;
+                        if (playerUpdates.plSwap) playerData.plSwap = playerUpdates.plSwap;
+                        if (playerUpdates.plRankings && leagueData?.id) {
+                            const currentHistory = leagueData.lgHistory || [];
+                            const historyEntry = new Date().toISOString() + '. ' + (playerData.plName || 'Player') + ' swapped ' + firstSwap + ' with ' + secondSwap;
+                            leagueData.lgHistory = [...currentHistory, historyEntry];
+                            console.log('Demo: history updated for swap', historyEntry);
+                        }
                     }
-                    
+
                 } catch (error) {
                     console.error('Error updating player:', error);
                 }
@@ -425,11 +438,18 @@ export default function SubmissionsPopup({
                         lgHistory: [...currentHistory, historyEntry]
                     };
 
-                    const leagueResult = await client.graphql({
-                        query: updateLeague,
-                        variables: { input: leagueInput }
-                    });
-                    console.log('League submissions updated:', leagueResult);
+                    if (!isDemo) {
+                        const leagueResult = await client.graphql({
+                            query: updateLeague,
+                            variables: { input: leagueInput }
+                        });
+                        console.log('League submissions updated:', leagueResult);
+                    } else {
+                        // Demo: update local league object and log
+                        leagueData.lgSubmissions = leagueInput.lgSubmissions;
+                        leagueData.lgHistory = leagueInput.lgHistory;
+                        console.log('Demo: League submissions updated (local only):', { lgSubmissions: leagueData.lgSubmissions, lgHistory: leagueData.lgHistory });
+                    }
 
                 } catch (error) {
                     console.error('Error updating league submissions:', error);
@@ -439,8 +459,10 @@ export default function SubmissionsPopup({
             if (typeof onSubmit === "function") try { onSubmit({ version, value: joined, playerUpdates }); } catch {}
             try { onClose(joined); } catch { onClose(); }
 
-            // Reload page to show updates
-            window.location.reload();
+            // Reload page to show updates (skip reload in demo mode)
+            if (!isDemo) {
+                window.location.reload();
+            }
             return;
         }
 
@@ -544,10 +566,23 @@ export default function SubmissionsPopup({
                     lgHistory: [...currentHistory, historyEntry]
                 };
                 
-                await client.graphql({
-                    query: updateLeague,
-                    variables: { input: leagueInput }
-                });
+                if (!isDemo) {
+                    await client.graphql({
+                        query: updateLeague,
+                        variables: { input: leagueInput }
+                    });
+                } else {
+                    // Demo: apply updates locally
+                    leagueData.lgEliminatedPlayers = updatedEliminated;
+                    leagueData.lgChallengeWinners = updatedChallengeWinners;
+                    leagueData.lgBonusPoints = updatedBonusPoints;
+                    leagueData.lgSubmissions = [];
+                    leagueData.lgDeadline = null;
+                    leagueData.lgRankingDeadline = null;
+                    leagueData.lgFinished = 'finished';
+                    leagueData.lgHistory = [...(leagueData.lgHistory || []), historyEntry];
+                    console.log('Demo: Final episode applied locally', { updatedEliminated, updatedChallengeWinners, updatedBonusPoints, historyEntry });
+                }
                 
             } catch (error) {
                 console.error('Error processing final episode:', error);
@@ -670,10 +705,21 @@ export default function SubmissionsPopup({
                     ...leagueUpdates
                 };
 
-                await client.graphql({
-                    query: updateLeague,
-                    variables: { input: leagueInput }
-                });
+                if (!isDemo) {
+                    await client.graphql({
+                        query: updateLeague,
+                        variables: { input: leagueInput }
+                    });
+                } else {
+                    // Demo: apply updates locally
+                    leagueData.lgChallengeWinners = leagueUpdates.lgChallengeWinners;
+                    leagueData.lgLipSyncWinners = leagueUpdates.lgLipSyncWinners;
+                    leagueData.lgEliminatedPlayers = leagueUpdates.lgEliminatedPlayers;
+                    leagueData.lgSubmissions = leagueUpdates.lgSubmissions;
+                    leagueData.lgDeadline = leagueUpdates.lgDeadline;
+                    leagueData.lgHistory = [...(leagueData.lgHistory || []), historyEntry];
+                    console.log('Demo: Weekly results applied locally', { leagueUpdates, historyEntry });
+                }
 
             } catch (error) {
                 console.error('Error updating league weekly results:', error);
@@ -684,8 +730,10 @@ export default function SubmissionsPopup({
             if (typeof onSubmit === "function") try { onSubmit({ version, value: 'weekly' }); } catch {}
             try { onClose('weekly'); } catch { onClose(); }
 
-            // Reload page to show updates
-            window.location.reload();
+            // Reload page to show updates (skip in demo)
+            if (!isDemo) {
+                window.location.reload();
+            }
         }
     };
 

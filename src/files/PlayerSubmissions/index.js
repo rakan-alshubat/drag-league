@@ -736,7 +736,7 @@ export default function PlayerSubmissions(props) {
             {lastWeekPicks.length > 0 && (
                 <OverallSubmissionsBox>
                     <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5, color: '#FF1493' }}>
-                        What Everyone Picked Last Week
+                        Everyone&apos;s Maxi Challenge Pick Last Week:
                     </Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                         {lastWeekPicks.map(({ queen, count }) => (

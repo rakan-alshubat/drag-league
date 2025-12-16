@@ -54,9 +54,16 @@ export const ChoiceCard = styled(Paper)(({ theme }) => ({
         boxShadow: '0 8px 24px rgba(255, 20, 147, 0.3)',
         border: '2px solid rgba(255, 20, 147, 0.5)',
     },
+    [theme.breakpoints.down('md')]: {
+        padding: theme.spacing(2),
+        minWidth: '100%',
+        width: '100%',
+        borderRadius: '12px',
+    },
     [theme.breakpoints.down('sm')]: {
         padding: theme.spacing(2),
         minWidth: '100%',
+        width: '100%',
         borderRadius: '12px',
     },
 }));
@@ -98,6 +105,10 @@ export const EditorContainer = styled(Paper)(({ theme }) => ({
     border: '2px solid rgba(255, 20, 147, 0.2)',
     borderRadius: '16px',
     marginTop: theme.spacing(3),
+    maxWidth: '680px',
+    width: '100%',
+    marginLeft: 'auto',
+    marginRight: 'auto',
     [theme.breakpoints.down('sm')]: {
         padding: theme.spacing(2),
         borderRadius: '12px',
