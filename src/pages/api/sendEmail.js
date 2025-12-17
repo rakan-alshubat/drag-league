@@ -5,6 +5,17 @@ if (process.env.SENDGRID_API_KEY) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
 
+// Temporary diagnostic log: masked key and env presence (remove after debugging)
+{
+    try {
+        const raw = process.env.SENDGRID_API_KEY || '';
+        const masked = raw ? `***${String(raw).slice(-4)}` : 'MISSING';
+        console.log('sendEmail handler (diagnostic):', { sendGridKeyMasked: masked, fromEmailPresent: !!process.env.SENDGRID_FROM_EMAIL, NODE_ENV: process.env.NODE_ENV });
+    } catch (e) {
+        console.log('sendEmail diagnostic log failed', e && e.message);
+    }
+}
+
 export default async function handler(req, res) {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
