@@ -1100,7 +1100,7 @@ export default function NewLeague( userData ) {
                                         text: `🏁 DRAG LEAGUE INVITATION\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nHi there!\n\n${currentUserName} has invited you to join "${League?.lgName}" on Drag League!\n\nJoin the competition to rank queens, predict winners, and compete with your friends throughout the season.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🔗 ACCEPT YOUR INVITATION:\nhttps://drag-league.com/Player\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nThis is an automated notification from Drag League.\nIf you didn't expect this invitation, you can safely ignore this email.\n\nNeed help? Visit: https://drag-league.com/Support\nHave questions? Check our FAQ: https://drag-league.com/FAQ\n\n© 2025 Drag League. All rights reserved.`
                                     });
                                 } catch (e) {
-                                    setPopUpError("Failed to send invite email");
+                                    setPopUpError("Failed to send invite email, but the user may still see the invite when they log in");
                                     return;
                                 }
                                 setPopUpNameInput('');
@@ -1439,7 +1439,7 @@ export default function NewLeague( userData ) {
                             <TextField
                                 fullWidth
                                 label="Invite link"
-                                value={(typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/Player?invite=' + (League?.id || '')}
+                                value={(typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/League/' + (League?.id || '')}
                                 InputProps={{ readOnly: true }}
                                 onClick={(e) => { e.target.select && e.target.select(); }}
                             />
@@ -1450,7 +1450,7 @@ export default function NewLeague( userData ) {
                                         '&:hover': { backgroundColor: 'rgba(255, 20, 147, 0.1)' }
                                     }}
                                     onClick={async () => {
-                                        const link = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/Player?invite=' + (League?.id || '');
+                                        const link = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/League/' + (League?.id || '');
                                         try {
                                             await navigator.clipboard.writeText(link);
                                             setPopUpCopySuccess('Copied!');
