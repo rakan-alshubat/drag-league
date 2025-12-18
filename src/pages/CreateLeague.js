@@ -1,4 +1,5 @@
 import CreationPage from "@/files/CreationPage"
+import { NextSeo } from 'next-seo';
 import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
 import { generateClient } from 'aws-amplify/api';
@@ -47,10 +48,18 @@ export default function CreateLeague(){
     }, [edit]);
 
     if (loading) {
-        return <LoadingWheel />;
+        return (
+            <>
+                <NextSeo title="Create League — Drag League" description="Create or edit a Drag League." />
+                <LoadingWheel />
+            </>
+        );
     }
 
-    return(
-        <CreationPage editMode={isEditMode} leagueData={leagueData} />
+    return (
+        <>
+            <NextSeo title={isEditMode ? `Edit League — Drag League` : `Create League — Drag League`} description="Create or edit a Drag League." />
+            <CreationPage editMode={isEditMode} leagueData={leagueData} />
+        </>
     )
 }

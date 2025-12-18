@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate-sitemap": "next-sitemap"
   },
   "dependencies": {
     "@aws-amplify/api-graphql": "^4.7.21",
@@ -31,6 +32,9 @@
     "react-confetti": "^6.2.3",
     "react-dom": "^17.0.0 || ^18.0.0 || ^19.0.0",
     "react-use": "^17.6.0"
+    ,
+    "next-sitemap": "^4.1.7",
+    "next-seo": "^6.1.0"
   },
   "devDependencies": {
     "@types/node": "20.11.5"

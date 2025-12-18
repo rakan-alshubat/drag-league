@@ -1,4 +1,5 @@
 import Leagues from "@/files/Leagues"
+import { NextSeo } from 'next-seo';
 import NewLeague from "@/files/NewLeague";
 import { getCurrentUser } from "@aws-amplify/auth";
 import { generateClient } from 'aws-amplify/api'
@@ -425,6 +426,12 @@ export default function League(){
             // League hasn't started - show request popup
             return (
                 <>
+                    <NextSeo
+                        title={leagueData?.lgName ? `${leagueData.lgName} — Drag League` : 'League — Drag League'}
+                        description={leagueData?.lgDescription || 'League details, players, and standings on Drag League.'}
+                        canonical={typeof window !== 'undefined' && window.location ? window.location.href : `https://dr91fo3klsf8b.amplifyapp.com/League/${id}`}
+                    />
+            
                     <Box
                         sx={{
                             position: 'fixed',
