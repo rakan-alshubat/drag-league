@@ -207,8 +207,14 @@
           "AppSyncApiName": "dragLeagueDev",
           "DynamoDBBillingMode": "PAY_PER_REQUEST",
           "DynamoDBEnableServerSideEncryption": false,
+          "AuthCognitoUserPoolId": {
+            "Fn::GetAtt": [
+              "authdragleaguedf3b00a0",
+              "Outputs.UserPoolId"
+            ]
+          },
           "S3DeploymentBucket": "amplify-dragleague-dev-041d3-deployment",
-          "S3DeploymentRootKey": "amplify-appsync-files/c637bc3b40f5bb30cf3cfd0f713bc0d20d15cbaf",
+          "S3DeploymentRootKey": "amplify-appsync-files/696cef74186222250eff4c85dc26680b4c4449bf",
           "env": "dev"
         }
       }

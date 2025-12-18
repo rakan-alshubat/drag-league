@@ -4,10 +4,17 @@
     "apiName": "dragLeagueDev",
     "serviceName": "AppSync",
     "defaultAuthType": {
-      "mode": "API_KEY",
-      "expirationTime": 365,
-      "apiKeyExpirationDate": "2026-11-19T00:25:08.717Z",
-      "keyDescription": "drage-league-dev-api-key"
-    }
+      "mode": "AMAZON_COGNITO_USER_POOLS",
+      "cognitoUserPoolId": "authdragleaguedf3b00a0"
+    },
+    "conflictResolution": {},
+    "additionalAuthTypes": [
+      {
+        "mode": "API_KEY",
+        "expirationTime": 7,
+        "apiKeyExpirationDate": "2025-12-25T01:17:47.680Z",
+        "keyDescription": ""
+      }
+    ]
   }
 }
