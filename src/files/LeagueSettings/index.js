@@ -17,6 +17,8 @@ import { generateClient } from 'aws-amplify/api';
 import { updatePlayer, updateLeague, deleteLeague, deletePlayer, createPlayer } from '@/graphql/mutations';
 import { playersByLeagueId, listUsers } from '@/graphql/queries';
 import PopUp from '@/files/PopUp';
+import ErrorPopup from '@/files/ErrorPopUp';
+import formatError from '@/helpers/formatError';
 import {
     Root,
     Title,
@@ -38,6 +40,8 @@ export default function LeagueSettings(props) {
     const [popUpTitle, setPopUpTitle] = useState('');
     const [popUpDescription, setPopUpDescription] = useState('');
     const [selectedPlayer, setSelectedPlayer] = useState(null);
+    const [errorPopup, setErrorPopup] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     const [privacyAction, setPrivacyAction] = useState(null);
     const [deleteLeagueAction, setDeleteLeagueAction] = useState(false);
     const [deletePlayerAction, setDeletePlayerAction] = useState(false);
@@ -47,11 +51,8 @@ export default function LeagueSettings(props) {
     // Get all players from props (pages pass `playersData`) or fallback to leagueData.players
     const allPlayers = Array.isArray(playersData) && playersData.length ? playersData : (leagueData?.players || []);
     const currentUserId = (userData?.id || '').toLowerCase();
-    const players = (allPlayers || []).filter(p => {
-        const pid = (p.id || '').toLowerCase();
-        const pEmail = (p.plEmail || '').toLowerCase();
-        return pid !== currentUserId && pEmail !== currentUserId;
-    });
+    // Include the current user in the list so they can see themselves
+    const players = (allPlayers || []);
     const admins = leagueData?.lgAdmin || [];
     const pending = leagueData?.lgPendingPlayers || [];
     const currentUserIsMember = (allPlayers || []).some(p => {
@@ -92,7 +93,8 @@ export default function LeagueSettings(props) {
             window.location.reload();
         } catch (err) {
             console.error('Request join failed', err);
-            alert('Failed to request to join.');
+            setErrorMessage(formatError(err) || 'Failed to request to join.');
+            setErrorPopup(true);
         } finally {
             setConfirmLoading(false);
         }
@@ -113,7 +115,8 @@ export default function LeagueSettings(props) {
             window.location.reload();
         } catch (err) {
             console.error('Accept invite failed', err);
-            alert('Failed to accept invite.');
+            setErrorMessage(formatError(err) || 'Failed to accept invite.');
+            setErrorPopup(true);
         } finally {
             setConfirmLoading(false);
         }
@@ -130,7 +133,8 @@ export default function LeagueSettings(props) {
             window.location.reload();
         } catch (err) {
             console.error('Decline invite failed', err);
-            alert('Failed to decline invite.');
+            setErrorMessage(formatError(err) || 'Failed to decline invite.');
+            setErrorPopup(true);
         } finally {
             setConfirmLoading(false);
         }
@@ -175,7 +179,7 @@ export default function LeagueSettings(props) {
                 }
             });
 
-            console.log('Player promoted to admin (league update response):', resp);
+
             setConfirmOpen(false);
             // Refresh the page to show updated data
             window.location.reload();
@@ -221,7 +225,6 @@ export default function LeagueSettings(props) {
                 }
             });
 
-            console.log('Privacy setting updated successfully');
             setConfirmOpen(false);
             setPrivacyAction(null);
             // Refresh the page to show updated data
@@ -243,7 +246,6 @@ export default function LeagueSettings(props) {
     const handleConfirmDeleteLeague = async () => {
         try {
             setConfirmLoading(true);
-            console.log('Starting league deletion cascade...');
 
             // Step 1: Get all players in the league
             const playersResult = await client.graphql({
@@ -251,7 +253,6 @@ export default function LeagueSettings(props) {
                 variables: { leagueId: leagueData.id, limit: 1000 }
             });
             const playersToDelete = playersResult?.data?.playersByLeagueId?.items || [];
-            console.log(`Found ${playersToDelete.length} players to delete`);
 
             // Step 2: Delete all player records
             for (const player of playersToDelete) {
@@ -259,7 +260,6 @@ export default function LeagueSettings(props) {
                     query: deletePlayer,
                     variables: { input: { id: player.id } }
                 });
-                console.log(`Deleted player: ${player.plName}`);
             }
 
             // Step 3: Get all users to remove league references
@@ -305,7 +305,6 @@ export default function LeagueSettings(props) {
                             }
                         }
                     });
-                    console.log(`Updated user: ${user.id}`);
                 }
             }
 
@@ -314,8 +313,6 @@ export default function LeagueSettings(props) {
                 query: deleteLeague,
                 variables: { input: { id: leagueData.id } }
             });
-            console.log('League deleted successfully');
-            console.log('Cascade deletion completed successfully');
 
             setConfirmOpen(false);
             setDeleteLeagueAction(false);
@@ -323,7 +320,8 @@ export default function LeagueSettings(props) {
             router.push('/Player');
         } catch (error) {
             console.error('Error deleting league:', error);
-            alert('Failed to delete league. Please try again.');
+            setErrorMessage(formatError(error) || 'Failed to delete league. Please try again.');
+            setErrorPopup(true);
         } finally {
             setConfirmLoading(false);
         }
@@ -344,7 +342,8 @@ export default function LeagueSettings(props) {
                 window.location.reload();
             } catch (err) {
                 console.error('Error deleting player:', err);
-                alert('Failed to remove player.');
+                setErrorMessage(formatError(err) || 'Failed to remove player.');
+                setErrorPopup(true);
             } finally {
                 setConfirmLoading(false);
             }
@@ -368,6 +367,10 @@ export default function LeagueSettings(props) {
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                             {players.map((player, idx) => {
                                 const isAdmin = isPlayerAdmin(player);
+                                const pid = (player.id || '').toLowerCase();
+                                const pEmail = (player.plEmail || '').toLowerCase();
+                                const isCurrentUser = pid === currentUserId || pEmail === currentUserId;
+
                                 return (
                                     <Box
                                         key={player.id || idx}
@@ -399,7 +402,7 @@ export default function LeagueSettings(props) {
                                             )}
                                         </Box>
                                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                            {!isAdmin && (
+                                            {!isAdmin && !isCurrentUser && (
                                                 <Tooltip title="Promote to Admin">
                                                     <IconButton
                                                         size="small"
@@ -416,20 +419,22 @@ export default function LeagueSettings(props) {
                                                 </Tooltip>
                                             )}
 
-                                            <Tooltip title="Kick player">
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => handleKickPlayer(player)}
-                                                    sx={{
-                                                        color: '#ff4444',
-                                                        '&:hover': {
-                                                            background: 'rgba(255, 68, 68, 0.08)',
-                                                        },
-                                                    }}
-                                                >
-                                                    <DeleteForeverIcon />
-                                                </IconButton>
-                                            </Tooltip>
+                                            {!isCurrentUser && (
+                                                <Tooltip title="Kick player">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleKickPlayer(player)}
+                                                        sx={{
+                                                            color: '#ff4444',
+                                                            '&:hover': {
+                                                                background: 'rgba(255, 68, 68, 0.08)',
+                                                            },
+                                                        }}
+                                                    >
+                                                        <DeleteForeverIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
                                         </Box>
                                     </Box>
                                 );
@@ -612,6 +617,7 @@ export default function LeagueSettings(props) {
             >
                 {popUpDescription}
             </PopUp>
+            <ErrorPopup open={errorPopup} onClose={() => setErrorPopup(false)} message={errorMessage} />
         </Root>
     );
 }

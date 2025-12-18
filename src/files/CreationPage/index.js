@@ -30,6 +30,7 @@ import { FormContainer,
 import { MenuItem } from "@mui/material";
 import { useState, useEffect} from "react";
 import ErrorPopup from "../ErrorPopUp";
+import formatError from '@/helpers/formatError';
 
 export default function CreationPage(){
     const [queensNumber, setQueensNumber] = useState('');
@@ -72,25 +73,7 @@ export default function CreationPage(){
     const router = useRouter();
     const client = generateClient()
 
-    const formatError = (err) => {
-        try {
-            if (!err) return 'Unknown error';
-            if (typeof err === 'string') return err;
-            if (err.message) return String(err.message);
-            if (Array.isArray(err.errors)) return err.errors.map(e => e.message || JSON.stringify(e)).join('; ');
-            if (err.response && err.response.body) {
-                try {
-                    return typeof err.response.body === 'string' ? err.response.body : JSON.stringify(err.response.body);
-                } catch (e) {
-                    return String(err.response.body);
-                }
-            }
-            // try to stringify common objects (use getOwnPropertyNames to include non-enumerable props)
-            try { return JSON.stringify(err, Object.getOwnPropertyNames(err), 2); } catch (e) { return String(err); }
-        } catch (e) {
-            return 'An unexpected error occurred';
-        }
-    };
+    // use centralized formatError helper
 
     const numbers = Array.from({ length: 30 }, (_, i) => i + 1);
 

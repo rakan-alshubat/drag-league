@@ -8,7 +8,7 @@ import Countdown from "../Countdown";
 import History from "../History";
 import calculatePoints from '../../helpers/calculatePoints';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import { Box, Alert } from '@mui/material';
+import { Box, Alert, Typography } from '@mui/material';
 import {
     Container,
     Header,
@@ -22,6 +22,7 @@ import {
     WinnerLabel,
     WinnerName,
     RevealButton,
+    EmptyState,
 } from "./Leagues.styles";
 
 export default function Leagues({ userData, leagueData, playersData }) {
@@ -38,6 +39,8 @@ export default function Leagues({ userData, leagueData, playersData }) {
 
     // Find current user's player object
     const Player = AllPlayers?.find(p => p.plEmail?.toLowerCase() === User?.id?.toLowerCase()) || null;
+
+    const isPlayer = !!Player;
 
     console.log('Leagues component - userData:', userData);
     console.log('Leagues component - League:', League);
@@ -272,21 +275,23 @@ export default function Leagues({ userData, leagueData, playersData }) {
                     {!isFinished && (
                         <>
                             <div className="buttonsRow" style={{ display: 'flex', gap: 8 }}>
-                                <button
-                                    onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Submissions'); }}
-                                    aria-label="Add"
-                                    disabled={isDeadlinePassed()}
-                                    style={{
-                                        padding: '8px 12px',
-                                        borderRadius: 6,
-                                        cursor: isDeadlinePassed() ? 'not-allowed' : 'pointer',
-                                        opacity: isDeadlinePassed() ? 0.5 : 1,
-                                        background: isDeadlinePassed() ? '#ccc' : ''
-                                    }}
-                                    title={isDeadlinePassed() ? 'Deadline has passed - waiting for admin to submit results' : 'Submit your weekly pick'}
-                                >
-                                    Submit your weekly pick
-                                </button>
+                                {isPlayer && (
+                                    <button
+                                        onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Submissions'); }}
+                                        aria-label="Add"
+                                        disabled={isDeadlinePassed()}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: 6,
+                                            cursor: isDeadlinePassed() ? 'not-allowed' : 'pointer',
+                                            opacity: isDeadlinePassed() ? 0.5 : 1,
+                                            background: isDeadlinePassed() ? '#ccc' : ''
+                                        }}
+                                        title={isDeadlinePassed() ? 'Deadline has passed - waiting for admin to submit results' : 'Submit your weekly pick'}
+                                    >
+                                        Submit your weekly pick
+                                    </button>
+                                )}
                                 {isAdmin && (
                                     <button onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Weekly Results'); }} aria-label="Export" style={{ padding: '8px 12px', borderRadius: 6, cursor: 'pointer' }}>
                                         Submit weekly results
@@ -361,7 +366,16 @@ export default function Leagues({ userData, leagueData, playersData }) {
                 </Panel>
 
                 <Panel role="tabpanel" hidden={tabIndex !== 4} aria-hidden={tabIndex !== 4}>
-                    {tabIndex === 4 && <LeagueSettings userData={User} leagueData={League} playersData={AllPlayers} />}
+                    {tabIndex === 4 && (
+                        isAdmin
+                            ? <LeagueSettings userData={User} leagueData={League} playersData={AllPlayers} />
+                            : (
+                                <EmptyState>
+                                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>Admins only</Typography>
+                                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>League settings are only visible to admins. Contact an admin to manage this league.</Typography>
+                                </EmptyState>
+                            )
+                    )}
                 </Panel>
             </MainContent>
 

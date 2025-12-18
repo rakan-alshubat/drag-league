@@ -37,7 +37,7 @@ export const faqData = [
             },
             {
                 question: "What are the privacy levels?",
-                answer: "Leagues have two privacy levels: Public (anyone can discover and request to join), Private (invite-only, hidden from search), Admins can toggle privacy settings at any time during the season."
+                answer: "Leagues have two privacy levels: Public (anyone can discover and request to join) and Private (invite-only, hidden from search). Admins can toggle privacy settings at any time during the season."
             },
             {
                 question: "How do I invite players to my league?",
@@ -58,11 +58,11 @@ export const faqData = [
         questions: [
             {
                 question: "How does scoring work?",
-                answer: "Your points = Total number of queens minus the difference between your prediction and actual placement. Example with 10 queens: Predict 8th, they place 8th = 10 points (perfect!) Predict 8th, they place 10th = 8 points (10 - 2) Predict 8th, they place 3rd = 5 points (10 - 5) The closer you are, the more points you get."
+                answer: "Your points = total number of queens minus the difference between your prediction and the actual placement. Example with 10 queens: Predict 8th, they place 8th = 10 points (perfect!). Predict 8th, they place 10th = 8 points (10 - 2). Predict 8th, they place 3rd = 5 points (10 - 5). The closer you are, the more points you get."
             },
             {
                 question: "When do I submit my rankings?",
-                answer: "You must submit your initial rankings before the league deadline. You can have it before the season starts or after watching an episode and getting a better impression of the Queens. The admin can set this deadline when creating the league."
+                answer: "You must submit your initial rankings before the league deadline. You can submit before the season starts or after watching an episode and getting a better impression of the queens. The admin can set this deadline when creating the league."
             },
             {
                 question: "Can I change my rankings after submitting?",
@@ -74,19 +74,19 @@ export const faqData = [
             },
             {
                 question: "What is the Lip Sync Assassin?",
-                answer: "The Lip Sync Assassin is an optional prediction where you guess which queen will win the most Lip Syncs For Your Life during the season. If enabled by your admin, you pick one queen and earn bonus points if they end up with the most lip sync wins. The system automatically tracks and determines the assassin."
+                answer: "The Lip Sync Assassin is an optional prediction where you guess which queen will win the most Lip Sync for Your Life during the season. If enabled by your admin, you pick one queen and earn bonus points if they end up with the most lip sync wins. The system automatically tracks and determines the assassin."
             },
             {
                 question: "What are swaps and how do they work?",
-                answer: "Swaps allow you to switch two queens in your rankings ONE time per season. This optional feature (set by admin) helps if a queen performs differently than expected. When you swap, your points automatically recalculate. Swaps can be enabled after a certain number of episodes or when a certain number of queens remain. Watch out: other players will be able to see who you swapped."
+                answer: "Swaps allow you to switch two queens in your rankings one time per season. This optional feature (set by the admin) helps if a queen performs differently than expected. When you swap, your points automatically recalculate. Swaps can be enabled after a certain number of episodes or when a certain number of queens remain. Watch out: other players will be able to see who you swapped."
             },
             {
                 question: "What is the queen swap deadline?",
                 answer: "The queen swap deadline is a special date set by the admin when swaps can't be made anymore. It's typically after a certain number of episodes or when a certain number of queens remain. Once the deadline passes, players cannot use their one-time swap feature to adjust their rankings."
             },
             {
-                question:"What happens to my points when I swap?",
-                answer:"They adjust automatically for all queens who've already been eliminated, and the queens who haven't will count as their new positions once they're gone."
+                question: "What happens to my points when I swap?",
+                answer: "They adjust automatically for all queens who've already been eliminated, and the queens who haven't will count as their new positions once they're gone."
             },
             {
                 question: "Can I swap queens who've already been eliminated?",
@@ -94,7 +94,7 @@ export const faqData = [
             },
             {
                 question: "What if two queens are eliminated in the same episode (like a double elimination)?",
-                answer: "Submit both queens as eleminated in the same week. They will both be considered the same position overall. If 7th and 6th are eleminated together, they will both count as a tie for 6th."
+                answer: "Submit both queens as eliminated in the same week. They will both be considered the same position overall. If 7th and 6th are eliminated together, they will both count as a tie for 6th."
             },
             {
                 question: "Can the admin change point values mid-season?",
@@ -107,11 +107,11 @@ export const faqData = [
         questions: [
             {
                 question: "What are weekly submissions?",
-                answer: "Each week, you can predict which queen will win the Maxi Challenge. If your league has this enabled, correct predictions earn you extra points on top of your queen elimination rankings. This keeps everyone engaged every week and gives them a chance if the rankings arent turning out how they hoped. The admin sets the point value for correct weekly predictions."
+                answer: "Each week, you can predict which queen will win the Maxi Challenge. If your league has this enabled, correct predictions earn you extra points on top of your queen elimination rankings. This keeps everyone engaged every week and gives them a chance if the rankings aren't turning out how they hoped. The admin sets the point value for correct weekly predictions."
             },
             {
                 question: "How do weekly deadlines work?",
-                answer: "The league admin sets a weekly deadline (typically before each episode airs). This deadline will automatically renew to the following week after you submit the results of the previous episode (who won, who was eliminated, etc). If you set the first one to be a friday at 5pm, then thats when the deadline will be until the season ends."
+                answer: "The league admin sets a weekly deadline (typically before each episode airs). This deadline will automatically renew to the following week after you submit the results of the previous episode (who won, who was eliminated, etc.). If you set the first one to be a Friday at 5pm, then that's when the deadline will be until the season ends."
             },
             {
                 question: "Do weekly submissions affect my score?",
@@ -123,7 +123,7 @@ export const faqData = [
             },
             {
                 question: "What if the weekly deadline passes?",
-                answer: "If you miss the weekly deadline, you won't be able to submit predictions for that week and it will count as an incorrect predicition. The admin can still enter the results manually if you missed it, but thats up to the admin and other players."
+                answer: "If you miss the weekly deadline, you won't be able to submit predictions for that week and it will count as an incorrect prediction. The admin can still enter the results manually if you missed it, but that's up to the admin and other players."
             },
             {
                 question: "Can I change my weekly pick after I submit it?",
@@ -136,11 +136,11 @@ export const faqData = [
         questions: [
             {
                 question: "What is the Admin Edit Page?",
-                answer: "The Admin Edit Page is a special tool for league admins to manually correct league data if needed. You can edit player rankings, queen names, eliminated queens, weekly winners, and bonus results. All admin edits are tagged with '[ADMIN EDIT]' in the league history for full transparency. KEEP IN MIND: This tool is very powerful and can results in some wonky results if not used carefull."
+                answer: "The Admin Edit Page is a special tool for league admins to manually correct league data if needed. You can edit player rankings, queen names, eliminated queens, weekly winners, and bonus results. All admin edits are tagged with '[ADMIN EDIT]' in the league history for full transparency. KEEP IN MIND: This tool is very powerful and can result in some wonky outcomes if not used carefully."
             },
             {
                 question: "Why are some history entries orange?",
-                answer: "Orange entries in the History tab indicate admin edits. When an admin manually changes league data through the Admin Edit Page, those actions are marked with an orange 'ADMIN EDIT' badge so all players can see when and what was modified (I see you chaning rankings cheater!)."
+                answer: "Orange entries in the History tab indicate admin edits. When an admin manually changes league data through the Admin Edit Page, those actions are marked with an orange 'ADMIN EDIT' badge so all players can see when and what was modified (I see you changing rankings, cheater!)."
             },
             {
                 question: "Can I promote another player to admin?",
@@ -168,8 +168,8 @@ export const faqData = [
                 answer: "If you encounter any issues or have questions, please reach out through the contact form on our website or email us directly."
             },
             {
-                question: "Technical issues? League data got screwed up? feature suggestions?",
-                answer: "You can choose the discord, Reddit, or email us! I'm a solo developer and will try my best to get to any issues as soon as possible. Feature suggestions are always welcome too!"
+                question: "Technical issues? League data got screwed up? Feature suggestions?",
+                answer: "You can reach us on Discord, Reddit, or via email! I'm a solo developer and will try my best to get to any issues as soon as possible. Feature suggestions are always welcome too!"
             },
         ]
     }

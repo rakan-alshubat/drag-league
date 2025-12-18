@@ -14,31 +14,30 @@
   },
   "api": {
     "dragLeagueDev": {
-      "service": "AppSync",
-      "providerPlugin": "awscloudformation",
       "dependsOn": [],
       "output": {
         "authConfig": {
+          "additionalAuthenticationProviders": [],
           "defaultAuthentication": {
-            "authenticationType": "API_KEY",
             "apiKeyConfig": {
-              "apiKeyExpirationDays": 365,
               "apiKeyExpirationDate": "2026-11-19T00:25:08.717Z",
+              "apiKeyExpirationDays": 365,
               "description": "drage-league-dev-api-key"
-            }
-          },
-          "additionalAuthenticationProviders": []
+            },
+            "authenticationType": "API_KEY"
+          }
         },
         "GraphQLAPIIdOutput": "2ybkbnj6r5awxfzhkfgnp672yy",
         "GraphQLAPIEndpointOutput": "https://gem3uulxvvg5bhgsd6o4boikta.appsync-api.us-west-2.amazonaws.com/graphql",
         "GraphQLAPIKeyOutput": "da2-ithxhemcqrhnzff5egowclyy6m"
       },
+      "providerPlugin": "awscloudformation",
+      "service": "AppSync",
+      "lastPushTimeStamp": "2025-12-17T09:05:18.162Z",
       "providerMetadata": {
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-dragleague-dev-041d3-deployment/amplify-cfn-templates/api/cloudformation-template.json",
         "logicalId": "apidragLeagueDev"
-      },
-      "lastPushTimeStamp": "2025-12-13T04:34:12.058Z",
-      "lastPushDirHash": "2GIWRH10IsovHNz2FeV2F5sWm9E="
+      }
     }
   },
   "auth": {
@@ -76,7 +75,7 @@
         "IdentityPoolName": "dragleaguedf3b00a0_identitypool_df3b00a0__dev",
         "UserPoolName": "dragleaguedf3b00a0_userpool_df3b00a0"
       },
-      "lastPushTimeStamp": "2025-12-13T04:34:12.075Z",
+      "lastPushTimeStamp": "2025-12-17T09:05:18.174Z",
       "providerMetadata": {
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-dragleague-dev-041d3-deployment/amplify-cfn-templates/auth/dragleaguedf3b00a0-cloudformation-template.json",
         "logicalId": "authdragleaguedf3b00a0"

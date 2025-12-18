@@ -4,11 +4,21 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, But
 export const StyledDialog = styled(Dialog)(({ theme }) => ({
     '& .MuiDialog-paper': {
         maxWidth: '600px',
+        minWidth: 690,
         maxHeight: '85vh',
         borderRadius: '12px',
         border: '2px solid rgba(255, 20, 147, 0.3)',
         boxShadow: '0 8px 32px rgba(255, 20, 147, 0.2)',
     },
+    [theme.breakpoints.down('sm')]: {
+        '& .MuiDialog-paper': {
+            width: 'calc(100% - 16px)',
+            minWidth: 'auto',
+            margin: '8px',
+            borderRadius: '10px',
+            maxHeight: '95vh',
+        }
+    }
 }));
 
 export const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({

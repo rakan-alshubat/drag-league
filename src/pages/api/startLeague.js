@@ -72,8 +72,6 @@ export default async function handler(req, res) {
             !player.plRankings || !Array.isArray(player.plRankings) || player.plRankings.length === 0
         );
 
-        console.log(`League ${leagueId}: Found ${playersWithoutRankings.length} players without rankings`);
-
         // Delete players without rankings
         const deletedPlayers = [];
         for (const player of playersWithoutRankings) {
@@ -87,7 +85,6 @@ export default async function handler(req, res) {
                     }
                 });
                 deletedPlayers.push(player.plName || player.plEmail);
-                console.log(`Deleted player: ${player.plName || player.plEmail}`);
             } catch (error) {
                 console.error(`Error deleting player ${player.plName}:`, error);
             }
@@ -110,8 +107,6 @@ export default async function handler(req, res) {
                 } 
             }
         });
-
-        console.log(`League ${leagueId} started successfully`);
 
         return res.status(200).json({ 
             success: true,

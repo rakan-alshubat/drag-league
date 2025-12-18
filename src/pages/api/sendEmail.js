@@ -10,7 +10,6 @@ if (process.env.SENDGRID_API_KEY) {
     try {
         const raw = process.env.SENDGRID_API_KEY || '';
         const masked = raw ? `***${String(raw).slice(-4)}` : 'MISSING';
-        console.log('sendEmail handler (diagnostic):', { sendGridKeyMasked: masked, fromEmailPresent: !!process.env.SENDGRID_FROM_EMAIL, NODE_ENV: process.env.NODE_ENV });
     } catch (e) {
         console.log('sendEmail diagnostic log failed', e && e.message);
     }
@@ -59,14 +58,8 @@ export default async function handler(req, res) {
     };
 
     try {
-        console.log('Attempting to send email via SendGrid...');
-        console.log('To:', toAddresses);
-        console.log('From:', msg.from);
-        console.log('Subject:', subject);
         
         const result = await sgMail.send(msg);
-        console.log('Email sent successfully via SendGrid');
-        console.log('Status Code:', result[0]?.statusCode);
         
         return res.status(200).json({ 
             ok: true, 

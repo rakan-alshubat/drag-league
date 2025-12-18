@@ -5,6 +5,8 @@ import { getUsers, getLeague, playersByLeagueId } from "@/graphql/queries";
 import LoadingWheel from "@/files/LoadingWheel";
 import { useEffect, useState } from "react";
 import RankingsPage from "@/files/RankingsPage";
+import ErrorPopup from '@/files/ErrorPopUp';
+import formatError from '@/helpers/formatError';
 
 export default function Rank(){
 
@@ -14,6 +16,8 @@ export default function Rank(){
     const [playersData, setPlayersData] = useState(null);
     const [leagueNotStarted, setLeagueNotStarted] = useState(true);
     const [isEditMode, setIsEditMode] = useState(false);
+    const [errorPopup, setErrorPopup] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     
     
     const router = useRouter();
@@ -26,7 +30,6 @@ export default function Rank(){
             .then(user => {
                 async function getUserData() {
                     try {
-                        console.log('Fetching user and league data for user ID:', user, 'and league ID:', router.query.id);
                         const userResults = await client.graphql({
                             query: getUsers,
                             variables: { id: user.signInDetails.loginId.toLowerCase() }
@@ -35,8 +38,6 @@ export default function Rank(){
                             query: getLeague,
                             variables: { id: router.query.id }
                         })
-                        console.log('Fetched league dat2a:', leagueResults);
-                        console.log('Fetched user dat2a:', userResults);
 
                         if(userResults.data.getUsers && leagueResults.data.getLeague) {
                             //set user data here if needed
@@ -46,7 +47,6 @@ export default function Rank(){
                                 query: playersByLeagueId,
                                 variables: { leagueId: id }
                             })
-                            console.log('Fetched players data:', playersResults);
                             const players = playersResults?.data?.playersByLeagueId?.items
                                                         ?? playersResults?.data?.playersByLeagueId
                                                         ?? [];
@@ -54,7 +54,6 @@ export default function Rank(){
                             // Find the current user's player record
                             const currentUserEmail = user.signInDetails.loginId.toLowerCase();
                             const currentPlayer = players.find(p => p.plEmail === currentUserEmail);
-                            console.log('Current player found:', currentPlayer);
                             
                             setPlayersData(currentPlayer);
                             if(leagueResults.data.getLeague.lgFinished === 'not started'){
@@ -73,6 +72,8 @@ export default function Rank(){
                         }
                     } catch (error) {
                         console.error('Error fetching user data:', error);
+                        setErrorMessage(formatError(error) || 'Failed to load ranking data.');
+                        setErrorPopup(true);
                     } finally {
                         setLoading(false);
                     }
@@ -93,12 +94,15 @@ export default function Rank(){
 
     if(leagueNotStarted){
         return (
-            <RankingsPage 
-                leagueInfo={leagueData} 
-                userInfo={userData} 
-                playersInfo={playersData} 
-                isEditMode={isEditMode}
-            />
+            <>
+                <RankingsPage 
+                    leagueInfo={leagueData} 
+                    userInfo={userData} 
+                    playersInfo={playersData} 
+                    isEditMode={isEditMode}
+                />
+                <ErrorPopup open={errorPopup} onClose={() => { setErrorPopup(false); setErrorMessage(''); }} message={errorMessage || 'An error occurred.'} />
+            </>
         )
     }else{
         router.push(`/League/${id}`)

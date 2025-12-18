@@ -3,9 +3,9 @@ import { useRouter } from "next/router";
 import { generateClient } from 'aws-amplify/api'
 import { createPlayer, updateLeague, deleteLeague, createUsers, updateUsers, deletePlayer, updatePlayer } from '@/graphql/mutations';
 import { getUsers, playersByLeagueId, listUsers } from '@/graphql/queries';
-import { sendEmailAPI } from "@/helpers/sendEmail";
+// email sending removed for MVP; invites are added to league and a shareable link is shown
 import { filterPipeCharacter } from "@/helpers/filterPipeChar";
-import { Box, Typography, IconButton, Tooltip, TextField, Alert } from "@mui/material";
+import { Box, Typography, IconButton, Tooltip, TextField, Alert, InputAdornment, Button } from "@mui/material";
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import PersonAddAltSharpIcon from '@mui/icons-material/PersonAddAltSharp';
@@ -87,6 +87,7 @@ export default function NewLeague( userData ) {
     const [popUpEmailInput, setPopUpEmailInput] = useState('');
     const [popUpError, setPopUpError] = useState('');
     const [popUpCopySuccess, setPopUpCopySuccess] = useState('');
+    const [inviteProcessed, setInviteProcessed] = useState(false);
 
     const [pickedPlayer, setPickedPlayer] = useState('');
     const [displayName, setDisplayName] = useState('');
@@ -110,7 +111,14 @@ export default function NewLeague( userData ) {
 
                         // delete players who didn't submit
                         const toDelete = players.filter(p => !p.plRankings || (Array.isArray(p.plRankings) && p.plRankings.length === 0));
+                        const adminEmails = Array.isArray(League?.lgAdmin) ? League.lgAdmin.map(a => String(a || '').toLowerCase().trim()) : [];
                         for (const p of toDelete) {
+                            const targetEmail = String(p.plEmail || p.id || '').toLowerCase().trim();
+                            if (targetEmail && adminEmails.includes(targetEmail)) {
+
+                                continue;
+                            }
+
                             try {
                                 await client.graphql({ query: deletePlayer, variables: { input: { id: p.id } } });
                             } catch (e) {
@@ -119,7 +127,6 @@ export default function NewLeague( userData ) {
 
                             // remove league from user's leagues array if present
                             try {
-                                const targetEmail = String(p.plEmail || p.id || '').toLowerCase().trim();
                                 if (targetEmail) {
                                     const userRes = await client.graphql({ query: getUsers, variables: { id: targetEmail } });
                                     const userObj = userRes?.data?.getUsers;
@@ -139,6 +146,33 @@ export default function NewLeague( userData ) {
                             }
                         }
 
+                        // Also remove this league from any users' pendingLeagues so they no longer see it as pending
+                        try {
+                            const pendingList = Array.isArray(League.lgPendingPlayers) ? League.lgPendingPlayers.slice() : [];
+                            for (const raw of pendingList) {
+                                try {
+                                    if (!raw) continue;
+                                    const parts = String(raw || '').split('|').map(s => s.trim()).filter(Boolean);
+                                    const email = parts.length >= 2 ? (parts[1] || '') : String(raw || '').trim();
+                                    const normalized = String(email || '').toLowerCase();
+                                    if (!normalized) continue;
+                                    const userRes = await client.graphql({ query: getUsers, variables: { id: normalized } });
+                                    const userObj = userRes?.data?.getUsers;
+                                    if (userObj) {
+                                        const existingPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
+                                        const filteredPending = existingPending.filter(pid => pid !== League.id);
+                                        if (filteredPending.length !== existingPending.length) {
+                                            await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, pendingLeagues: filteredPending } } });
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.warn('Failed to remove pending league from user during auto-start cleanup:', raw, e);
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('Failed to process pending users during auto-start cleanup:', e);
+                        }
+
                         const result = await client.graphql({
                             query: updateLeague,
                             variables: {
@@ -150,7 +184,6 @@ export default function NewLeague( userData ) {
                                 }
                             }
                         });
-                        console.log('League auto-started:', result);
                         router.push(`/League/${League.id}`);
                     } catch (err) {
                         console.error('Error auto-starting league (cleanup):', err);
@@ -197,7 +230,6 @@ export default function NewLeague( userData ) {
     }
 
     const rules = () => {
-        console.log(League?.lgSwap)
         const swap = League?.lgSwap?.split('|').map(s => s.trim()).filter(Boolean) || []
         return [
             (League?.lgChallengePoints > 0 ? `Predicting the weekly Maxi Challenge winners is worth <strong>${League?.lgChallengePoints} points</strong>` : 'Predicting weekly Maxi Challenge winners is disabled'),
@@ -305,7 +337,7 @@ export default function NewLeague( userData ) {
 
     const handleInvitePlayer = () => {
         setPopUpTitle('Invite Player')
-        setPopUpDescription(<InviteSectionTitle>Invite a new player by entering their name and email, or share the invite link below.</InviteSectionTitle>)
+        setPopUpDescription(<InviteSectionTitle>Invite a new player by entering their name and email.</InviteSectionTitle>)
         setConfirmOpen(true)
     }
 
@@ -326,21 +358,33 @@ export default function NewLeague( userData ) {
         });
     }
 
-    const currentUserIsPending = () => {
+    // Returns 'invited', 'requested', or null for the current user
+    const currentUserPendingType = () => {
         const logged = String(userEmail || '').toLowerCase().trim();
-        if (!logged) return false;
-        return (League?.lgPendingPlayers || []).some(p => {
+        if (!logged) return null;
+        const pendingList = Array.isArray(League?.lgPendingPlayers) ? League.lgPendingPlayers : [];
+        for (const p of pendingList) {
             const raw = String(p || '').trim();
-            if (!raw) return false;
-            // legacy plain-email entries
+            if (!raw) continue;
             if (!raw.includes('|')) {
-                return raw.toLowerCase() === logged;
+                if (raw.toLowerCase() === logged) return 'invited';
+                continue;
             }
             const parts = raw.split('|').map(s => s.trim()).filter(Boolean);
+            const type = parts[0] ? String(parts[0]).toLowerCase() : '';
             const email = parts[1] ? String(parts[1]).toLowerCase().trim() : '';
             const name = parts[2] ? String(parts[2]).toLowerCase().trim() : '';
-            return email === logged || name === logged;
-        });
+            if (email === logged || name === logged) {
+                return type === 'requested' ? 'requested' : 'invited';
+            }
+        }
+        // fallback: if user record shows this league in pendingLeagues, treat as requested
+        try {
+            if (User?.pendingLeagues && Array.isArray(User.pendingLeagues) && User.pendingLeagues.includes(League.id)) return 'requested';
+        } catch (e) {
+            // ignore
+        }
+        return null;
     }
 
 
@@ -361,7 +405,7 @@ export default function NewLeague( userData ) {
                 return pl[1]?.toLowerCase() !== normalized;
             });
 
-            const createPlayerResult = await client.graphql({ query: createPlayer, variables: { input: { id: normalized, leagueId: League.id, plEmail: normalized, plName: User?.name || '', plStatus: 'Player' } } });
+            const createPlayerResult = await client.graphql({ query: createPlayer, variables: { input: { leagueId: League.id, plEmail: normalized, plName: User?.name || '', plStatus: 'Player' } } });
             try {
                 const userRes = await client.graphql({ query: getUsers, variables: { id: normalized } });
                 const userObj = userRes?.data?.getUsers;
@@ -386,7 +430,12 @@ export default function NewLeague( userData ) {
             router.reload();
         } catch (err) {
             console.error('Accept invite failed', err);
-            alert('Failed to accept invite.');
+            try {
+                const { default: formatError } = await import('@/helpers/formatError');
+                setPopUpError(formatError(err) || 'Failed to accept invite.');
+            } catch (e) {
+                setPopUpError('Failed to accept invite.');
+            }
         } finally {
             setConfirmLoading(false);
         }
@@ -406,7 +455,12 @@ export default function NewLeague( userData ) {
             router.reload();
         } catch (err) {
             console.error('Decline invite failed', err);
-            alert('Failed to decline invite.');
+            try {
+                const { default: formatError } = await import('@/helpers/formatError');
+                setPopUpError(formatError(err) || 'Failed to decline invite.');
+            } catch (e) {
+                setPopUpError('Failed to decline invite.');
+            }
         } finally {
             setConfirmLoading(false);
         }
@@ -433,14 +487,25 @@ export default function NewLeague( userData ) {
 
             {League?.lgPublic && !currentUserIsMember() && (
                 <ActionRow sx={{ mb: 2, justifyContent: 'center' }}>
-                    {currentUserIsPending() ? (
-                        <>
-                            <PrimaryButton size="small" onClick={handleAcceptInviteUser} disabled={confirmLoading}>Accept</PrimaryButton>
-                            <DangerButton size="small" onClick={handleDeclineInviteUser} disabled={confirmLoading}>Decline</DangerButton>
-                        </>
-                    ) : (
-                        <PrimaryButton size="small" onClick={handleRequestJoinOpen} disabled={confirmLoading}>Request to join</PrimaryButton>
-                    )}
+                    {(() => {
+                        const pendingType = currentUserPendingType();
+                        if (pendingType === 'invited') {
+                            return (
+                                <>
+                                    <PrimaryButton size="small" onClick={handleAcceptInviteUser} disabled={confirmLoading}>Accept</PrimaryButton>
+                                    <DangerButton size="small" onClick={handleDeclineInviteUser} disabled={confirmLoading}>Decline</DangerButton>
+                                </>
+                            );
+                        }
+                        if (pendingType === 'requested') {
+                            return (
+                                <PrimaryButton size="small" disabled>Request received — admin reviewing</PrimaryButton>
+                            );
+                        }
+                        return (
+                            <PrimaryButton size="small" onClick={handleRequestJoinOpen} disabled={confirmLoading}>Request to join</PrimaryButton>
+                        );
+                    })()}
                 </ActionRow>
             )}
 
@@ -783,8 +848,8 @@ export default function NewLeague( userData ) {
             <PopUp
                 open={confirmOpen}
                 title={popUpTitle}
-                confirmText={popUpTitle === 'Delete League?' ? 'Delete' : popUpTitle === 'Start League?' ? 'Start' : popUpTitle === 'Invite Player' ? 'Send Invite' : popUpTitle === 'Request to join' ? 'Request' : 'Confirm'}
-                cancelText="Cancel"
+                confirmText={inviteProcessed && popUpTitle === 'Invite Player' ? 'Done' : (popUpTitle === 'Delete League?' ? 'Delete' : popUpTitle === 'Start League?' ? 'Start' : popUpTitle === 'Invite Player' ? 'Send Invite' : popUpTitle === 'Request to join' ? 'Request' : 'Confirm')}
+                cancelText={(inviteProcessed && popUpTitle === 'Invite Player') ? '' : 'Cancel'}
                 loading={confirmLoading}
                 confirmVariant={popUpTitle === 'Delete League?' ? 'danger' : popUpTitle === 'Start League?' ? 'success' : popUpTitle === 'Invite Player' ? 'primary' : popUpTitle === 'Promote to Admin' ? 'primary' : popUpTitle === 'Accept player?' ? 'primary' : popUpTitle === 'Decline player?' ? 'danger' : popUpTitle === 'Revoke invite?' ? 'danger' : popUpTitle === 'Kick player?' ? 'danger' : 'primary'}
                 icon={
@@ -803,10 +868,19 @@ export default function NewLeague( userData ) {
                     setPopUpEmailInput('');
                     setPopUpError('');
                     setPopUpCopySuccess('');
+                    setInviteProcessed(false);
                 }}
                 onConfirm={async () => {
-                    console.log('PopUp onConfirm triggered, title:', popUpTitle, 'picked:', pickedPlayer, 'displayName:', displayName);
                     try {
+                        // If invite already processed, Confirm acts as Close
+                        if (popUpTitle === 'Invite Player' && inviteProcessed) {
+                            setConfirmOpen(false);
+                            setInviteProcessed(false);
+                            setPopUpDescription('');
+                            setPopUpCopySuccess('');
+                            try { router.reload(); } catch (e) { try { window.location.reload(); } catch (_) {} }
+                            return;
+                        }
                         setConfirmLoading(true);
                         setPopUpError('');
 
@@ -820,17 +894,18 @@ export default function NewLeague( userData ) {
                                 const players = playersResult?.data?.playersByLeagueId?.items || [];
                                 const toDelete = players.filter(p => !p.plRankings || (Array.isArray(p.plRankings) && p.plRankings.length === 0));
 
+                                const adminEmailsManual = Array.isArray(League?.lgAdmin) ? League.lgAdmin.map(a => String(a || '').toLowerCase().trim()) : [];
                                 for (const p of toDelete) {
+                                    const targetEmail = String(p.plEmail || p.id || '').toLowerCase().trim();
+
                                     try {
                                         await client.graphql({ query: deletePlayer, variables: { input: { id: p.id } } });
-                                        console.log('Deleted unsubmitted player:', p.id);
                                     } catch (e) {
-                                        console.warn('Failed to delete unsubmitted player:', p.id, e);
+                                        console.warn('Failed to delete unsubmitted player(s)');
                                     }
 
                                     // remove league from user's leagues array if present
                                     try {
-                                        const targetEmail = String(p.plEmail || p.id || '').toLowerCase().trim();
                                         if (targetEmail) {
                                             const userRes = await client.graphql({ query: getUsers, variables: { id: targetEmail } });
                                             const userObj = userRes?.data?.getUsers;
@@ -842,7 +917,6 @@ export default function NewLeague( userData ) {
                                                 });
                                                 if (filteredLeagues.length !== userLeagues.length) {
                                                     await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, leagues: filteredLeagues } } });
-                                                    console.log('Removed league reference from user:', userObj.id);
                                                 }
                                             }
                                         }
@@ -852,6 +926,33 @@ export default function NewLeague( userData ) {
                                 }
                             } catch (e) {
                                 console.warn('Error during start-league cleanup:', e);
+                            }
+
+                            // remove pending league references from users (so invited/requested users no longer see it)
+                            try {
+                                const pendingList = Array.isArray(League.lgPendingPlayers) ? League.lgPendingPlayers.slice() : [];
+                                for (const raw of pendingList) {
+                                    try {
+                                        if (!raw) continue;
+                                        const parts = String(raw || '').split('|').map(s => s.trim()).filter(Boolean);
+                                        const email = parts.length >= 2 ? (parts[1] || '') : String(raw || '').trim();
+                                        const normalized = String(email || '').toLowerCase();
+                                        if (!normalized) continue;
+                                        const userRes = await client.graphql({ query: getUsers, variables: { id: normalized } });
+                                        const userObj = userRes?.data?.getUsers;
+                                        if (userObj) {
+                                            const existingPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
+                                            const filteredPending = existingPending.filter(pid => pid !== League.id);
+                                            if (filteredPending.length !== existingPending.length) {
+                                                await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, pendingLeagues: filteredPending } } });
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.warn('Failed to remove pending league from user during manual-start cleanup:', raw, e);
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('Failed to process pending users during manual-start cleanup:', e);
                             }
 
                             const startResult = await client.graphql({
@@ -865,11 +966,8 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
-                            console.log('League started:', startResult);
                             window.location.reload();
                         } else if(popUpTitle === 'Delete League?'){
-                            // Comprehensive cascade delete
-                            console.log('Starting league deletion cascade...');
 
                             // Step 1: Get all players in the league
                             const playersResult = await client.graphql({
@@ -877,7 +975,6 @@ export default function NewLeague( userData ) {
                                 variables: { leagueId: League.id, limit: 1000 }
                             });
                             const players = playersResult?.data?.playersByLeagueId?.items || [];
-                            console.log(`Found ${players.length} players to delete`);
 
                             // Step 2: Delete all player records
                             for (const player of players) {
@@ -885,7 +982,6 @@ export default function NewLeague( userData ) {
                                     query: deletePlayer,
                                     variables: { input: { id: player.id } }
                                 });
-                                console.log(`Deleted player: ${player.plName}`);
                             }
 
                             // Step 3: Get all users to remove league references
@@ -930,7 +1026,6 @@ export default function NewLeague( userData ) {
                                             }
                                         }
                                     });
-                                    console.log(`Updated user: ${user.id}`);
                                 }
                             }
 
@@ -939,8 +1034,6 @@ export default function NewLeague( userData ) {
                                 query: deleteLeague,
                                 variables: { input: { id: League.id } }
                             });
-                            console.log('League deleted:', deleteResult);
-                            console.log('Cascade deletion completed successfully');
 
                             // Close popup and redirect
                             setConfirmOpen(false);
@@ -950,19 +1043,45 @@ export default function NewLeague( userData ) {
                             const inviteEmail = popUpEmailInput.trim().toLowerCase();
                             if (inviteName && inviteEmail) {
                                 const updatedPending = League.lgPendingPlayers || [];
+                                const normalizedInviteEmail = String(inviteEmail || '').toLowerCase().trim();
+
                                 // don't add duplicate pending invites for the same email
                                 const alreadyPending = updatedPending.some(p => {
                                     const parts = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
-                                    return (parts[1] && parts[1].toLowerCase() === inviteEmail.toLowerCase()) || (parts[2] && parts[2].toLowerCase() === inviteEmail.toLowerCase());
+                                    const pendingEmail = parts[1] ? String(parts[1]).toLowerCase().trim() : (parts[2] ? String(parts[2]).toLowerCase().trim() : '');
+                                    return pendingEmail === normalizedInviteEmail;
                                 });
+
+                                // don't invite an existing admin
+                                const isAdminEmail = Array.isArray(League?.lgAdmin) && League.lgAdmin.some(a => String(a || '').toLowerCase().trim() === normalizedInviteEmail);
+
+                                // don't invite a player that's already in the league
+                                const isExistingPlayer = Array.isArray(Player) && Player.some(p => {
+                                    const emailOrId = String(p.plEmail || p.id || '').toLowerCase().trim();
+                                    return emailOrId === normalizedInviteEmail;
+                                });
+
                                 if (alreadyPending) {
                                     setPopUpError('That user already has a pending invite.');
+                                    return;
+                                }
+                                if (isAdminEmail) {
+                                    setPopUpError('That email belongs to a league admin.');
+                                    return;
+                                }
+                                if (isExistingPlayer) {
+                                    setPopUpError('That email is already a player in this league.');
                                     return;
                                 }
                                 updatedPending.push(`invited|${inviteEmail}|${inviteName}`);
 
                                 const currentHistory = League.lgHistory || [];
-                                const historyEntry = new Date().toISOString() + '. ' + inviteName + ' was invited to join. by ' + displayName 
+                                const inviterPlayer = Player?.find(p => {
+                                    const emailOrId = String(p.plEmail || p.id || '').toLowerCase();
+                                    return emailOrId === String(userEmail || '').toLowerCase();
+                                });
+                                const inviterName = inviterPlayer?.plName || User?.name || 'A league admin';
+                                const historyEntry = `${new Date().toISOString()}. ${inviteName} was invited to join by ${inviterName}`;
 
                                 const inviteResult = await client.graphql({
                                     query: updateLeague,
@@ -974,13 +1093,11 @@ export default function NewLeague( userData ) {
                                         }
                                     }
                                 });
-                                console.log('Player invited:', inviteResult);
 
                                 const results = await client.graphql({
                                     query: getUsers,
                                     variables: { id: inviteEmail }
                                 })
-                                console.log('User fetch result:', results);
 
                                 if(results.data.getUsers === null) {
                                     const newUser = {
@@ -990,7 +1107,6 @@ export default function NewLeague( userData ) {
                                         query: createUsers,
                                         variables: { input: newUser }
                                     });
-                                    console.log('New user created:', createResult);
                                 }else{
                                     const existingPending = results.data.getUsers.pendingLeagues || [];
                                     if (!existingPending.includes(League.id)) {
@@ -998,114 +1114,44 @@ export default function NewLeague( userData ) {
                                             query: updateUsers,
                                             variables: { input: { id: inviteEmail, pendingLeagues: [...existingPending, League.id] } }
                                         });
-                                        console.log('User pending leagues updated:', updateResult);
-                                    } else {
-                                        console.log('User already has this league in pendingLeagues');
                                     }
                                 }
 
-                                // Get the current user's name from Player data (match by plEmail first, fallback to id), then fallback to User.name
-                                const currentUserPlayer = Player?.find(p => {
-                                    const emailOrId = String(p.plEmail || p.id || '').toLowerCase();
-                                    return emailOrId === String(userEmail || '').toLowerCase();
-                                });
-                                const currentUserName = currentUserPlayer?.plName || User?.name || 'A league admin';
-
-                                try {
-                                    const inviteHtml = `
-                                        <!DOCTYPE html>
-                                        <html lang="en">
-                                        <head>
-                                            <meta charset="UTF-8">
-                                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                            <meta http-equiv="X-UA-Compatible" content="IE=edge">
-                                        </head>
-                                        <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
-                                            <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">
-                                                <tr>
-                                                    <td style="padding: 20px 0;">
-                                                        <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                                            <!-- Header -->
-                                                            <tr>
-                                                                <td style="background: linear-gradient(135deg, #FF1493 0%, #9B30FF 50%, #FFD700 100%); padding: 30px 20px; text-align: center;">
-                                                                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-                                                                        🏁 Drag League Invitation
-                                                                    </h1>
-                                                                </td>
-                                                            </tr>
-
-                                                            <!-- Main Content -->
-                                                            <tr>
-                                                                <td style="padding: 40px 30px;">
-                                                                    <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">Hi there!</p>
-
-                                                                    <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">
-                                                                        <strong style="color: #1a1a1a;">${currentUserName}</strong> has invited you to join
-                                                                        <strong style="color: #1a1a1a;">${League?.lgName}</strong> on Drag League!
-                                                                    </p>
-
-                                                                    <p style="margin: 0 0 30px 0; font-size: 16px; color: #555;">
-                                                                        Join the competition to rank queens, predict winners, and compete with your friends throughout the season.
-                                                                    </p>
-
-                                                                    <!-- CTA Button -->
-                                                                    <table role="presentation" style="margin: 0 auto;">
-                                                                        <tr>
-                                                                            <td style="text-align: center; padding: 20px 0;">
-                                                                                <a href="https://drag-league.com/Player"
-                                                                                   style="background: linear-gradient(135deg, #FF1493 0%, #C71585 100%); color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 12px rgba(255, 20, 147, 0.4); text-shadow: 0 1px 2px rgba(0,0,0,0.2);">
-                                                                                    Accept Invitation
-                                                                                </a>
-                                                                            </td>
-                                                                        </tr>
-                                                                    </table>
-
-                                                                    <!-- Fallback Link -->
-                                                                    <p style="margin: 30px 0 0 0; padding: 20px; background-color: #fff5f8; border-radius: 8px; font-size: 14px; color: #666; border-left: 4px solid #FF1493;">
-                                                                        <strong style="color: #FF1493;">Button not working?</strong><br>
-                                                                        Copy and paste this link into your browser:<br>
-                                                                        <a href="https://drag-league.com/Player" style="color: #FF1493; word-break: break-all; font-weight: 600;">https://drag-league.com/Player</a>
-                                                                    </p>
-                                                                </td>
-                                                            </tr>
-
-                                                            <!-- Footer -->
-                                                            <tr>
-                                                                <td style="padding: 30px; background-color: #f9f9f9; border-top: 1px solid #e0e0e0;">
-                                                                    <p style="margin: 0 0 10px 0; font-size: 12px; color: #999; text-align: center; line-height: 1.5;">
-                                                                        This is an automated notification from Drag League.<br>
-                                                                        If you didn't expect this invitation, you can safely ignore this email.
-                                                                    </p>
-                                                                    <p style="margin: 15px 0 0 0; font-size: 12px; text-align: center;">
-                                                                        <a href="https://drag-league.com/Support" style="color: #FF1493; text-decoration: underline; font-weight: 600;">Contact Support</a>
-                                                                        <span style="color: #ccc; margin: 0 8px;">|</span>
-                                                                        <a href="https://drag-league.com/FAQ" style="color: #FF1493; text-decoration: underline; font-weight: 600;">FAQ</a>
-                                                                    </p>
-                                                                    <p style="margin: 15px 0 0 0; font-size: 11px; color: #aaa; text-align: center;">
-                                                                        © 2025 Drag League. All rights reserved.
-                                                                    </p>
-                                                                </td>
-                                                            </tr>
-                                                        </table>
-                                                    </td>
-                                                </tr>
-                                            </table>
-                                        </body>
-                                        </html>
-                                    `;
-                                    await sendEmailAPI({
-                                        to: inviteEmail,
-                                        subject: `You're invited to join ${League?.lgName} on Drag League`,
-                                        html: inviteHtml,
-                                        text: `🏁 DRAG LEAGUE INVITATION\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nHi there!\n\n${currentUserName} has invited you to join "${League?.lgName}" on Drag League!\n\nJoin the competition to rank queens, predict winners, and compete with your friends throughout the season.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🔗 ACCEPT YOUR INVITATION:\nhttps://drag-league.com/Player\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nThis is an automated notification from Drag League.\nIf you didn't expect this invitation, you can safely ignore this email.\n\nNeed help? Visit: https://drag-league.com/Support\nHave questions? Check our FAQ: https://drag-league.com/FAQ\n\n© 2025 Drag League. All rights reserved.`
-                                    });
-                                } catch (e) {
-                                    setPopUpError("Failed to send invite email, but the user may still see the invite when they log in");
-                                    return;
-                                }
+                                // For MVP: do not send email. Show a shareable invite link and simple instructions instead.
                                 setPopUpNameInput('');
                                 setPopUpEmailInput('');
-                                router.push(`/League/${League.id}`)
+                                const inviteLink = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/League/' + (League?.id || '');
+                                setPopUpDescription(
+                                    <Box sx={{ mt: 2 }}>
+                                        <Typography variant="body1" sx={{ mb: 1 }}>
+                                            Invite added for <strong>{popUpNameInput || inviteEmail}</strong>. Share the link below with the player so they can join the league:
+                                        </Typography>
+                                        <TextField
+                                            fullWidth
+                                            label="Invite link"
+                                            value={inviteLink}
+                                            InputProps={{
+                                                readOnly: true,
+                                                endAdornment: (
+                                                    <InputAdornment position="end">
+                                                        <Tooltip title="Copy link">
+                                                            <IconButton
+                                                                edge="end"
+                                                                onClick={() => { try { navigator.clipboard.writeText(inviteLink); setPopUpCopySuccess('Link copied to clipboard'); } catch {} }}
+                                                            >
+                                                                <ContentCopyIcon />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </InputAdornment>
+                                                )
+                                            }}
+                                        />
+                                        <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+                                            Instructions: copy the link and send it to the invitee via your preferred method (email, SMS, chat). When they open the link they can accept the invitation and join the league.
+                                        </Typography>
+                                    </Box>
+                                );
+                                setInviteProcessed(true);
                             } else {
                                 setPopUpError('Both name and email are required to invite a player.');
                                 return;
@@ -1153,7 +1199,7 @@ export default function NewLeague( userData ) {
 
                             setPopUpNameInput('');
                             setPopUpEmailInput('');
-                            router.push(`/League/${League.id}`)
+                            try { router.reload(); } catch (e) { try { window.location.reload(); } catch(_) {} }
 
                         } else if(popUpTitle === 'Promote to Admin'){
                             const updatedAdmins = League.lgAdmin || [];
@@ -1172,20 +1218,27 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
-                            console.log('Player promoted to admin (league updated):', promoteResult);
+
 
                             // Also update the player's plStatus so UI reflects admin role
                             try {
-                                await client.graphql({
-                                    query: updatePlayer,
-                                    variables: {
-                                        input: {
-                                            id: pickedPlayer,
-                                            plStatus: 'Admin'
+                                // Resolve player id (pickedPlayer is an email string in many flows)
+                                let targetPlayerId = pickedPlayer;
+                                if (Array.isArray(Player)) {
+                                    const found = Player.find(p => (String(p.plEmail || p.id || '').toLowerCase()) === String(pickedPlayer || '').toLowerCase());
+                                    if (found && found.id) targetPlayerId = found.id;
+                                }
+                                if (targetPlayerId) {
+                                    await client.graphql({
+                                        query: updatePlayer,
+                                        variables: {
+                                            input: {
+                                                id: targetPlayerId,
+                                                plStatus: 'Admin'
+                                            }
                                         }
-                                    }
-                                });
-                                console.log('Player record updated to Admin:', pickedPlayer);
+                                    });
+                                }
                             } catch (errUpdatePlayer) {
                                 console.warn('Failed to update player status:', errUpdatePlayer);
                             }
@@ -1201,9 +1254,8 @@ export default function NewLeague( userData ) {
                             const normalizedEmail = pickedPlayer ? String(pickedPlayer).toLowerCase().trim() : '';
                             const createPlayerResult = await client.graphql({
                                 query: createPlayer,
-                                variables: { input: { id: normalizedEmail, leagueId: League.id, plEmail: normalizedEmail, plName: displayName, plStatus: 'Player' } }
+                                variables: { input: { leagueId: League.id, plEmail: normalizedEmail, plName: displayName, plStatus: 'Player' } }
                             });
-                            console.log('Player accepted and created:', createPlayerResult);
 
                             // Update the requesting user's record: add this league to `leagues` and remove from `pendingLeagues`
                             try {
@@ -1214,7 +1266,6 @@ export default function NewLeague( userData ) {
                                 if (!userObj) {
                                     // create a minimal user record with this league
                                     await client.graphql({ query: createUsers, variables: { input: { id: pickedPlayer, leagues: [leagueEntry], pendingLeagues: [] } } });
-                                    console.log('Created user record for accepted player:', pickedPlayer);
                                 } else {
                                     const existingLeagues = Array.isArray(userObj.leagues) ? userObj.leagues.slice() : [];
                                     const existingPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
@@ -1230,7 +1281,6 @@ export default function NewLeague( userData ) {
                                     const filteredPending = existingPending.filter(pid => String(pid) !== String(League.id));
 
                                     await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, leagues: existingLeagues, pendingLeagues: filteredPending } } });
-                                    console.log('Updated user leagues/pendingLeagues for:', userObj.id);
                                 }
                             } catch (e) {
                                 console.warn('Failed to update user record after accepting request:', e);
@@ -1249,7 +1299,6 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
-                            console.log('League updated after accept:', updateResult);
                             router.reload();
                         } else if(popUpTitle === 'Revoke invite?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
@@ -1275,7 +1324,6 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
-                            console.log('Invite revoked:', revokeResult);
 
                             // Also remove this league from the invited user's pendingLeagues (if user exists)
                             try {
@@ -1290,7 +1338,6 @@ export default function NewLeague( userData ) {
                                             query: updateUsers,
                                             variables: { input: { id: userObj.id, pendingLeagues: filteredPending } }
                                         });
-                                        console.log('Removed pending league reference from user:', userObj.id);
                                     }
                                 }
                             } catch (e) {
@@ -1319,7 +1366,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
-                            console.log('Player declined:', declineResult);
+
                             // Also remove this league from the requesting user's pendingLeagues (if user exists)
                             try {
                                 const targetEmail = pickedPlayer ? String(pickedPlayer).toLowerCase().trim() : null;
@@ -1334,7 +1381,6 @@ export default function NewLeague( userData ) {
                                                 query: updateUsers,
                                                 variables: { input: { id: userObj.id, pendingLeagues: filteredPending } }
                                             });
-                                            console.log('Removed pending league reference from requester:', userObj.id);
                                         }
                                     }
                                 }
@@ -1344,11 +1390,20 @@ export default function NewLeague( userData ) {
 
                             router.reload();
                         } else if(popUpTitle === 'Kick player?'){
-                            const kickResult = await client.graphql({
-                                query: deletePlayer,
-                                variables: { input: { id: pickedPlayer } }
-                            });
-                            console.log('Player kicked:', kickResult);
+                            // Resolve player id (pickedPlayer may be an email)
+                            let targetDeleteId = pickedPlayer;
+                            if (Array.isArray(Player)) {
+                                const found = Player.find(p => (String(p.plEmail || p.id || '').toLowerCase()) === String(pickedPlayer || '').toLowerCase());
+                                if (found && found.id) targetDeleteId = found.id;
+                            }
+                            if (targetDeleteId) {
+                                const kickResult = await client.graphql({
+                                    query: deletePlayer,
+                                    variables: { input: { id: targetDeleteId } }
+                                });
+                            } else {
+                                console.warn('Could not resolve player id for kick action:', pickedPlayer);
+                            }
 
                             // Remove this league from the user's `leagues` array
                             try {
@@ -1365,7 +1420,6 @@ export default function NewLeague( userData ) {
                                             query: updateUsers,
                                             variables: { input: { id: userObj.id, leagues: filteredLeagues } }
                                         });
-                                        console.log('Removed league reference from user:', userObj.id);
                                     }
                                 }
                             } catch (e) {
@@ -1386,7 +1440,6 @@ export default function NewLeague( userData ) {
                             };
                             if (updatedAdmins.length !== admins.length) {
                                 updateInput.lgAdmin = updatedAdmins;
-                                console.log('Removed from admins:', normalizedPicked);
                             }
 
                             await client.graphql({
@@ -1398,12 +1451,27 @@ export default function NewLeague( userData ) {
                             router.reload();
                         }
 
-                        setConfirmOpen(false);
-                        setPopUpNameInput('');
-                        setPopUpEmailInput('');
+                        if (popUpTitle !== 'Invite Player') {
+                            if (popUpTitle !== 'Invite Player' || !inviteProcessed) {
+                                setConfirmOpen(false);
+                                setPopUpNameInput('');
+                                setPopUpEmailInput('');
+                            } else {
+                                // keep the popup open for Invite Player so we can show the invite link and instructions
+                                setPopUpCopySuccess('');
+                            }
+                        } else {
+                            // keep the popup open for Invite Player so we can show the invite link and instructions
+                            setPopUpCopySuccess('');
+                        }
                     } catch (err) {
                         console.error('Error performing action:', err);
-                        setPopUpError(err?.message || String(err) || 'An error occurred');
+                        try {
+                            const { default: formatError } = await import('@/helpers/formatError');
+                            setPopUpError(formatError(err));
+                        } catch (e) {
+                            setPopUpError(String(err) || 'An error occurred');
+                        }
                     } finally {
                         setConfirmLoading(false);
                     }
@@ -1415,7 +1483,7 @@ export default function NewLeague( userData ) {
                         <Alert severity="error">{popUpError}</Alert>
                     </Box>
                 ) : null}
-                {popUpTitle === 'Invite Player' && (
+                {popUpTitle === 'Invite Player' && !inviteProcessed && (
                     <Box sx={{ mt: 2, display: 'grid', gap: 1 }}>
                         <TextField
                             fullWidth
@@ -1432,44 +1500,10 @@ export default function NewLeague( userData ) {
                             value={popUpEmailInput}
                             onChange={(e) => setPopUpEmailInput(filterPipeCharacter(e.target.value))}
                         />
-                        <Box sx={{ mt: 1, mb: 1, textAlign: 'center' }}>
-                            <InviteText variant="body2">or share invite link</InviteText>
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                            <TextField
-                                fullWidth
-                                label="Invite link"
-                                value={(typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/League/' + (League?.id || '')}
-                                InputProps={{ readOnly: true }}
-                                onClick={(e) => { e.target.select && e.target.select(); }}
-                            />
-                            <Tooltip title="Copy invite link">
-                                <IconButton
-                                    sx={{
-                                        color: '#FF1493',
-                                        '&:hover': { backgroundColor: 'rgba(255, 20, 147, 0.1)' }
-                                    }}
-                                    onClick={async () => {
-                                        const link = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/League/' + (League?.id || '');
-                                        try {
-                                            await navigator.clipboard.writeText(link);
-                                            setPopUpCopySuccess('Copied!');
-                                            setTimeout(() => setPopUpCopySuccess(''), 2500);
-                                        } catch (e) {
-                                            setPopUpError('Failed to copy link');
-                                        }
-                                    }}
-                                >
-                                    <ContentCopyIcon />
-                                </IconButton>
-                            </Tooltip>
-                        </Box>
-                        {popUpCopySuccess && (
-                            <InviteText variant="caption" sx={{ color: 'success.main' }}>
-                                {popUpCopySuccess}
-                            </InviteText>
-                        )}
                     </Box>
+                )}
+                {inviteProcessed && popUpCopySuccess && (
+                    <Typography variant="caption" sx={{ mt: 1, color: 'success.main' }}>{popUpCopySuccess}</Typography>
                 )}
 
                 {popUpTitle === 'Request to join' && (

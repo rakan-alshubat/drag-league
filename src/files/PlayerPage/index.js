@@ -4,11 +4,19 @@ import { getCurrentUser, signOut } from "aws-amplify/auth";
 import LoadingWheel from "@/files/LoadingWheel";
 import parseToArray from '@/helpers/parseToArray';
 import { generateClient } from 'aws-amplify/api'
-import { getUsers, getLeague } from "@/graphql/queries";
+import { getUsers, getLeague, listLeagues } from "@/graphql/queries";
 import { createUsers, updateUsers, deleteUsers } from '@/graphql/mutations';
 import ErrorPopup from "../ErrorPopUp";
-import { onCreateUsers, onUpdateUsers, onDeleteUsers } from '@/graphql/subscriptions';
-import { Box, Typography, Button, Tabs, Tab, TextField, Stack } from '@mui/material';
+import formatError from '@/helpers/formatError';
+import { onCreateUsers, onUpdateUsers, onDeleteUsers, onUpdateLeague } from '@/graphql/subscriptions';
+import { Box, Typography, Button, Tabs, Tab, TextField, Stack, List, ListItemButton, ListItemText, CircularProgress } from '@mui/material';
+import {
+    StyledDialog as PopupDialog,
+    StyledDialogTitle,
+    StyledDialogContent,
+    StyledDialogActions,
+    CancelButton
+} from '@/files/SubmissionsPopUp/SubmissionsPopUp.styles';
 import {
     WelcomeBanner,
     WelcomeText,
@@ -21,10 +29,12 @@ import {
     EmptyStateIcon,
     EmptyStateTitle,
     EmptyStateDescription } from './PlayerPage.styles';
+import { SearchResultCard, SearchResultTitle, SearchResultDescription, SearchResultMeta } from './PlayerPage.styles';
 
 export default function PlayerPage() {
     const [loading, setLoading] = useState(true);
     const [errorPopup, setErrorPopup] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     const router = useRouter();
     const client = useMemo(() => generateClient(), []);
 
@@ -34,10 +44,22 @@ export default function PlayerPage() {
     const [leagues, setLeagues] = useState([]);
     const [pendingLeagues, setPendingLeagues] = useState([]);
     const [pendingLeaguesWithNames, setPendingLeaguesWithNames] = useState([]);
+    const [leaguesWithMeta, setLeaguesWithMeta] = useState([]);
     const [tabIndex, setTabIndex] = useState(0);
     const [nameInput, setNameInput] = useState('');
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchName, setSearchName] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+
+    const closeSearch = () => {
+        setSearchOpen(false);
+        setSearchName('');
+        setSearchResults([]);
+        setSearchLoading(false);
+    }
     
     
     useEffect(() => {
@@ -49,7 +71,6 @@ export default function PlayerPage() {
                             query: getUsers,
                             variables: { id: user.signInDetails.loginId.toLowerCase() }
                         })
-                        console.log('User fetch result:', results);
             
                         if(results.data.getUsers === null) {
                             const newUser = {
@@ -59,7 +80,6 @@ export default function PlayerPage() {
                                 query: createUsers,
                                 variables: { input: newUser }
                             });
-                            console.log('New user created:', createResult);
                             setUserID(newUser.id);
                         }else{
                             setUserID(results.data.getUsers.id || '');
@@ -71,6 +91,8 @@ export default function PlayerPage() {
 
                     } catch (error){
                         console.error('Error with user data:', error);
+                        setErrorMessage(formatError(error) || 'Error loading user data.');
+                        setErrorPopup(true);
                     } finally {
                         setLoading(false)
                     }
@@ -135,7 +157,43 @@ export default function PlayerPage() {
         setNameInput(name || '');
     }, [name]);
 
-    // Fetch league names for pending leagues
+    // Live search for public leagues when typing in the Search dialog
+    useEffect(() => {
+        if (!searchOpen) return; // only search when dialog is open
+
+        let active = true;
+        if (!searchName || String(searchName).trim().length === 0) {
+            setSearchResults([]);
+            setSearchLoading(false);
+            return;
+        }
+
+        setSearchLoading(true);
+        const timer = setTimeout(async () => {
+            try {
+                const filter = {
+                    lgPublic: { eq: true },
+                    lgName: { contains: searchName }
+                };
+                const res = await client.graphql({ query: listLeagues, variables: { filter, limit: 10 } });
+                const items = res?.data?.listLeagues?.items || [];
+                if (!active) return;
+                setSearchResults(items.slice(0, 5));
+            } catch (err) {
+                console.error('League search error', err);
+                if (active) setSearchResults([]);
+            } finally {
+                if (active) setSearchLoading(false);
+            }
+        }, 250);
+
+        return () => {
+            active = false;
+            clearTimeout(timer);
+        };
+    }, [searchName, searchOpen, client]);
+
+    // Fetch league metadata for pending leagues and determine invited/requested
     useEffect(() => {
         if (!pendingLeagues || pendingLeagues.length === 0) {
             setPendingLeaguesWithNames([]);
@@ -145,37 +203,122 @@ export default function PlayerPage() {
         async function fetchPendingLeagueNames() {
             const leaguesWithNames = [];
 
-            for (const leagueId of pendingLeagues) {
+            await Promise.all(pendingLeagues.map(async (leagueId) => {
                 try {
                     const result = await client.graphql({
                         query: getLeague,
                         variables: { id: leagueId }
                     });
 
-                    if (result.data.getLeague) {
+                    const league = result.data.getLeague;
+                    if (league) {
+                        // determine pending type: check league.lgPendingPlayers for an entry matching this user
+                        let status = 'requested';
+                        try {
+                            const pendingList = Array.isArray(league.lgPendingPlayers) ? league.lgPendingPlayers : [];
+                            for (const raw of pendingList) {
+                                if (!raw) continue;
+                                const parts = String(raw).split('|').map(s => s.trim()).filter(Boolean);
+                                if (parts.length === 0) continue;
+                                if (parts.length === 1) {
+                                    if (parts[0].toLowerCase() === userID) { status = 'invited'; break; }
+                                    continue;
+                                }
+                                const email = parts[1] ? String(parts[1]).toLowerCase() : '';
+                                const type = parts[0] ? String(parts[0]).toLowerCase() : '';
+                                if (email === (userID || '').toLowerCase()) {
+                                    status = type === 'requested' ? 'requested' : 'invited';
+                                    break;
+                                }
+                            }
+                        } catch (e) {
+                            // ignore
+                        }
+
                         leaguesWithNames.push({
                             id: leagueId,
-                            name: result.data.getLeague.lgName,
-                            date: result.data.getLeague.createdAt || new Date().toISOString()
+                            name: league.lgName,
+                            date: league.createdAt || new Date().toISOString(),
+                            status
                         });
                     }
                 } catch (error) {
                     console.error(`Error fetching league ${leagueId}:`, error);
                 }
-            }
+            }));
 
             setPendingLeaguesWithNames(leaguesWithNames);
         }
 
         fetchPendingLeagueNames();
-    }, [pendingLeagues, client]);
+    }, [pendingLeagues, client, userID]);
+
+    // Fetch league metadata for joined leagues to detect admin status
+    useEffect(() => {
+        if (!leagues || leagues.length === 0) {
+            setLeaguesWithMeta([]);
+            return;
+        }
+
+        async function fetchLeaguesMeta() {
+            const results = [];
+            const parsed = sortedLeagues(leagues);
+            await Promise.all(parsed.map(async (entry) => {
+                try {
+                    const r = await client.graphql({ query: getLeague, variables: { id: entry.id } });
+                    const league = r.data.getLeague;
+                    if (league) {
+                        const isAdmin = Array.isArray(league.lgAdmin) && league.lgAdmin.map(a => String(a||'').toLowerCase()).includes((userID || '').toLowerCase());
+                        results.push({ id: entry.id, name: league.lgName || entry.name, date: league.createdAt || entry.date, isAdmin });
+                    } else {
+                        results.push({ id: entry.id, name: entry.name, date: entry.date, isAdmin: false });
+                    }
+                } catch (err) {
+                    console.error('Error fetching league meta:', err);
+                    setErrorMessage(formatError(err) || 'Failed to fetch league meta.');
+                    setErrorPopup(true);
+                    results.push({ id: entry.id, name: entry.name, date: entry.date, isAdmin: false });
+                }
+            }));
+            setLeaguesWithMeta(results.sort((a,b)=> new Date(b.date)-new Date(a.date)));
+        }
+
+        fetchLeaguesMeta();
+
+        // Subscribe to league updates so names update live for the user's leagues
+        const subLeagueU = client.graphql({ query: onUpdateLeague }).subscribe({
+            next: ({ value }) => {
+                try {
+                    const updated = value?.data?.onUpdateLeague;
+                    if (!updated) return;
+                    const parsed = sortedLeagues(leagues || []);
+                    const ids = parsed.map(p => p.id);
+                    if (ids.includes(updated.id)) {
+                        setLeaguesWithMeta(prev => prev.map(item => item.id === updated.id ? { ...item, name: updated.lgName || item.name } : item));
+                    }
+
+                    // update pending names too in case a pending league changed
+                    setPendingLeaguesWithNames(prev => (prev || []).map(p => p.id === updated.id ? { ...p, name: updated.lgName || p.name } : p));
+                } catch (e) {
+                    console.warn('onUpdateLeague subscription handler error', e);
+                }
+            },
+            error: err => console.warn('onUpdateLeague sub error', err)
+        });
+
+        return () => {
+            try { subLeagueU && typeof subLeagueU.unsubscribe === 'function' && subLeagueU.unsubscribe(); } catch(e){}
+        }
+    }, [leagues, client, userID]);
 
     const handleSignOut = async () => {
         try{
             await signOut()
             router.push('/')
         } catch (error) {
-            console.error('Could not sign out')
+            console.error('Could not sign out', error)
+            setErrorMessage(formatError(error) || 'Could not sign out.');
+            setErrorPopup(true);
         }
     }
 
@@ -188,6 +331,7 @@ export default function PlayerPage() {
             setName(nameInput || '');
         } catch (err) {
             console.error('Save settings error', err);
+            setErrorMessage(formatError(err) || 'Failed to save settings.');
             setErrorPopup(true);
         } finally {
             setSaving(false);
@@ -204,6 +348,7 @@ export default function PlayerPage() {
             router.push('/SignIn');
         } catch (err) {
             console.error('Delete account error', err);
+            setErrorMessage(formatError(err) || 'Failed to delete account.');
             setErrorPopup(true);
         } finally {
             setDeleting(false);
@@ -235,11 +380,18 @@ export default function PlayerPage() {
                         <Typography variant="h5" sx={{ fontWeight: 700, color: '#FF1493', mb: 2 }}>
                         Your Leagues
                         </Typography>
-                        {sortedLeagues(leagues).length > 0 ? (
+                        {leaguesWithMeta.length > 0 ? (
                             <LeagueList>
-                                {sortedLeagues(leagues).map((league) => (
+                                {leaguesWithMeta.map((league) => (
                                     <LeagueLink key={league.id} href={`/League/${league.id}`} onClick={() => router.push(`/League/${league.id}`)}>
-                                        {league.name}
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Box>{league.name}</Box>
+                                            {league.isAdmin && (
+                                                <Box component="span" sx={{ ml: 1, px: '6px', py: '2px', borderRadius: '12px', fontSize: '0.75rem', background: 'rgba(155,48,255,0.12)', color: '#9B30FF', fontWeight: 700, textShadow: '0 1px 0 rgba(0,0,0,0.1)', WebkitTextStroke: '0.35px rgba(0,0,0,0.6)' }}>
+                                                    Admin
+                                                </Box>
+                                            )}
+                                        </Box>
                                     </LeagueLink>
                                 ))}
                             </LeagueList>
@@ -260,7 +412,18 @@ export default function PlayerPage() {
                             <LeagueList>
                                 {pendingLeaguesWithNames.sort((a, b) => new Date(b.date) - new Date(a.date)).map((league) => (
                                     <LeagueLink key={league.id} href={`/League/${league.id}`} onClick={() => router.push(`/League/${league.id}`)}>
-                                        {league.name}
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Box>{league.name}</Box>
+                                            {league.status === 'invited' ? (
+                                                <Box component="span" sx={{ ml: 1, px: '6px', py: '2px', borderRadius: '12px', fontSize: '0.75rem', background: 'rgba(0,200,83,0.08)', color: '#00C853', fontWeight: 700, textShadow: '0 1px 0 rgba(0,0,0,0.6)', WebkitTextStroke: '0.35px rgba(0,0,0,0.6)' }}>
+                                                    Invited
+                                                </Box>
+                                            ) : (
+                                                <Box component="span" sx={{ ml: 1, px: '6px', py: '2px', borderRadius: '12px', fontSize: '0.75rem', background: 'rgba(255,193,7,0.08)', color: '#FFC107', fontWeight: 700, textShadow: '0 1px 0 rgba(0,0,0,0.6)', WebkitTextStroke: '0.35px rgba(0,0,0,0.6)' }}>
+                                                    Requested
+                                                </Box>
+                                            )}
+                                        </Box>
                                     </LeagueLink>
                                 ))}
                             </LeagueList>
@@ -290,36 +453,121 @@ export default function PlayerPage() {
                 )}
 
                 {tabIndex === 0 && (
-                    <ButtonContainer>
-                        <Button
-                            variant="contained"
-                            href="/CreateLeague"
-                            onClick={() => { router.push('/CreateLeague'); }}
-                            sx={{
-                                background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)',
-                                color: 'white',
-                                fontWeight: 600,
-                                padding: '12px 32px',
-                                fontSize: '1rem',
-                                boxShadow: '0 4px 15px rgba(255, 20, 147, 0.3)',
-                                '&:hover': {
-                                    background: 'linear-gradient(135deg, #E0127D 0%, #8520E0 100%)',
-                                    boxShadow: '0 6px 20px rgba(255, 20, 147, 0.4)',
-                                    transform: 'translateY(-2px)',
-                                },
-                                transition: 'all 0.3s ease',
-                            }}
-                        >
-                            Create League
-                        </Button>
-                    </ButtonContainer>
+                    <>
+                        <ButtonContainer>
+                            <Button
+                                variant="contained"
+                                href="/CreateLeague"
+                                onClick={() => { router.push('/CreateLeague'); }}
+                                sx={{
+                                    background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    padding: '12px 32px',
+                                    minWidth: { xs: '100%', sm: '220px' },
+                                    fontSize: '1rem',
+                                    boxShadow: '0 4px 15px rgba(255, 20, 147, 0.3)',
+                                    '&:hover': {
+                                        background: 'linear-gradient(135deg, #E0127D 0%, #8520E0 100%)',
+                                        boxShadow: '0 6px 20px rgba(255, 20, 147, 0.4)',
+                                        transform: 'translateY(-2px)',
+                                    },
+                                    transition: 'all 0.3s ease',
+                                }}
+                            >
+                                Create League
+                            </Button>
+
+                            <Button
+                                variant="contained"
+                                onClick={() => setSearchOpen(true)}
+                                sx={{
+                                    background: 'linear-gradient(135deg, #FF1493 0%, #9B30FF 100%)',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    padding: '12px 32px',
+                                    minWidth: '220px',
+                                    fontSize: '1rem',
+                                    boxShadow: '0 4px 15px rgba(255, 20, 147, 0.3)',
+                                    '&:hover': {
+                                        background: 'linear-gradient(135deg, #E0127D 0%, #8520E0 100%)',
+                                        boxShadow: '0 6px 20px rgba(255, 20, 147, 0.4)',
+                                        transform: 'translateY(-2px)',
+                                    },
+                                    transition: 'all 0.3s ease',
+                                    marginLeft: { xs: 0, sm: 2 },
+                                }}
+                            >
+                                Search Leagues
+                            </Button>
+                        </ButtonContainer>
+
+                        <PopupDialog open={searchOpen} onClose={() => closeSearch()}>
+                            <StyledDialogTitle>Search Leagues</StyledDialogTitle>
+
+                            <StyledDialogContent>
+                                <TextField
+                                    label="League name"
+                                    value={searchName}
+                                    onChange={(e) => setSearchName(e.target.value)}
+                                    fullWidth
+                                    autoFocus
+                                    margin="dense"
+                                    variant="outlined"
+                                />
+
+                                <Box sx={{ mt: 1, width: '100%' }}>
+                                    {searchLoading ? (
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                            <CircularProgress size={28} sx={{ color: '#FF1493' }} />
+                                        </Box>
+                                    ) : (
+                                        <Box sx={{ width: '100%' }}>
+                                            {searchResults && searchResults.length > 0 ? (
+                                                searchResults.map(r => (
+                                                    <SearchResultCard
+                                                        key={r.id}
+                                                        role="button"
+                                                        tabIndex={0}
+                                                        aria-label={`Open league ${r.lgName || r.name || 'Untitled'}`}
+                                                        onClick={() => { closeSearch(); router.push(`/League/${r.id}`); }}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                                e.preventDefault();
+                                                                closeSearch();
+                                                                router.push(`/League/${r.id}`);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <SearchResultTitle>{r.lgName || r.name || 'Untitled'}</SearchResultTitle>
+                                                        {r.lgDescription && (
+                                                            <SearchResultDescription sx={{ color: '#666' }}>
+                                                                {r.lgDescription}
+                                                            </SearchResultDescription>
+                                                        )}
+                                                    </SearchResultCard>
+                                                ))
+                                            ) : (
+                                                <Box sx={{ textAlign: 'center', py: 2, color: '#666' }}>No leagues found.</Box>
+                                            )}
+                                        </Box>
+                                    )}
+                                </Box>
+
+                            </StyledDialogContent>
+
+                            <StyledDialogActions>
+                                <CancelButton onClick={() => closeSearch()}>Cancel</CancelButton>
+                            </StyledDialogActions>
+                        </PopupDialog>
+                    </>
                 )}
             </ContentContainer>
 
             <ErrorPopup
                 open={errorPopup}
-                onClose={() => setErrorPopup(false)}
-                message="An error occurred while creating the league."
+                onClose={() => { setErrorPopup(false); setErrorMessage(''); }}
+                message={errorMessage || 'An error occurred.'}
             />
         </Box>
     );

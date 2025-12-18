@@ -183,4 +183,17 @@ export const RevealButton = styled(Button)(({ theme }) => ({
         boxShadow: '0 8px 22px rgba(0,0,0,0.16)'
     }
 }));
+
+export const SmallButton = styled('button')(({ theme }) => ({
+    padding: '8px 12px',
+    borderRadius: 6,
+    cursor: 'pointer',
+    background: 'transparent',
+    border: '1px solid rgba(0,0,0,0.08)',
+    '&:disabled': {
+        cursor: 'not-allowed',
+        opacity: 0.5,
+        background: '#ccc'
+    }
+}));
 // ...existing code...

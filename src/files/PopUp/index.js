@@ -39,6 +39,9 @@ export default function PopUp({
             onClose={() => { if (!loading) onCancel(); }}
             aria-labelledby="confirm-dialog-title"
             disableEscapeKeyDown={loading}
+            disableAutoFocus
+            disableEnforceFocus
+            disableRestoreFocus
         >
             <TitleRow id="confirm-dialog-title">
                 <Typography variant="subtitle1">{title}</Typography>
@@ -53,14 +56,16 @@ export default function PopUp({
             </ContentBox>
 
             <ActionRow>
-                <CancelButton
-                    type="button"
-                    onClick={onCancel}
-                    variant="outlined"
-                    disabled={loading}
-                >
-                    {cancelText}
-                </CancelButton>
+                {cancelText ? (
+                    <CancelButton
+                        type="button"
+                        onClick={onCancel}
+                        variant="outlined"
+                        disabled={loading}
+                    >
+                        {cancelText}
+                    </CancelButton>
+                ) : null}
 
                 <ConfirmButton
                     type="button"

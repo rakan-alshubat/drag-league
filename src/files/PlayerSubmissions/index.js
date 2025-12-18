@@ -114,8 +114,15 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
                         const hasPick = !!currentWeekSubmission;
                         const isTrue = isCorrect === true;
                         const isFalse = isCorrect === false;
-                        // Determine label
-                        const label = hasPick ? (isCorrect !== null ? `${currentWeekSubmission} ${isCorrect ? '✓' : '✗'}` : currentWeekSubmission) : 'No pick ✗';
+                        const challengeWinners = leagueData?.lgChallengeWinners || [];
+
+                        // Only show the "No pick" chip when there is at least one recorded challenge winner
+                        const showNoPick = !hasPick && Array.isArray(challengeWinners) && challengeWinners.length > 0;
+
+                        // Determine label; if no pick and no winners, leave label empty to hide the chip
+                        const label = hasPick ? (isCorrect !== null ? `${currentWeekSubmission} ${isCorrect ? '✓' : '✗'}` : currentWeekSubmission) : (showNoPick ? 'No pick ✗' : '');
+
+                        if (!label) return null;
 
                         // Styling: preserve original colors
                         const bg = isTrue

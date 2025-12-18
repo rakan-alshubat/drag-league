@@ -2,27 +2,27 @@
 
 export const demoLeagueData = {
     id: "demo-league-001",
-    lgName: "RuPaul's Drag Race Season 16 Fantasy League",
-    lgDescription: "Join us for an exciting fantasy league where we predict winners, eliminations, and more!",
+    lgName: "The season 16 girlies!",
+    lgDescription: "Lets predict some winners and have fun this year!",
     lgAdmin: ["admin@demo.com"],
     lgPendingPlayers: [],
     lgFollowers: [],
     lgHistory: [
-        "2024-01-01T12:00:00.000Z. League created by Demo Admin",
+        "2024-01-01T12:00:00.000Z. League created by Rakan",
         "2024-01-03T08:15:00.000Z. Admin added bonus category: Miss Congeniality (5 points)",
-        "2024-01-05T14:30:00.000Z. Alice Johnson joined the league",
-        "2024-01-05T15:00:00.000Z. Bob Smith joined the league",
-        "2024-01-06T10:00:00.000Z. Carol Williams joined the league",
+        "2024-01-05T14:30:00.000Z. Wissam joined the league",
+        "2024-01-05T15:00:00.000Z. Hannah joined the league",
+        "2024-01-06T10:00:00.000Z. Roudell joined the league",
         "2024-01-07T09:00:00.000Z. Weekly results: Challenge Winner: Sapphira Cristál, Lip Sync Winner: Dawn, Eliminated: Xunami Muse",
-        "2024-01-08T11:45:00.000Z. Alice Johnson used her swap to switch Nymphia Wind and Sapphira Cristál",
+        "2024-01-08T11:45:00.000Z. Alessandra used her swap to switch Nymphia Wind and Sapphira Cristál",
         "2024-01-14T09:00:00.000Z. Weekly results: Challenge Winner: Plane Jane, Lip Sync Winner: Plane Jane, Eliminated: Q",
-        "2024-01-15T16:20:00.000Z. Frank Rivera joined the league",
+        "2024-01-15T16:20:00.000Z. Nathan joined the league",
         "2024-01-18T19:05:00.000Z. Admin edited league name from RuPaul's Drag Race Season 16 Fantasy League to RuPaul's Drag Race Fantasy League (Demo)",
         "2024-01-21T09:00:00.000Z. Weekly results: Challenge Winner: Nymphia Wind, Lip Sync Winner: Plasma & Dawn, Eliminated: Dawn",
-        "2024-01-22T10:00:00.000Z. Grace Patel joined the league",
+        "2024-01-22T10:00:00.000Z. Justin joined the league",
         "2024-01-25T14:00:00.000Z. Bonus results posted: Miss Congeniality winner: Mirage",
         "2024-01-28T09:00:00.000Z. Weekly results: Challenge Winner: Morphine Love Dion, Lip Sync Winner: Plane Jane, Eliminated: Megami & Amanda Tori Meating",
-        "2024-02-02T12:00:00.000Z. Emma Lopez joined the league",
+        "2024-02-02T12:00:00.000Z. Sam joined the league",
         "2024-02-09T09:00:00.000Z. Weekly results: Challenge Winner: Mirage, Lip Sync Winner: Plane Jane, Eliminated: Morphine Love Dion",
     ],
     lgQueenNames: [
@@ -117,11 +117,10 @@ export const demoPlayersData = [
             "Plane Jane",       // Week 2 - Correct!
             "Nymphia Wind",     // Week 3 - Correct!
             "Morphine Love Dion", // Week 4 - Correct!
-            "Sapphira Cristál", // Week 5 - Correct!
+            "Plane Jane", // Week 5 - Correct!
             "Nymphia Wind",     // Week 6 - Correct! (tie)
             "Plane Jane",       // Week 7 - Correct!
-            ,
-            "Mirage",
+            "Mirage",           // Week 8
         ],
         plSwap: "Nymphia Wind|Sapphira Cristál",
         plBonusPoints: [],
@@ -163,8 +162,7 @@ export const demoPlayersData = [
             "Sapphira Cristál", // Week 5 - Correct!
             "Sapphira Cristál", // Week 6 - Correct! (tie)
             "Nymphia Wind",     // Week 7 - Wrong
-            ,
-            "Plane Jane",
+            "Plane Jane",       // Week 8
         ],
         plSwap: "Plasma|Dawn",
         plBonusPoints: [],
@@ -206,8 +204,7 @@ export const demoPlayersData = [
             "Nymphia Wind",     // Week 5 - Wrong
             "Plane Jane",       // Week 6 - Wrong
             "Plane Jane",       // Week 7 - Correct!
-            ,
-            "Plane Jane",
+            "Plane Jane",       // Week 8
         ],
         plSwap: "",
         plBonusPoints: [],
@@ -249,8 +246,7 @@ export const demoPlayersData = [
             "Sapphira Cristál",   // Week 5 - Correct!
             "Nymphia Wind",       // Week 6 - Correct! (tie)
             "Morphine Love Dion", // Week 7 - Wrong
-            ,
-            "Mirage",
+            "Mirage",             // Week 8
         ],
         plSwap: "",
         plBonusPoints: [],
@@ -292,7 +288,6 @@ export const demoPlayersData = [
             "Sapphira Cristál",
             "Nymphia Wind",
             "Plane Jane",
-            ,
             "Plane Jane",
         ],
         plSwap: "",
@@ -335,7 +330,6 @@ export const demoPlayersData = [
             "Sapphira Cristál",
             "Nymphia Wind",
             "Plane Jane",
-            ,
             "Plane Jane",
         ],
         plSwap: "",
@@ -378,7 +372,6 @@ export const demoPlayersData = [
             "Nymphia Wind",
             "Nymphia Wind",
             "Plane Jane",
-            ,
             "Plane Jane",
         ],
         plSwap: "",

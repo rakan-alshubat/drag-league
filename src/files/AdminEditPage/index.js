@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
     Dialog,
@@ -18,11 +19,15 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import { generateClient } from 'aws-amplify/api';
+import ErrorPopup from '../ErrorPopUp';
+import formatError from '@/helpers/formatError';
 import { updateLeague, updatePlayer } from '@/graphql/mutations';
 import {
     Container,
     ContentWrapper,
     Title,
+    
+    // existing styled components
     ChoiceContainer,
     ChoiceCard,
     ChoiceTitle,
@@ -46,6 +51,18 @@ import {
     ChangeIndicator,
 } from './AdminEditPage.styles';
 
+// Small inline warning banner used across Admin Edit screens
+function AdminWarningBanner() {
+    return (
+        <Box sx={{ mt: 1, mb: 2, p: 2, borderRadius: 1, background: 'linear-gradient(90deg, rgba(255,243,205,0.9), rgba(255,236,229,0.9))', border: '1px solid rgba(255,193,7,0.2)', textAlign: 'center' }}>
+            <Typography sx={{ fontWeight: 700, color: '#8a5800', mb: 0.5 }}>Powerful Admin Tool — Use With Caution</Typography>
+            <Typography variant="body2" sx={{ color: '#6b4a00' }}>
+                This interface lets you make direct edits to league and player data. Only use these controls when necessary — incorrect changes can produce unexpected or wonky results. If something unexpected happens after editing, contact me through the <Link href="/Support" style={{ color: '#6b4a00', textDecoration: 'underline' }}>Support</Link> page for help.
+            </Typography>
+        </Box>
+    );
+}
+
 const client = generateClient();
 
 function getOrdinal(n) {
@@ -57,6 +74,8 @@ function getOrdinal(n) {
 export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, userData, onUpdate }) {
     const router = useRouter();
     const [mode, setMode] = useState(null); // 'league' or 'player'
+    const [errorPopup, setErrorPopup] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     const [selectedPlayer, setSelectedPlayer] = useState(null);
     const [showSummary, setShowSummary] = useState(false);
     const [changes, setChanges] = useState({});
@@ -135,13 +154,6 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                 if (defaultPoints !== '') {
                     setEditedLgSwapPoints(defaultPoints);
                 }
-            }
-
-            // Debug log to inspect parsed swap values
-            try {
-                console.log('[AdminEdit] handleEditLeague parsed swap:', { swapRaw, parsedType, parsedPoints });
-            } catch (e) {
-                console.log('[AdminEdit] handleEditLeague swap parse error', e);
             }
         }
         setEditedLgDeadline(leagueData.lgDeadline || '');
@@ -230,30 +242,46 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             changes.plName = { original: selectedPlayer.plName || '', new: editedPlName || '' };
         }
         
-        // Check rankings
-        const originalRankings = selectedPlayer.plRankings || [];
-        if (JSON.stringify(originalRankings) !== JSON.stringify(editedRankings)) {
+        // Check rankings (normalize to total queens so blank->filled is detected)
+        const totalQueens = allQueens.length || 0;
+        const originalRankingsRaw = selectedPlayer.plRankings || [];
+        const normalizedOriginalRankings = (originalRankingsRaw && originalRankingsRaw.length) ? originalRankingsRaw.slice() : Array.from({ length: totalQueens }, () => '');
+        const normalizedEditedRankings = (editedRankings && editedRankings.length) ? editedRankings.slice() : Array.from({ length: totalQueens }, () => '');
+        if (JSON.stringify(normalizedOriginalRankings) !== JSON.stringify(normalizedEditedRankings)) {
             changes.rankings = {
-                original: originalRankings,
-                new: editedRankings,
+                original: normalizedOriginalRankings,
+                new: normalizedEditedRankings,
             };
         }
 
-        // Check winners
-        const originalWinners = selectedPlayer.plWinners || [];
-        if (JSON.stringify(originalWinners) !== JSON.stringify(editedWinners)) {
+        // Check winners (normalize to number of challenge weeks)
+        const numWeeks = Array.isArray(leagueData?.lgChallengeWinners) ? leagueData.lgChallengeWinners.length : 0;
+        const originalWinnersRaw = selectedPlayer.plWinners || [];
+        const normalizedOriginalWinners = (originalWinnersRaw && originalWinnersRaw.length) ? originalWinnersRaw.slice() : Array.from({ length: numWeeks }, () => '');
+        const normalizedEditedWinners = (editedWinners && editedWinners.length) ? editedWinners.slice() : Array.from({ length: numWeeks }, () => '');
+        if (JSON.stringify(normalizedOriginalWinners) !== JSON.stringify(normalizedEditedWinners)) {
             changes.winners = {
-                original: originalWinners,
-                new: editedWinners,
+                original: normalizedOriginalWinners,
+                new: normalizedEditedWinners,
             };
         }
 
-        // Check bonuses
-        const originalBonuses = selectedPlayer.plBonuses || [];
-        if (JSON.stringify(originalBonuses) !== JSON.stringify(editedBonuses)) {
+        // Check bonuses (normalize to league bonus categories)
+        const bonusPoints = leagueData?.lgBonusPoints || [];
+        const bonusArr = Array.isArray(bonusPoints) ? bonusPoints : (bonusPoints ? [bonusPoints] : []);
+        const originalBonusesRaw = selectedPlayer.plBonuses || [];
+        const normalizedOriginalBonuses = (originalBonusesRaw && originalBonusesRaw.length) ? originalBonusesRaw.slice() : bonusArr.map(bp => {
+            const cat = String(bp || '').split('|')[0] || '';
+            return `${cat}|`;
+        });
+        const normalizedEditedBonuses = (editedBonuses && editedBonuses.length) ? editedBonuses.slice() : bonusArr.map(bp => {
+            const cat = String(bp || '').split('|')[0] || '';
+            return `${cat}|`;
+        });
+        if (JSON.stringify(normalizedOriginalBonuses) !== JSON.stringify(normalizedEditedBonuses)) {
             changes.bonuses = {
-                original: originalBonuses,
-                new: editedBonuses,
+                original: normalizedOriginalBonuses,
+                new: normalizedEditedBonuses,
             };
         }
 
@@ -297,7 +325,8 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             if (onUpdate) onUpdate();
         } catch (error) {
             console.error('Error submitting changes:', error);
-            alert('Error submitting changes. Please try again.');
+            setErrorMessage(formatError(error) || 'Error submitting changes. Please try again.');
+            setErrorPopup(true);
         }
         setSubmitting(false);
     };
@@ -604,49 +633,70 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                             {changes.eliminatedPlayers && (
                                 <SummarySection>
                                     <SummaryTitle>Eliminated Players Changes:</SummaryTitle>
-                                    {changes.eliminatedPlayers.original.map((orig, idx) => {
-                                        const newVal = changes.eliminatedPlayers.new[idx];
-                                        if (orig !== newVal) {
-                                            return (
-                                                <SummaryItem key={idx}>
-                                                    Episode {idx + 1}: <ChangeIndicator>{formatQueenNames(orig)}</ChangeIndicator> → <ChangeIndicator>{formatQueenNames(newVal)}</ChangeIndicator>
-                                                </SummaryItem>
-                                            );
+                                    {(() => {
+                                        const origArr = changes.eliminatedPlayers.original || [];
+                                        const newArr = changes.eliminatedPlayers.new || [];
+                                        const maxLen = Math.max(origArr.length, newArr.length);
+                                        const items = [];
+                                        for (let i = 0; i < maxLen; i++) {
+                                            const orig = origArr[i] || '';
+                                            const newVal = newArr[i] || '';
+                                            if (orig !== newVal) {
+                                                items.push(
+                                                    <SummaryItem key={i}>
+                                                        Episode {i + 1}: <ChangeIndicator>{formatQueenNames(orig)}</ChangeIndicator> → <ChangeIndicator>{formatQueenNames(newVal)}</ChangeIndicator>
+                                                    </SummaryItem>
+                                                );
+                                            }
                                         }
-                                        return null;
-                                    })}
+                                        return items;
+                                    })()}
                                 </SummarySection>
                             )}
                             {changes.challengeWinners && (
                                 <SummarySection>
                                     <SummaryTitle>Challenge Winners Changes:</SummaryTitle>
-                                    {changes.challengeWinners.original.map((orig, idx) => {
-                                        const newVal = changes.challengeWinners.new[idx];
-                                        if (orig !== newVal) {
-                                            return (
-                                                <SummaryItem key={idx}>
-                                                    Episode {idx + 1}: <ChangeIndicator>{formatQueenNames(orig)}</ChangeIndicator> → <ChangeIndicator>{formatQueenNames(newVal)}</ChangeIndicator>
-                                                </SummaryItem>
-                                            );
+                                    {(() => {
+                                        const origArr = changes.challengeWinners.original || [];
+                                        const newArr = changes.challengeWinners.new || [];
+                                        const maxLen = Math.max(origArr.length, newArr.length);
+                                        const items = [];
+                                        for (let i = 0; i < maxLen; i++) {
+                                            const orig = origArr[i] || '';
+                                            const newVal = newArr[i] || '';
+                                            if (orig !== newVal) {
+                                                items.push(
+                                                    <SummaryItem key={i}>
+                                                        Episode {i + 1}: <ChangeIndicator>{formatQueenNames(orig)}</ChangeIndicator> → <ChangeIndicator>{formatQueenNames(newVal)}</ChangeIndicator>
+                                                    </SummaryItem>
+                                                );
+                                            }
                                         }
-                                        return null;
-                                    })}
+                                        return items;
+                                    })()}
                                 </SummarySection>
                             )}
                             {changes.lipSyncWinners && (
                                 <SummarySection>
                                     <SummaryTitle>Lip Sync Winners Changes:</SummaryTitle>
-                                    {changes.lipSyncWinners.original.map((orig, idx) => {
-                                        const newVal = changes.lipSyncWinners.new[idx];
-                                        if (orig !== newVal) {
-                                            return (
-                                                <SummaryItem key={idx}>
-                                                    Episode {idx + 1}: <ChangeIndicator>{formatQueenNames(orig)}</ChangeIndicator> → <ChangeIndicator>{formatQueenNames(newVal)}</ChangeIndicator>
-                                                </SummaryItem>
-                                            );
+                                    {(() => {
+                                        const origArr = changes.lipSyncWinners.original || [];
+                                        const newArr = changes.lipSyncWinners.new || [];
+                                        const maxLen = Math.max(origArr.length, newArr.length);
+                                        const items = [];
+                                        for (let i = 0; i < maxLen; i++) {
+                                            const orig = origArr[i] || '';
+                                            const newVal = newArr[i] || '';
+                                            if (orig !== newVal) {
+                                                items.push(
+                                                    <SummaryItem key={i}>
+                                                        Episode {i + 1}: <ChangeIndicator>{formatQueenNames(orig)}</ChangeIndicator> → <ChangeIndicator>{formatQueenNames(newVal)}</ChangeIndicator>
+                                                    </SummaryItem>
+                                                );
+                                            }
                                         }
-                                        return null;
-                                    })}
+                                        return items;
+                                    })()}
                                 </SummarySection>
                             )}
                             {changes.lgName && (
@@ -864,8 +914,10 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                 </ChoiceDescription>
                             </ChoiceCard>
                         </ChoiceContainer>
+                        <AdminWarningBanner />
                     </ContentWrapper>
                 </Container>
+                <ErrorPopup open={errorPopup} onClose={() => setErrorPopup(false)} message={errorMessage} />
                 {renderSummaryDialog()}
             </>
         );
@@ -881,6 +933,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                         ← Back
                         </BackButton>
                         <Title>Select Player to Edit</Title>
+                        <AdminWarningBanner />
                         <PlayerListContainer>
                             {allPlayers.map(player => (
                                 <PlayerCard key={player.id} onClick={() => handleEditPlayer(player)}>
@@ -890,6 +943,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                         </PlayerListContainer>
                     </ContentWrapper>
                 </Container>
+                <ErrorPopup open={errorPopup} onClose={() => setErrorPopup(false)} message={errorMessage} />
                 {renderSummaryDialog()}
             </>
         );
@@ -920,6 +974,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                         ← Back
                         </BackButton>
                         <Title>Edit League Entries</Title>
+                        <AdminWarningBanner />
                     
                         <EditorContainer>
                             {(() => {
@@ -1034,7 +1089,9 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                 
                                     // Get the number of queens in this entry
                                     const queensInThisEntry = entry.split('|').filter(Boolean);
-                                    const queensInThisEntryCount = queensInThisEntry.length;
+                                    // Treat an empty entry as a single (placeholder) slot so placement
+                                    // calculations show the correct ordinal immediately after adding.
+                                    const queensInThisEntryCount = Math.max(1, queensInThisEntry.length);
                                 
                                     // Calculate placement (counting from bottom, but showing first to last)
                                     // Count all queens eliminated in earlier entries
@@ -1107,9 +1164,12 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                     <ConfirmButton
                                         variant="outlined"
                                         onClick={() => {
+                                            const totalQueens = allQueens.length || 0;
+                                            if ((editedEliminatedPlayers || []).length >= totalQueens) return;
                                             setEditedEliminatedPlayers([...editedEliminatedPlayers, '']);
                                         }}
                                         startIcon={<AddIcon />}
+                                        disabled={(editedEliminatedPlayers || []).length >= (allQueens.length || 0)}
                                     >
                                     Add Placement
                                     </ConfirmButton>
@@ -1274,6 +1334,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                         </EditorContainer>
                     </ContentWrapper>
                 </Container>
+                <ErrorPopup open={errorPopup} onClose={() => setErrorPopup(false)} message={errorMessage} />
                 {renderSummaryDialog()}
             </>
         );
@@ -1298,13 +1359,16 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
         };
 
         const handleRankingChange = (index, value) => {
-            const next = [...editedRankings];
+            const total = totalQueens || 0;
+            const base = (editedRankings && editedRankings.length) ? editedRankings.slice() : Array.from({ length: total }, () => '');
+            // ensure length covers the index
+            while (base.length < total) base.push('');
             // Clear any other occurrences of this queen to prevent duplication
-            for (let i = 0; i < next.length; i++) {
-                if (i !== index && next[i] === value) next[i] = '';
+            for (let i = 0; i < base.length; i++) {
+                if (i !== index && base[i] === value) base[i] = '';
             }
-            next[index] = value;
-            setEditedRankings(next);
+            base[index] = value;
+            setEditedRankings(base);
         };
         
         return (
@@ -1315,6 +1379,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                         ← Back to Player List
                         </BackButton>
                         <Title>Edit {editedPlName || selectedPlayer.plName}&apos;s Entries</Title>
+                        <AdminWarningBanner />
                     
                         <EditorContainer>
                             <EntryRow>
@@ -1328,8 +1393,9 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                 </Typography>
                                 {(() => {
                                     const playerValidation = validatePlayer();
-                                    return [...editedRankings].reverse().map((queen, reversedIndex) => {
-                                        const index = editedRankings.length - 1 - reversedIndex;
+                                    const displayRankings = (editedRankings && editedRankings.length) ? editedRankings : Array.from({ length: totalQueens }, () => '');
+                                    return [...displayRankings].reverse().map((queen, reversedIndex) => {
+                                        const index = displayRankings.length - 1 - reversedIndex;
                                         // Calculate placement from total queens
                                         const placement = totalQueens - index;
                                         const isEmpty = !queen || queen.trim() === '';
@@ -1374,99 +1440,25 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                 <Typography variant="body2" sx={{ mb: 2, color: '#666', fontSize: '0.9rem' }}>
                                 Edit the player&apos;s weekly challenge winner predictions.
                                 </Typography>
-                                {[...editedWinners].reverse().map((entry, reversedIndex) => {
-                                    const index = editedWinners.length - 1 - reversedIndex;
-                                    return (
-                                        <EntryRow key={index}>
-                                            <EntryLabel>Week {index + 1}:</EntryLabel>
-                                            <FormControl fullWidth>
-                                                <Select
-                                                    value={entry || ''}
-                                                    onChange={(e) => {
-                                                        const newWinners = [...editedWinners];
-                                                        newWinners[index] = e.target.value;
-                                                        setEditedWinners(newWinners);
-                                                    }}
-                                                >
-                                                    <MenuItem value="">
-                                                        <em style={{ color: '#999' }}>No submission</em>
-                                                    </MenuItem>
-                                                    {allQueens.map((queen) => (
-                                                        <MenuItem key={queen} value={queen}>
-                                                            {queen}
-                                                        </MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
-                                        </EntryRow>
-                                    );
-                                })}
-                            </Section>
-
-                            <Section>
-                                <SectionTitle>Bonus Predictions</SectionTitle>
-                                <Typography variant="body2" sx={{ mb: 2, color: '#666', fontSize: '0.9rem' }}>
-                                Edit the player&apos;s bonus category predictions.
-                                </Typography>
-                                {editedBonuses.map((entry, index) => {
-                                    const parts = entry.split('|');
-                                    const category = parts[0] || '';
-                                    const answer = parts[1] || '';
-                                
-                                    // Get the type from the league's bonus points data
-                                    const bonusPoints = leagueData?.lgBonusPoints || [];
-                                    const bonusArr = Array.isArray(bonusPoints) ? bonusPoints : (bonusPoints ? [bonusPoints] : []);
-                                    const matchingBonus = bonusArr.find(bp => bp.split('|')[0] === category);
-                                    const bonusType = matchingBonus ? matchingBonus.split('|')[2]?.toLowerCase().trim() : 'queens';
-                                
-                                    return (
-                                        <EntryRow key={index}>
-                                            <EntryLabel>{category}:</EntryLabel>
-                                            <FormControl fullWidth>
-                                                {bonusType === 'number' ? (
+                                {(() => {
+                                    const numWeeks = Array.isArray(leagueData?.lgChallengeWinners) ? leagueData.lgChallengeWinners.length : 0;
+                                    const displayWinners = (editedWinners && editedWinners.length) ? editedWinners : Array.from({ length: numWeeks }, () => '');
+                                    return [...displayWinners].reverse().map((entry, reversedIndex) => {
+                                        const index = displayWinners.length - 1 - reversedIndex;
+                                        return (
+                                            <EntryRow key={index}>
+                                                <EntryLabel>Week {index + 1}:</EntryLabel>
+                                                <FormControl fullWidth>
                                                     <Select
-                                                        value={answer || ''}
+                                                        value={entry || ''}
                                                         onChange={(e) => {
-                                                            const newBonuses = [...editedBonuses];
-                                                            newBonuses[index] = `${category}|${e.target.value}`;
-                                                            setEditedBonuses(newBonuses);
+                                                            const base = displayWinners.slice();
+                                                            base[index] = e.target.value;
+                                                            setEditedWinners(base);
                                                         }}
                                                     >
                                                         <MenuItem value="">
-                                                            <em style={{ color: '#999' }}>Select a number</em>
-                                                        </MenuItem>
-                                                        {Array.from({ length: 30 }, (_, i) => i + 1).map((num) => (
-                                                            <MenuItem key={num} value={num.toString()}>
-                                                                {num}
-                                                            </MenuItem>
-                                                        ))}
-                                                    </Select>
-                                                ) : bonusType === 'yes/no' ? (
-                                                    <Select
-                                                        value={answer?.toLowerCase() || ''}
-                                                        onChange={(e) => {
-                                                            const newBonuses = [...editedBonuses];
-                                                            newBonuses[index] = `${category}|${e.target.value}`;
-                                                            setEditedBonuses(newBonuses);
-                                                        }}
-                                                    >
-                                                        <MenuItem value="">
-                                                            <em style={{ color: '#999' }}>Select Yes or No</em>
-                                                        </MenuItem>
-                                                        <MenuItem value="yes">Yes</MenuItem>
-                                                        <MenuItem value="no">No</MenuItem>
-                                                    </Select>
-                                                ) : (
-                                                    <Select
-                                                        value={answer || ''}
-                                                        onChange={(e) => {
-                                                            const newBonuses = [...editedBonuses];
-                                                            newBonuses[index] = `${category}|${e.target.value}`;
-                                                            setEditedBonuses(newBonuses);
-                                                        }}
-                                                    >
-                                                        <MenuItem value="">
-                                                            <em style={{ color: '#999' }}>Select a Queen</em>
+                                                            <em style={{ color: '#999' }}>No submission</em>
                                                         </MenuItem>
                                                         {allQueens.map((queen) => (
                                                             <MenuItem key={queen} value={queen}>
@@ -1474,11 +1466,95 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                                             </MenuItem>
                                                         ))}
                                                     </Select>
-                                                )}
-                                            </FormControl>
-                                        </EntryRow>
-                                    );
-                                })}
+                                                </FormControl>
+                                            </EntryRow>
+                                        );
+                                    });
+                                })()}
+                            </Section>
+
+                            <Section>
+                                <SectionTitle>Bonus Predictions</SectionTitle>
+                                <Typography variant="body2" sx={{ mb: 2, color: '#666', fontSize: '0.9rem' }}>
+                                Edit the player&apos;s bonus category predictions.
+                                </Typography>
+                                {(() => {
+                                    const bonusPoints = leagueData?.lgBonusPoints || [];
+                                    const bonusArr = Array.isArray(bonusPoints) ? bonusPoints : bonusPoints ? [bonusPoints] : [];
+                                    const displayBonuses = (editedBonuses && editedBonuses.length) ? editedBonuses : bonusArr.map(bp => {
+                                        const cat = String(bp || '').split('|')[0] || '';
+                                        return `${cat}|`;
+                                    });
+
+                                    return displayBonuses.map((entry, index) => {
+                                        const parts = String(entry || '').split('|');
+                                        const category = parts[0] || '';
+                                        const answer = parts[1] || '';
+
+                                        const matchingBonus = bonusArr.find(bp => String(bp || '').split('|')[0] === category);
+                                        const bonusType = matchingBonus ? String((matchingBonus.split('|')[2] || '')).toLowerCase().trim() : 'queens';
+
+                                        return (
+                                            <EntryRow key={index}>
+                                                <EntryLabel>{category}:</EntryLabel>
+                                                <FormControl fullWidth>
+                                                    {bonusType === 'number' ? (
+                                                        <Select
+                                                            value={answer || ''}
+                                                            onChange={(e) => {
+                                                                const next = displayBonuses.slice();
+                                                                next[index] = `${category}|${e.target.value}`;
+                                                                setEditedBonuses(next);
+                                                            }}
+                                                        >
+                                                            <MenuItem value="">
+                                                                <em style={{ color: '#999' }}>Select a number</em>
+                                                            </MenuItem>
+                                                            {Array.from({ length: 30 }, (_, i) => i + 1).map((num) => (
+                                                                <MenuItem key={num} value={num.toString()}>
+                                                                    {num}
+                                                                </MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    ) : bonusType === 'yes/no' ? (
+                                                        <Select
+                                                            value={answer?.toLowerCase() || ''}
+                                                            onChange={(e) => {
+                                                                const next = displayBonuses.slice();
+                                                                next[index] = `${category}|${e.target.value}`;
+                                                                setEditedBonuses(next);
+                                                            }}
+                                                        >
+                                                            <MenuItem value="">
+                                                                <em style={{ color: '#999' }}>Select Yes or No</em>
+                                                            </MenuItem>
+                                                            <MenuItem value="yes">Yes</MenuItem>
+                                                            <MenuItem value="no">No</MenuItem>
+                                                        </Select>
+                                                    ) : (
+                                                        <Select
+                                                            value={answer || ''}
+                                                            onChange={(e) => {
+                                                                const next = displayBonuses.slice();
+                                                                next[index] = `${category}|${e.target.value}`;
+                                                                setEditedBonuses(next);
+                                                            }}
+                                                        >
+                                                            <MenuItem value="">
+                                                                <em style={{ color: '#999' }}>Select a Queen</em>
+                                                            </MenuItem>
+                                                            {allQueens.map((queen) => (
+                                                                <MenuItem key={queen} value={queen}>
+                                                                    {queen}
+                                                                </MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    )}
+                                                </FormControl>
+                                            </EntryRow>
+                                        );
+                                    });
+                                })()}
                             </Section>
 
                             <ActionButtons>

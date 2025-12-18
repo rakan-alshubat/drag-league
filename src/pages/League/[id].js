@@ -7,6 +7,7 @@ import { getUsers, getLeague, playersByLeagueId} from "@/graphql/queries";
 import { createPlayer, updateLeague, updateUsers } from "@/graphql/mutations";
 import LoadingWheel from "@/files/LoadingWheel";
 import ErrorPopup from "@/files/ErrorPopUp";
+import formatError from '@/helpers/formatError';
 import PopUp from "@/files/PopUp";
 import { Box, Typography, TextField } from '@mui/material';
 import { useEffect, useState, useRef } from "react";
@@ -26,6 +27,7 @@ export default function League(){
 
     const [loading, setLoading] = useState(true);
     const [errorPopup, setErrorPopup] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     const [userData, setUserData] = useState(null);
     const [leagueData, setLeagueData] = useState(null);
     const [playersData, setPlayersData] = useState(null);
@@ -66,17 +68,13 @@ export default function League(){
                         if(userResults.data.getUsers && leagueResults.data.getLeague) {
                             setUserData(userResults.data.getUsers);
                             setLeagueData(leagueResults.data.getLeague);
-                            console.log('Fetching players data for league ID:', id);
                             const playersResults = await client.graphql({
                                 query: playersByLeagueId,
                                 variables: { leagueId: id }
                             })
-                            console.log('Raw players results:', playersResults);
                             const players = playersResults?.data?.playersByLeagueId?.items
                             ?? playersResults?.data?.playersByLeagueId
                             ?? [];
-                            console.log('Parsed players array:', players);
-                            console.log('Number of players:', players.length);
                             setPlayersData(players);
 
                             const league = leagueResults.data.getLeague;
@@ -130,7 +128,6 @@ export default function League(){
                                 }
                             }
 
-                            console.log('League Finished Status:', league.lgFinished);
                             if(league.lgFinished === 'not started'){
                                 setLeagueNotStarted(true);
                             }
@@ -139,16 +136,11 @@ export default function League(){
                         }
                     } catch (error) {
                         console.error('Error fetching user data:', error);
-                        // GraphQL/Network details
                         if (error.errors) console.error('errors:', error.errors);
                         if (error.graphQLErrors) console.error('graphQLErrors:', error.graphQLErrors);
                         if (error.networkError) console.error('networkError:', error.networkError);
 
-                        // show popup with message if available
-                        const message =
-                          error.message ||
-                          (error.graphQLErrors && error.graphQLErrors[0] && error.graphQLErrors[0].message) ||
-                          'Failed to load league';
+                        setErrorMessage(formatError(error) || 'Failed to load league.');
                         setErrorPopup(true);
                     } finally {
                         setLoading(false);
@@ -164,7 +156,6 @@ export default function League(){
     // Update leagueNotStarted when leagueData changes
     useEffect(() => {
         if (leagueData) {
-            console.log('League data updated, lgFinished:', leagueData.lgFinished);
             setLeagueNotStarted(leagueData.lgFinished === 'not started');
         }
     }, [leagueData]);
@@ -195,12 +186,11 @@ export default function League(){
                 return pl[1]?.toLowerCase() !== userEmail;
             });
 
-            // Create player record
+            // Create player record (let backend generate id; store email in plEmail)
             await client.graphql({
                 query: createPlayer,
                 variables: {
                     input: {
-                        id: userEmail,
                         leagueId: leagueData.id,
                         plName: userName,
                         plEmail: userEmail,
@@ -247,6 +237,8 @@ export default function League(){
             window.location.reload();
         } catch (error) {
             console.error('Error accepting invitation:', error);
+            setErrorMessage(formatError(error) || 'Failed to accept invitation.');
+            setErrorPopup(true);
             setLoading(false);
         }
     };
@@ -296,6 +288,8 @@ export default function League(){
             router.push('/Player');
         } catch (error) {
             console.error('Error declining invitation:', error);
+            setErrorMessage(formatError(error) || 'Failed to decline invitation.');
+            setErrorPopup(true);
             setLoading(false);
         }
     };
@@ -662,7 +656,8 @@ export default function League(){
 
     <ErrorPopup
         open={errorPopup}
-        message="An error occurred while Loading the league."
+        onClose={() => { setErrorPopup(false); setErrorMessage(''); }}
+        message={errorMessage || 'An error occurred while loading the league.'}
     />
 
     if(!leagueNotStarted){

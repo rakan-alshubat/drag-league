@@ -178,3 +178,25 @@ export const StyledIcon = styled('span')(({ theme }) => ({
     display: 'inline-flex',
     alignItems: 'center',
 }));
+
+export const WIPBanner = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    gap: theme.spacing(1),
+    background: 'linear-gradient(90deg, rgba(255,240,245,0.9) 0%, rgba(255,250,230,0.9) 100%)',
+    border: `1px solid rgba(255, 64, 129, 0.12)`,
+    color: theme.palette.primary.main,
+    padding: theme.spacing(1.25, 2),
+    borderRadius: theme.spacing(3),
+    marginBottom: theme.spacing(4),
+    fontWeight: 800,
+    fontSize: '1rem',
+    boxShadow: '0 6px 18px rgba(255, 64, 129, 0.06)',
+    [theme.breakpoints.down('sm')]: {
+        marginBottom: theme.spacing(3),
+        padding: theme.spacing(1, 1.5),
+        fontSize: '0.95rem',
+    },
+}));

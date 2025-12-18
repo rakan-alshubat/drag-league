@@ -5,6 +5,8 @@ import Link from "next/link";
 import { updatePlayer, updateLeague } from "@/graphql/mutations";
 import { filterPipeCharacter } from "@/helpers/filterPipeChar";
 import LoadingWheel from "@/files/LoadingWheel";
+import ErrorPopup from '@/files/ErrorPopUp';
+import formatError from '@/helpers/formatError';
 import { FormContainer,
     FormSection,
     SectionTitle,
@@ -41,6 +43,8 @@ export default function RankingsPage(props){
     const [missingQueenIndices, setMissingQueenIndices] = useState([]);
 
     const [loading, setLoading] = useState(false);
+    const [errorPopup, setErrorPopup] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
     const [showOptionalSection, setShowOptionalSection] = useState(false);
@@ -233,7 +237,8 @@ export default function RankingsPage(props){
             // Use the player's actual ID from the database
             if (!Player?.id) {
                 console.error('Player ID is missing:', Player);
-                alert('Error: Player information is missing. Please try refreshing the page.');
+                setErrorMessage('Error: Player information is missing. Please try refreshing the page.');
+                setErrorPopup(true);
                 setLoading(false);
                 return;
             }
@@ -276,7 +281,8 @@ export default function RankingsPage(props){
             setLoading(false);
             
             // Show user-friendly error message
-            alert('Unable to submit your rankings. Please check your internet connection and try again.');
+            setErrorMessage(formatError(error) || 'Unable to submit your rankings. Please check your internet connection and try again.');
+            setErrorPopup(true);
         }
     };
 
@@ -381,6 +387,7 @@ export default function RankingsPage(props){
             )}
 
             <SectionWrapper>
+                <ErrorPopup open={errorPopup} onClose={() => setErrorPopup(false)} message={errorMessage} />
                 <FormSection>
                     <TitleRow>
                         <SectionTitle>Your Name</SectionTitle>

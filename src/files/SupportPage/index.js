@@ -7,6 +7,7 @@ import {
     PageContainer,
     PageTitle,
     PageSubtitle,
+    WIPBanner,
     SupportSection,
     SectionTitle,
     SectionDescription,
@@ -25,7 +26,7 @@ export default function SupportPage() {
     const router = useRouter();
 
     const handleDiscordClick = () => {
-        window.open('https://discord.gg/6APgPgT4', '_blank');
+        window.open('https://discord.gg/TwvxwuEZd7', '_blank');
     };
 
     const handleBuyMeCoffeeClick = () => {
@@ -38,6 +39,10 @@ export default function SupportPage() {
             <PageSubtitle>
                 Get help, report issues, and support the project
             </PageSubtitle>
+
+            <WIPBanner>
+                ✨ This website is a work in progress, if you see any issues please report them and I will fix them ASAP — I&apos;m a solo developer so thanks for your patience 💖
+            </WIPBanner>
 
             <SupportSection>
                 <SectionTitle>

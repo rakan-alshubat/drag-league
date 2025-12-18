@@ -36,6 +36,7 @@ import {
     FlexContainer,
     FlexRow,
 } from "./SubmissionsPopUp.styles";
+import formatError from '@/helpers/formatError';
 
 function makeRow(id) {
     if (id != null) return { id: String(id), values: [] };
@@ -366,7 +367,6 @@ export default function SubmissionsPopup({
                             query: updatePlayer,
                             variables: { input: playerInput }
                         });
-                        console.log('Player updated with swap:', playerResult);
 
                         // Add history entry for swap
                         if (playerUpdates.plRankings && leagueData?.id) {
@@ -381,7 +381,6 @@ export default function SubmissionsPopup({
                                     }
                                 }
                             });
-                            console.log('History updated for swap');
                         }
                     } else {
                         // Demo mode: mutate local objects and log instead of network calls
@@ -391,12 +390,11 @@ export default function SubmissionsPopup({
                             const currentHistory = leagueData.lgHistory || [];
                             const historyEntry = new Date().toISOString() + '. ' + (playerData.plName || 'Player') + ' swapped ' + firstSwap + ' with ' + secondSwap;
                             leagueData.lgHistory = [...currentHistory, historyEntry];
-                            console.log('Demo: history updated for swap', historyEntry);
                         }
                     }
 
                 } catch (error) {
-                    console.error('Error updating player:', error);
+                    setErrorMessage(formatError(error) || 'Error updating player.');
                 }
             }
             
@@ -443,16 +441,14 @@ export default function SubmissionsPopup({
                             query: updateLeague,
                             variables: { input: leagueInput }
                         });
-                        console.log('League submissions updated:', leagueResult);
                     } else {
                         // Demo: update local league object and log
                         leagueData.lgSubmissions = leagueInput.lgSubmissions;
                         leagueData.lgHistory = leagueInput.lgHistory;
-                        console.log('Demo: League submissions updated (local only):', { lgSubmissions: leagueData.lgSubmissions, lgHistory: leagueData.lgHistory });
                     }
 
                 } catch (error) {
-                    console.error('Error updating league submissions:', error);
+                    setErrorMessage(formatError(error) || 'Error updating league submissions.');
                 }
             }
             
@@ -581,11 +577,10 @@ export default function SubmissionsPopup({
                     leagueData.lgRankingDeadline = null;
                     leagueData.lgFinished = 'finished';
                     leagueData.lgHistory = [...(leagueData.lgHistory || []), historyEntry];
-                    console.log('Demo: Final episode applied locally', { updatedEliminated, updatedChallengeWinners, updatedBonusPoints, historyEntry });
                 }
                 
             } catch (error) {
-                console.error('Error processing final episode:', error);
+                setErrorMessage(formatError(error) || 'Error processing final episode.');
             }
             
             if (typeof onSubmit === "function") try { onSubmit({ version, value: 'final' }); } catch {}
@@ -601,7 +596,6 @@ export default function SubmissionsPopup({
             try {
                 // Process lgSubmissions and map to player plWinners
                 const submissions = leagueData.lgSubmissions || [];
-                console.log('Processing submissions:', submissions);
                 const submissionMap = {};
                 submissions.forEach(sub => {
                     const parts = sub.split('|').map(s => s.trim());
@@ -626,30 +620,18 @@ export default function SubmissionsPopup({
                         setErrorMessage('');
                     }
                 }
-                console.log('Submission map:', submissionMap);
 
                 const allPlayers = leagueData.players || [];
-                console.log('All players from leagueData:', allPlayers);
-                console.log('Is allPlayers an array?', Array.isArray(allPlayers));
 
                 if (Array.isArray(allPlayers) && allPlayers.length > 0) {
                     const updatePromises = allPlayers.map(async (player) => {
-                        console.log('Player object:', player);
-                        console.log('Player ID:', player.id);
-                        console.log('Player email (plEmail):', player.plEmail);
 
                         // Try both player.id and player.plEmail
                         const playerIdLower = player.id?.toLowerCase();
                         const playerEmailLower = player.plEmail?.toLowerCase();
 
-                        console.log('Looking for submission with keys:', { playerIdLower, playerEmailLower });
-                        console.log('Available submission keys:', Object.keys(submissionMap));
-
                         const submission = submissionMap[playerIdLower] || submissionMap[playerEmailLower] || '';
                         const updatedWinners = [...(player.plWinners || []), submission];
-
-                        console.log(`Updating player ${player.plName} (ID: ${player.id}, Email: ${player.plEmail}): adding "${submission}" to plWinners`);
-                        console.log('Updated winners array:', updatedWinners);
 
                         return await client.graphql({
                             query: updatePlayer,
@@ -664,7 +646,6 @@ export default function SubmissionsPopup({
                     });
 
                     await Promise.all(updatePromises);
-                    console.log('All player updates completed');
                 } else {
                     console.warn('No players array found in leagueData or array is empty');
                 }
@@ -691,7 +672,8 @@ export default function SubmissionsPopup({
                 const leagueUpdates = {
                     lgChallengeWinners: [...currentChallengeWinners, challengeWinnersStr],
                     lgLipSyncWinners: [...currentLipSyncWinners, lipSyncWinnersStr],
-                    lgEliminatedPlayers: [...currentEliminatedPlayers, eliminatedQueensStr],
+                    // Only append eliminated entry when there's an actual value
+                    lgEliminatedPlayers: (eliminatedQueensStr && String(eliminatedQueensStr).trim() !== '') ? [...currentEliminatedPlayers, eliminatedQueensStr] : [...currentEliminatedPlayers],
                     lgSubmissions: [],
                     lgDeadline: nextWeekDeadline
                 };
@@ -718,12 +700,11 @@ export default function SubmissionsPopup({
                     leagueData.lgSubmissions = leagueUpdates.lgSubmissions;
                     leagueData.lgDeadline = leagueUpdates.lgDeadline;
                     leagueData.lgHistory = [...(leagueData.lgHistory || []), historyEntry];
-                    console.log('Demo: Weekly results applied locally', { leagueUpdates, historyEntry });
                 }
 
             } catch (error) {
                 console.error('Error updating league weekly results:', error);
-                setErrorMessage('Error submitting weekly results');
+                setErrorMessage(formatError(error) || 'Error submitting weekly results');
                 return;
             }
 
@@ -770,6 +751,7 @@ export default function SubmissionsPopup({
                                     </FormControl>
                                 </Box>
                             ))}
+                            <Alert severity="info">Your pick will not be visible to you or others in the submission tab until the results are submitted so nobody will see who you picked until everyone picks.</Alert>
                         </Box>
 
                         {swapEligibility.allowed && (!playerData?.plSwap || String(playerData.plSwap).trim() === '') && (

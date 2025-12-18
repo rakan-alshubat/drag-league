@@ -59,7 +59,7 @@ export default function HowToPlayPage() {
                     <StepDescription>
                         Start by creating your own league or accepting an invitation to join an existing one.<br/> 
                         As a league creator, you&apos;ll set up all the rules and settings, and fill in the details for whichever Drag Race franchise you&apos;re watching.<br/>
-                        As a league player, lookout for an invitation from the admin to join their league.
+                        As a league player, look out for an invitation from the admin to join their league.
                     </StepDescription>
                     <HighlightBox>
                         <HighlightText>
@@ -76,13 +76,13 @@ export default function HowToPlayPage() {
                 </StepHeader>
                 <StepContent>
                     <StepDescription>
-                        This is where strategy comes in! Predict the elimination order of all the queens, from first eliminated to winner. The closer your guess, the more points you rack up. Get it exactly right and you earn maximum points<br/><br/>
+                        This is where strategy comes in! Predict the elimination order of all the queens, from first eliminated to winner. The closer your guess, the more points you rack up. Get it exactly right and you earn maximum points.<br/><br/>
                         <strong>The formula is simple:</strong> Total number of queens minus the difference between your guess and where they actually placed. Here&apos;s how the scoring works:<br />
                     </StepDescription>
 
                     <StepList>
                         <li><strong>Exact Match:</strong> Full points! If there are 14 queens and you predict a queen&apos;s exact position, you earn 14 points.</li>
-                        <li><strong>Close Match:</strong> Each position off you lose a point. Predict 5th but they place 7th? That&apos;s 2 positions off, so 14 - 2 = 12 points.</li>
+                        <li><strong>Close Match:</strong> For each position you&apos;re off, you lose a point. Predict 5th but they place 7th? That&apos;s 2 positions off, so 14 - 2 = 12 points.</li>
                         <li><strong>Ties:</strong> When multiple queens are eliminated together, they all get the same ranking.</li>
                     </StepList>
 
@@ -92,7 +92,7 @@ export default function HowToPlayPage() {
                     
                     <HighlightBox>
                         <HighlightText>
-                            💡 Tip: Start the league and set the ranking deadline after the first episode to get a better impression of all the Queens.
+                            💡 Tip: Start the league and set the ranking deadline after the first episode to get a better impression of all the queens.
                         </HighlightText>
                     </HighlightBox>
                 </StepContent>
@@ -105,12 +105,12 @@ export default function HowToPlayPage() {
                 </StepHeader>
                 <StepContent>
                     <StepDescription>
-                        If your league has weekly submission enabled, you can make predictions for each episode&apos;s Maxi challenge winner. These are extra points to your initial rankings!
+                        If your league has weekly submission enabled, you can make predictions for each episode&apos;s Maxi Challenge winner. These are extra points added to your initial rankings!
                     </StepDescription>
                     <StepList>
-                        <li>A weekly deadline is set to take submissions for each episode. An hour before it airs? two days earlier before the promo comes out? It&apos;s up to you!</li>
+                        <li>A weekly deadline is set to take submissions for each episode. An hour before it airs? Two days earlier before the promo comes out? It&apos;s up to you!</li>
                         <li>While creating the league, you can decide how many points each correct weekly prediction is worth.</li>
-                        <li>The recommendation is half the number of Queens in the season, rounded down.</li>
+                        <li>The recommendation is half the number of queens in the season, rounded down.</li>
                         <li>This will keep players engaged every week throughout the competition, and can make it more competitive!</li>
                     </StepList>
                 </StepContent>
@@ -123,10 +123,10 @@ export default function HowToPlayPage() {
                 </StepHeader>
                 <StepContent>
                     <StepDescription>
-                        If your league has swaps enabled, you get ONE chance per season to swap two queens in your rankings. Maybe you underestimated someone or your favorite Queen is flopping. Whatever the reason, you can make one adjustment per season. Use it wisely!
+                        If your league has swaps enabled, you get ONE chance per season to swap two queens in your rankings. Maybe you underestimated someone or your favorite queen is flopping. Whatever the reason, you can make one adjustment per season. Use it wisely!
                     </StepDescription>
                     <StepList>
-                        <li><strong>When Can I Swap?</strong> Based on league rules: after a certain number of episodes OR when a certain number of queens remain</li>
+                        <li><strong>When Can I Swap?</strong> Based on league rules: after a certain number of episodes OR when a certain number of queens remain.</li>
                         <li><strong>How to Swap?</strong> When making a weekly submission, you&apos;ll see the swap option.</li>
                         <li><strong>What Happens When I Swap?</strong> Your points will automatically adjust based on the new rankings.</li>
                     </StepList>
@@ -146,7 +146,7 @@ export default function HowToPlayPage() {
                 </StepHeader>
                 <StepContent>
                     <StepDescription>
-                        If your league has this option enabled, you can predict which queen will be the Lip Sync Assassin of the season. Think you can predict who&apos;s the stunt Queen? Choose how many points a correct predicition is worth.
+                        If your league has this option enabled, you can predict which queen will be the Lip Sync Assassin of the season. Think you can predict who&apos;s the stunt queen? Choose how many points a correct prediction is worth.
                     </StepDescription>
                     <StepList>
                         <li>The Lip Sync Assassin is the queen who wins the most Lip Syncs For Your Life (or for the win).</li>
@@ -191,9 +191,9 @@ export default function HowToPlayPage() {
                         As the season progresses and episodes air, watch your score grow as your predictions come true! The league page has multiple tabs to track everything.
                     </StepDescription>
                     <StepList>
-                        <li><strong>Player Rankings Tab:</strong> See the leaderboard with everyone&apos;s current total scores</li>
-                        <li><strong>Player Submissions Tab:</strong> View everyone&apos;s queen rankings, weekly picks, and compare strategies</li>
-                        <li><strong>Season Info Tab:</strong> Track which queens have been eliminated, challenge winners, lip sync winners, and the current Lip Sync Assassin</li>
+                        <li><strong>Player Rankings Tab:</strong> See the leaderboard with everyone&apos;s current total scores.</li>
+                        <li><strong>Player Submissions Tab:</strong> View everyone&apos;s queen rankings, weekly picks, and compare strategies.</li>
+                        <li><strong>Season Info Tab:</strong> Track which queens have been eliminated, challenge winners, lip sync winners, and the current Lip Sync Assassin.</li>
                     </StepList>
                     
                     <HighlightBox>
@@ -206,10 +206,10 @@ export default function HowToPlayPage() {
                         <strong>Understanding Your Score Breakdown:</strong>
                     </StepDescriptionWithMargin>
                     <StepList>
-                        <li>Points from queen rankings (earned as queens are eliminated)</li>
-                        <li>Weekly challenge winner predictions</li>
-                        <li>Predicting the Lip Sync Assassin(s)</li>
-                        <li>Bonus category points (if enabled, awarded at seasons end)</li>
+                        <li>Points from queen rankings (earned as queens are eliminated).</li>
+                        <li>Weekly challenge winner predictions.</li>
+                        <li>Predicting the Lip Sync Assassin(s).</li>
+                        <li>Bonus category points (if enabled, awarded at season&apos;s end).</li>
                     </StepList>
                 </StepContent>
             </StepSection>
@@ -221,11 +221,11 @@ export default function HowToPlayPage() {
                 </StepHeader>
                 <StepContent>
                     <StepDescription>
-                        The final episode is here and its time to crown a winner, baby! Admins have extra responsibilities, and players get to see all their scores finalized.
+                        The final episode is here and it&apos;s time to crown a winner, baby! Admins have extra responsibilities, and players get to see all their scores finalized.
                     </StepDescription>
                     
                     <StepList>
-                        <li><strong>Final Rankings:</strong> Admin enters the placements for the top Queens.</li>
+                        <li><strong>Final Rankings:</strong> Admin enters the placements for the top queens.</li>
                         <li><strong>Lip Sync Assassin:</strong> The queen with the most lip sync wins will automatically be determined.</li>
                         <li><strong>Bonus Category Results:</strong> Admin enters the answers to all bonus categories.</li>
                         <li><strong>Final Scores:</strong> All remaining points are calculated and the winner is revealed!</li>
@@ -254,12 +254,12 @@ export default function HowToPlayPage() {
                     </StepDescription>
                     
                     <StepList>
-                        <li><strong>Manage Players:</strong> Invite new players, accept join requests (public leagues), promote others to admin, or remove players</li>
-                        <li><strong>Submit Weekly Results:</strong> After each episode, enter the challenge winner, lip sync winner, and eliminated queen(s)</li>
+                        <li><strong>Manage Players:</strong> Invite new players, accept join requests (public leagues), promote others to admin, or remove players.</li>
+                        <li><strong>Submit Weekly Results:</strong> After each episode, enter the challenge winner, lip sync winner, and eliminated queen(s).</li>
                         <li><strong>Handle Ties:</strong> If multiple queens are eliminated in one episode (double elimination), enter both names.</li>
-                        <li><strong>Edit League Settings:</strong> Toggle privacy settings (public/private) at any time</li>
-                        <li><strong>View Pending Submissions:</strong> See who hasn&apos;t submitted their weekly predictions before the deadline</li>
-                        <li><strong>Admin Edit Page:</strong> Access advanced editing tools if you need to manually correct data</li>
+                        <li><strong>Edit League Settings:</strong> Toggle privacy settings (public/private) at any time.</li>
+                        <li><strong>View Pending Submissions:</strong> See who hasn&apos;t submitted their weekly predictions before the deadline.</li>
+                        <li><strong>Admin Edit Page:</strong> Access advanced editing tools if you need to manually correct data.</li>
                     </StepList>
 
                 </StepContent>
@@ -278,7 +278,7 @@ export default function HowToPlayPage() {
                     <StepList>
                         <li><strong>Public League:</strong> Anyone can discover your league, view the leaderboard, and request to join. Great for growing your community!</li>
                         <li><strong>Private League (Invite-Only):</strong> Only invited players can join. The league is hidden from public search.</li>
-                        <li><strong>Toggle Anytime:</strong> Admins can change privacy settings at any point during the season</li>
+                        <li><strong>Toggle Anytime:</strong> Admins can change privacy settings at any point during the season.</li>
                     </StepList>
 
                 </StepContent>
@@ -297,9 +297,9 @@ export default function HowToPlayPage() {
                     </StepDescription>
                     
                     <StepList>
-                        <li><strong>Do Your Research:</strong> Watch MTQ (Meet the Queens) videos, check social media followings, and look at queens&apos; prior work</li>
-                        <li><strong>Consider the Format:</strong> All Stars? Regular season? International? Different formats favor different types of queens</li>
-                        <li><strong>Save Your Swap:</strong> Wait until the deadline before using your swap. More info = better decisions</li>
+                        <li><strong>Do Your Research:</strong> Watch MTQ (Meet the Queens) videos, check social media followings, and look at queens&apos; prior work.</li>
+                        <li><strong>Consider the Format:</strong> All Stars? Regular season? International? Different formats favor different types of queens.</li>
+                        <li><strong>Save Your Swap:</strong> Wait until the deadline before using your swap. More info = better decisions.</li>
                         <li><strong>Weekly Picks:</strong> Acting challenge? The Roast? Choose the Queen that fits the challenge best.</li>
                     </StepList>
                 </StepContent>
