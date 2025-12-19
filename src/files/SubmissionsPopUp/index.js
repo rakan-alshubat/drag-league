@@ -36,7 +36,6 @@ import {
     FlexContainer,
     FlexRow,
 } from "./SubmissionsPopUp.styles";
-import formatError from '@/helpers/formatError';
 
 function makeRow(id) {
     if (id != null) return { id: String(id), values: [] };
@@ -77,6 +76,12 @@ export default function SubmissionsPopup({
     const [eliminatedQueens, setEliminatedQueens] = useState([]);
 
     const [errorMessage, setErrorMessage] = useState('');
+
+    // Clear warnings and safely call parent onClose
+    const safeOnClose = (arg) => {
+        try { setErrorMessage(''); } catch (e) {}
+        try { onClose(arg); } catch (e) {}
+    };
 
     // Final Episode State (redesigned with multi-select)
     const [isFinalEpisode, setIsFinalEpisode] = useState(false);
@@ -223,26 +228,32 @@ export default function SubmissionsPopup({
         
         if (swapType === 'NumberOfEpisodes') {
             const episodesPassed = (leagueData.lgEliminatedPlayers || []).length;
-            if (episodesPassed >= swapValue) {
+            if (episodesPassed > swapValue) {
                 return { allowed: false, message: '' };
             }
             const remaining = swapValue - episodesPassed;
+            const isLastChance = remaining === 0;
             return { 
                 allowed: true, 
-                message: `You can swap two queens positions in your rankings for the first ${swapValue} episode${remaining === 1 ? '' : 's'}. You can only do this once so use it wisely! You will see a reminder when its your last chance to submit. (${remaining} episode${remaining === 1 ? '' : 's'} remaining)` 
+                message: `You can swap two queens positions in your rankings for the first ${swapValue} episode${remaining === 1 ? '' : 's'}. You can only do this once so use it wisely! You will see a reminder when its your last chance to swap. (${remaining} episode${remaining === 1 ? '' : 's'} remaining)`,
+                remaining,
+                isLastChance
             };
         } else {
             const totalQueens = (leagueData.lgQueenNames || []).length;
             const eliminatedQueens = (leagueData.lgEliminatedPlayers || []).length;
             const remainingQueens = totalQueens - eliminatedQueens;
             
-            if (remainingQueens <= swapValue) {
+            if (remainingQueens < swapValue) {
                 return { allowed: false, message: '' };
             }
             const episodesLeft = remainingQueens - swapValue;
+            const isLastChance = episodesLeft === 0;
             return { 
                 allowed: true, 
-                message: `You can swap until there are ${swapValue} queens remaining. You can only do this once so use it wisely! You will see a reminder when its your last chance to submit. (${episodesLeft} Queen${episodesLeft === 1 ? '' : 's'} left)` 
+                message: `You can swap until there are ${swapValue} queens remaining. You can only do this once so use it wisely! You will see a reminder when its your last chance to swap. (${episodesLeft} Queen${episodesLeft === 1 ? '' : 's'} left)`,
+                remaining: episodesLeft,
+                isLastChance
             };
         }
     };
@@ -328,6 +339,16 @@ export default function SubmissionsPopup({
         const isDemo = String(leagueData?.id || '').toLowerCase().includes('demo');
         
         if (version === "Submissions") {
+            try {
+                const dl = leagueData?.lgDeadline ? new Date(leagueData.lgDeadline) : null;
+                if (dl && Date.now() >= dl.getTime()) {
+                    setErrorMessage('Submission failed: the Maxi Challenge deadline has passed.');
+                    return;
+                }
+            } catch (e) {
+                // silently ignore parsing errors and allow submit to proceed in unclear cases
+            }
+
             const rows = submissionRows || [];
             const selected = rows.filter(r => !r.disabled && r.value).map(r => r.value.trim()).filter(Boolean);
             const joined = selected.join("|");
@@ -394,7 +415,7 @@ export default function SubmissionsPopup({
                     }
 
                 } catch (error) {
-                    setErrorMessage(formatError(error) || 'Error updating player.');
+                    setErrorMessage('Error updating player.');
                 }
             }
             
@@ -428,7 +449,13 @@ export default function SubmissionsPopup({
 
                     // Create history entry for weekly picks submission
                     const currentHistory = latestLeague.lgHistory || [];
-                    const historyEntry = new Date().toISOString() + '. ' + (playerData?.plName || userEmail) + ' submitted weekly pick: ' + selected.join(', ');
+                    const hadPrevious = (currentSubmissions || []).some(submission => {
+                        const parts = String(submission || '').split('|').map(s => s.trim());
+                        const submissionEmail = parts[1] || '';
+                        return (submissionEmail || '').toLowerCase() === String(userEmail || '').toLowerCase();
+                    });
+                    const actionText = hadPrevious ? 'resubmitted weekly pick' : 'submitted weekly pick';
+                    const historyEntry = new Date().toISOString() + '. ' + (playerData?.plName) + ' ' + actionText;
 
                     const leagueInput = {
                         id: leagueData.id,
@@ -448,12 +475,12 @@ export default function SubmissionsPopup({
                     }
 
                 } catch (error) {
-                    setErrorMessage(formatError(error) || 'Error updating league submissions.');
+                    setErrorMessage('Error updating league submissions.');
                 }
             }
             
             if (typeof onSubmit === "function") try { onSubmit({ version, value: joined, playerUpdates }); } catch {}
-            try { onClose(joined); } catch { onClose(); }
+            try { safeOnClose(joined); } catch {}
 
             // Reload page to show updates (skip reload in demo mode)
             if (!isDemo) {
@@ -580,11 +607,11 @@ export default function SubmissionsPopup({
                 }
                 
             } catch (error) {
-                setErrorMessage(formatError(error) || 'Error processing final episode.');
+                setErrorMessage('Error processing final episode.');
             }
             
             if (typeof onSubmit === "function") try { onSubmit({ version, value: 'final' }); } catch {}
-            try { onClose('final'); } catch { onClose(); }
+            try { safeOnClose('final'); } catch {}
 
             // Reload page to show updates
             window.location.reload();
@@ -650,6 +677,19 @@ export default function SubmissionsPopup({
                     console.warn('No players array found in leagueData or array is empty');
                 }
 
+                // If admin selected a lip sync winner but didn't press +, include it now (unless blank)
+                const effectiveLipSyncWinners = (() => {
+                    try {
+                        const base = Array.isArray(lipSyncWinners) ? [...lipSyncWinners] : [];
+                        if (lipSyncSelected && String(lipSyncSelected).trim() !== '' && !base.includes(lipSyncSelected) && !eliminatedQueens.includes(lipSyncSelected)) {
+                            base.push(lipSyncSelected);
+                        }
+                        return base;
+                    } catch (e) {
+                        return Array.isArray(lipSyncWinners) ? lipSyncWinners : [];
+                    }
+                })();
+
                 // Get current arrays from league data
                 const currentChallengeWinners = leagueData.lgChallengeWinners || [];
                 const currentLipSyncWinners = leagueData.lgLipSyncWinners || [];
@@ -657,7 +697,7 @@ export default function SubmissionsPopup({
 
                 // Join multi-selected values with pipes
                 const challengeWinnersStr = challengeWinners.join('|') || "";
-                const lipSyncWinnersStr = lipSyncWinners.join('|') || "";
+                const lipSyncWinnersStr = (effectiveLipSyncWinners || []).join('|') || "";
                 const eliminatedQueensStr = eliminatedQueens.join('|') || "";
 
                 // Calculate next week's deadline (7 days from current deadline)
@@ -704,12 +744,12 @@ export default function SubmissionsPopup({
 
             } catch (error) {
                 console.error('Error updating league weekly results:', error);
-                setErrorMessage(formatError(error) || 'Error submitting weekly results');
+                setErrorMessage('Error submitting weekly results');
                 return;
             }
 
             if (typeof onSubmit === "function") try { onSubmit({ version, value: 'weekly' }); } catch {}
-            try { onClose('weekly'); } catch { onClose(); }
+            try { safeOnClose('weekly'); } catch {}
 
             // Reload page to show updates (skip in demo)
             if (!isDemo) {
@@ -720,7 +760,7 @@ export default function SubmissionsPopup({
 
     // render
     return (
-        <StyledDialog open={isOpen} onClose={() => onClose()} maxWidth="sm" fullWidth>
+        <StyledDialog open={isOpen} onClose={() => safeOnClose()} maxWidth="sm" fullWidth>
             <StyledDialogTitle>
                 {version === "Submissions" ? "Submit Weekly Pick" : "Submit Weekly Results"}
             </StyledDialogTitle>
@@ -728,36 +768,48 @@ export default function SubmissionsPopup({
             <StyledDialogContent>
                 {version === "Submissions" && (
                     <Section>
-                        <SectionDesc variant="body2">
-                            {isFinalEpisode 
-                                ? "Who will win the season?" 
-                                : "Who will win this week's Maxi Challenge?"}
-                        </SectionDesc>
+                        {(Number(leagueData?.lgChallengePoints || 0) > 0) && (
+                            <>
+                                <SectionDesc variant="body2">
+                                    {isFinalEpisode 
+                                        ? "Who will win the season?" 
+                                        : "Who will win this week's Maxi Challenge?"}
+                                </SectionDesc>
 
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mt: 1 }}>
-                            {submissionRows.map((row, idx) => (
-                                <Box key={`submission-${idx}-${row.id}`} sx={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                                    <FormControl fullWidth variant="outlined" size="small" disabled={row.disabled}>
-                                        <InputLabel id={`label-${row.id}`}>-- Queens --</InputLabel>
-                                        <Select
-                                            labelId={`label-${row.id}`}
-                                            value={row.value}
-                                            label="-- Queens --"
-                                            onChange={(e) => updateSubmissionRow(idx, { value: e.target.value })}
-                                        >
-                                            <MenuItem value="" disabled>-- Queens --</MenuItem>
-                                            {renderOptionsFor(submissionRows, idx)}
-                                        </Select>
-                                    </FormControl>
+                                <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mt: 1 }}>
+                                    {submissionRows.map((row, idx) => (
+                                        <Box key={`submission-${idx}-${row.id}`} sx={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                                            <FormControl fullWidth variant="outlined" size="small" disabled={row.disabled}>
+                                                <InputLabel id={`label-${row.id}`}>-- Queens --</InputLabel>
+                                                <Select
+                                                    labelId={`label-${row.id}`}
+                                                    value={row.value}
+                                                    label="-- Queens --"
+                                                    onChange={(e) => updateSubmissionRow(idx, { value: e.target.value })}
+                                                >
+                                                    <MenuItem value="" disabled>-- Queens --</MenuItem>
+                                                    {renderOptionsFor(submissionRows, idx)}
+                                                </Select>
+                                            </FormControl>
+                                        </Box>
+                                    ))}
+                                    <Alert severity="info">Your pick will not be visible to you or others in the submission tab until the results are submitted so nobody will see who you picked until everyone picks.</Alert>
                                 </Box>
-                            ))}
-                            <Alert severity="info">Your pick will not be visible to you or others in the submission tab until the results are submitted so nobody will see who you picked until everyone picks.</Alert>
-                        </Box>
-
+                            </>)}
                         {swapEligibility.allowed && (!playerData?.plSwap || String(playerData.plSwap).trim() === '') && (
                             <Box sx={{ mt: 2 }}>
                                 <SectionTitle>Do you want to swap two queens?</SectionTitle>
                                 <SectionDesc>{swapEligibility.message}</SectionDesc>
+
+                                {swapEligibility?.isLastChance && swapEligibility?.allowed && (
+                                    <Box sx={{ mt: 1, mb: 1, p: 1.5, borderRadius: 2, display: 'flex', gap: 1, alignItems: 'center', background: '#fff0f6', border: '1px solid #ffb3d9' }}>
+                                        <Box component="span" sx={{ fontSize: 20 }}>🌟</Box>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1 }}>Last chance to swap!</Typography>
+                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>This is your final opportunity to swap two queens — use it wisely 💖</Typography>
+                                        </Box>
+                                    </Box>
+                                )}
 
                                 <Box sx={{ display: "flex", gap: 2, mt: 1 }}>
                                     <FormControl fullWidth size="small">
@@ -769,7 +821,7 @@ export default function SubmissionsPopup({
                                             onChange={(e) => setFirstSwap(e.target.value)}
                                         >
                                             <MenuItem value="" disabled>-- Queen #1 --</MenuItem>
-                                            {filteredOptionsList().map((opt, i) => <MenuItem key={`first-${i}-${String(opt)}`} value={opt}>{opt}</MenuItem>)}
+                                            {(optionsList || []).map((opt, i) => <MenuItem key={`first-${i}-${String(opt)}`} value={opt}>{opt}</MenuItem>)}
                                         </Select>
                                     </FormControl>
 
@@ -782,7 +834,7 @@ export default function SubmissionsPopup({
                                             onChange={(e) => setSecondSwap(e.target.value)}
                                         >
                                             <MenuItem value="" disabled>-- Queen #2 --</MenuItem>
-                                            {filteredOptionsList().map((opt, i) => <MenuItem key={`second-${i}-${String(opt)}`} value={opt} disabled={opt === firstSwap}>{opt}</MenuItem>)}
+                                            {(optionsList || []).map((opt, i) => <MenuItem key={`second-${i}-${String(opt)}`} value={opt} disabled={opt === firstSwap}>{opt}</MenuItem>)}
                                         </Select>
                                     </FormControl>
                                 </Box>
@@ -913,7 +965,7 @@ export default function SubmissionsPopup({
                                                                 return selected;
                                                             }}
                                                         >
-                                                            {bonusRow.type === 'Queens' && filteredOptionsList().map((n, i) => (
+                                                            {bonusRow.type === 'Queens' && (optionsList || []).map((n, i) => (
                                                                 <MenuItem key={`bonus-${idx}-${i}-${String(n)}`} value={n}>
                                                                     <Checkbox checked={(bonusRow.values || []).includes(n)} />
                                                                     {n}
@@ -1088,7 +1140,11 @@ export default function SubmissionsPopup({
                     </Box>
                 )}
             </StyledDialogContent>
-
+            {errorMessage && (
+                <Box sx={{ mt: 2 }}>
+                    <Alert severity={errorMessage.startsWith('Warning:') ? 'warning' : 'error'}>{errorMessage}</Alert>
+                </Box>
+            )}
             <StyledDialogActions>
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                     {(version === "Weekly Results" || version === "Submissions") && (
@@ -1130,10 +1186,15 @@ export default function SubmissionsPopup({
                     )}
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                    <CancelButton onClick={() => onClose()} variant="outlined">Cancel</CancelButton>
-                    <SubmitButton onClick={handleSubmit} variant="contained">Submit</SubmitButton>
+                    <CancelButton onClick={() => safeOnClose()} variant="text" size="small" sx={{ padding: '6px 10px', textTransform: 'none', fontWeight: 600 }}>
+                        Cancel
+                    </CancelButton>
+                    <SubmitButton onClick={handleSubmit} variant="text" size="small" sx={{ padding: '6px 10px', textTransform: 'none', fontWeight: 600, '&.Mui-disabled': { color: 'text.disabled' } }}>
+                        Submit
+                    </SubmitButton>
                 </Box>
             </StyledDialogActions>
+            
         </StyledDialog>
     );
 }

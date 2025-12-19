@@ -6,7 +6,7 @@ import LoadingWheel from "@/files/LoadingWheel";
 import { useEffect, useState } from "react";
 import RankingsPage from "@/files/RankingsPage";
 import ErrorPopup from '@/files/ErrorPopUp';
-import formatError from '@/helpers/formatError';
+
 
 export default function Rank(){
 
@@ -72,7 +72,7 @@ export default function Rank(){
                         }
                     } catch (error) {
                         console.error('Error fetching user data:', error);
-                        setErrorMessage(formatError(error) || 'Failed to load ranking data.');
+                        setErrorMessage('Failed to load ranking data.');
                         setErrorPopup(true);
                     } finally {
                         setLoading(false);

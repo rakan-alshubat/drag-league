@@ -18,7 +18,6 @@ import { updatePlayer, updateLeague, deleteLeague, deletePlayer, createPlayer } 
 import { playersByLeagueId, listUsers } from '@/graphql/queries';
 import PopUp from '@/files/PopUp';
 import ErrorPopup from '@/files/ErrorPopUp';
-import formatError from '@/helpers/formatError';
 import {
     Root,
     Title,
@@ -93,7 +92,7 @@ export default function LeagueSettings(props) {
             window.location.reload();
         } catch (err) {
             console.error('Request join failed', err);
-            setErrorMessage(formatError(err) || 'Failed to request to join.');
+            setErrorMessage('Failed to request to join.');
             setErrorPopup(true);
         } finally {
             setConfirmLoading(false);
@@ -115,7 +114,7 @@ export default function LeagueSettings(props) {
             window.location.reload();
         } catch (err) {
             console.error('Accept invite failed', err);
-            setErrorMessage(formatError(err) || 'Failed to accept invite.');
+            setErrorMessage('Failed to accept invite.');
             setErrorPopup(true);
         } finally {
             setConfirmLoading(false);
@@ -133,7 +132,7 @@ export default function LeagueSettings(props) {
             window.location.reload();
         } catch (err) {
             console.error('Decline invite failed', err);
-            setErrorMessage(formatError(err) || 'Failed to decline invite.');
+            setErrorMessage('Failed to decline invite.');
             setErrorPopup(true);
         } finally {
             setConfirmLoading(false);
@@ -320,7 +319,7 @@ export default function LeagueSettings(props) {
             router.push('/Player');
         } catch (error) {
             console.error('Error deleting league:', error);
-            setErrorMessage(formatError(error) || 'Failed to delete league. Please try again.');
+            setErrorMessage('Failed to delete league. Please try again.');
             setErrorPopup(true);
         } finally {
             setConfirmLoading(false);
@@ -342,7 +341,7 @@ export default function LeagueSettings(props) {
                 window.location.reload();
             } catch (err) {
                 console.error('Error deleting player:', err);
-                setErrorMessage(formatError(err) || 'Failed to remove player.');
+                setErrorMessage('Failed to remove player.');
                 setErrorPopup(true);
             } finally {
                 setConfirmLoading(false);

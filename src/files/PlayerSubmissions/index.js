@@ -1,6 +1,7 @@
 // ...existing code...
 import React, { useState, useEffect } from "react";
 import mostFrequentName from '../../helpers/lipSyncAssassin';
+import calculatePoints from '../../helpers/calculatePoints';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Box, Chip } from '@mui/material';
@@ -86,6 +87,74 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
     const [rankOpen, setRankOpen] = React.useState(false);
     const [winnersOpen, setWinnersOpen] = React.useState(false);
     const [bonusesOpen, setBonusesOpen] = React.useState(false);
+    const [expanded, setExpanded] = React.useState(false);
+
+    const totalPoints = calculatePoints(item, leagueData) || 0;
+
+    // helper to parse names from various separators
+    const parseNames = (str) => {
+        if (!str || typeof str !== 'string') return [];
+        return str
+            .split(/\s*(?:\||,|&|and)\s*/i)
+            .map(s => s.trim())
+            .filter(Boolean)
+            .map(s => s.toLowerCase());
+    };
+
+    // Rankings subtotal: sum of points earned from eliminated queens based on rankings
+    const rankingsTotal = (() => {
+        try {
+            const rankings = Array.isArray(item.plRankings) ? item.plRankings : [];
+            return rankings.reduce((sum, rankName, idx) => {
+                const info = calculateQueenRankingInfo(rankName, idx + 1, leagueData);
+                return sum + (info?.pointsEarned || 0);
+            }, 0);
+        } catch (e) { return 0; }
+    })();
+
+    // Challenge subtotal: count correct weekly challenge picks * points per challenge
+    const challengeTotal = (() => {
+        try {
+            const challengeWinners = leagueData?.lgChallengeWinners || [];
+            const playerWinners = Array.isArray(item.plWinners) ? item.plWinners : [];
+            const pointsPer = Number(leagueData?.lgChallengePoints) || 0;
+            let total = 0;
+            for (let i = 0; i < playerWinners.length && i < challengeWinners.length; i++) {
+                const actual = challengeWinners[i];
+                const pred = playerWinners[i];
+                if (!actual || !pred) continue;
+                const actualList = parseNames(actual);
+                const predList = parseNames(pred);
+                if (predList.some(p => actualList.includes(p))) total += pointsPer;
+            }
+            return total;
+        } catch (e) { return 0; }
+    })();
+
+    // Bonus subtotal: sum of matched bonus category points
+    const bonusesTotal = (() => {
+        try {
+            const leagueBonuses = leagueData?.lgBonusPoints || [];
+            const playerBonuses = Array.isArray(item.plBonuses) ? item.plBonuses : [];
+            let total = 0;
+            playerBonuses.forEach(pb => {
+                const parts = (pb || '').split('|').map(s => s.trim());
+                const categoryName = parts[0] || '';
+                const prediction = parts.length > 1 ? parts.slice(1).join('|') : '';
+                const match = leagueBonuses.find(lb => (lb || '').split('|').map(s => s.trim())[0] === categoryName);
+                if (!match) return;
+                const matchParts = match.split('|').map(s => s.trim());
+                const pointsWorth = parseInt(matchParts[1]) || 0;
+                const correctAnswer = matchParts[3] || null;
+                if (correctAnswer) {
+                    const correctList = parseNames(correctAnswer);
+                    const predList = parseNames(prediction);
+                    if (predList.some(p => correctList.includes(p))) total += pointsWorth;
+                }
+            });
+            return total;
+        } catch (e) { return 0; }
+    })();
 
     // Check if player's last pick matches last week's challenge winner
     const checkLastPickCorrect = () => {
@@ -176,7 +245,12 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
                     disableGutters
                 >
                     <NestedSummary expandIcon={<ExpandMoreIcon />}>
-                        <NestedSummaryText>🏆 Rankings</NestedSummaryText>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                            <NestedSummaryText>🏆 Rankings</NestedSummaryText>
+                            {rankingsTotal > 0 && (
+                                <Chip label={`${rankingsTotal} pts`} size="small" sx={{ background: 'linear-gradient(135deg,#50C878 0%, #3CB371 100%)', color: 'white', fontWeight: 700 }} />
+                            )}
+                        </Box>
                     </NestedSummary>
 
                     <NestedDetails>
@@ -299,192 +373,188 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
 
                 {/* Stack Winners and Bonuses under Rankings */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-                    <NestedAccordion
-                        sx={{ width: '100%' }}
-                        expanded={winnersOpen}
-                        onChange={(_, isExpanded) => setWinnersOpen(isExpanded)}
-                        disableGutters
-                    >
-                        <NestedSummary expandIcon={<ExpandMoreIcon />}>
-                            <NestedSummaryText>👑 Weekly Challenge Winners</NestedSummaryText>
-                        </NestedSummary>
+                    {Number(leagueData?.lgChallengePoints || 0) > 0 && (
+                        <NestedAccordion
+                            sx={{ width: '100%' }}
+                            expanded={winnersOpen}
+                            onChange={(_, isExpanded) => setWinnersOpen(isExpanded)}
+                            disableGutters
+                        >
+                            <NestedSummary expandIcon={<ExpandMoreIcon />}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                    <NestedSummaryText>👑 Weekly Challenge Winners</NestedSummaryText>
+                                    {challengeTotal > 0 && (
+                                        <Chip label={`${challengeTotal} pts`} size="small" sx={{ background: 'linear-gradient(135deg,#FFD700 0%, #FFA500 100%)', color: '#333', fontWeight: 700 }} />
+                                    )}
+                                </Box>
+                            </NestedSummary>
 
-                        <NestedDetails>
-                            {Array.isArray(item.plWinners) && item.plWinners.length > 0 ? (
-                                <Box>
-                                    {/* Points information banner */}
-                                    <Box sx={{
-                                        p: 1.5,
-                                        mb: 2,
-                                        borderRadius: 2,
-                                        background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 165, 0, 0.12) 100%)',
-                                        border: '1px solid rgba(255, 215, 0, 0.4)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 1
-                                    }}>
-                                        <Typography sx={{ 
-                                            fontSize: '1rem', 
-                                            color: '#666',
-                                            fontWeight: 500 
+                            <NestedDetails>
+                                {Array.isArray(item.plWinners) && item.plWinners.length > 0 ? (
+                                    <Box>
+                                        {/* Points information banner */}
+                                        <Box sx={{
+                                            p: 1.5,
+                                            mb: 2,
+                                            borderRadius: 2,
+                                            background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 165, 0, 0.12) 100%)',
+                                            border: '1px solid rgba(255, 215, 0, 0.4)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1
                                         }}>
+                                            <Typography sx={{ 
+                                                fontSize: '1rem', 
+                                                color: '#666',
+                                                fontWeight: 500 
+                                            }}>
                                             Points per correct guess:
-                                        </Typography>
-                                        <Chip
-                                            label={`${leagueData?.lgChallengePoints || 0} pts`}
-                                            size="medium"
-                                            sx={{
-                                                background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-                                                color: '#333',
-                                                fontWeight: 700,
-                                                fontSize: '0.85rem',
-                                                height: '28px',
-                                                boxShadow: '0 2px 4px rgba(255, 165, 0, 0.3)',
-                                                '& .MuiChip-label': {
-                                                    px: 2
-                                                }
-                                            }}
-                                        />
-                                    </Box>
+                                            </Typography>
+                                            <Chip
+                                                label={`${leagueData?.lgChallengePoints || 0} pts`}
+                                                size="medium"
+                                                sx={{
+                                                    background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                                                    color: '#333',
+                                                    fontWeight: 700,
+                                                    fontSize: '0.85rem',
+                                                    height: '28px',
+                                                    boxShadow: '0 2px 4px rgba(255, 165, 0, 0.3)',
+                                                    '& .MuiChip-label': {
+                                                        px: 2
+                                                    }
+                                                }}
+                                            />
+                                        </Box>
 
-                                    {/* Weekly predictions list */}
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                        {item.plWinners.map((prediction, i) => {
-                                            const challengeWinners = leagueData?.lgChallengeWinners || [];
-                                            const actualWinner = challengeWinners[i] || null;
+                                        {/* Weekly predictions list */}
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                            {item.plWinners.map((prediction, i) => {
+                                                const challengeWinners = leagueData?.lgChallengeWinners || [];
+                                                const actualWinner = challengeWinners[i] || null;
                                             
-                                            // Check if prediction is correct (only if there's a confirmed winner)
-                                            // Handle ties: both actualWinner and prediction might have multiple queens separated by |
-                                            let isCorrect = null;
-                                            if (actualWinner && actualWinner.trim() !== '' && prediction && prediction.trim() !== '') {
-                                                const winnersList = actualWinner.split('|').map(s => s.trim().toLowerCase());
-                                                const predictions = prediction.split('|').map(s => s.trim().toLowerCase());
-                                                
-                                                // Player is correct if ANY of their predictions match ANY of the actual winners
-                                                isCorrect = predictions.some(pred => winnersList.includes(pred));
-                                            }
+                                                // Check if prediction is correct (only if there's a confirmed winner)
+                                                // Treat missing prediction as incorrect when an actual winner exists.
+                                                // Handle ties: both actualWinner and prediction might have multiple queens separated by |
+                                                let isCorrect = null;
+                                                if (actualWinner && actualWinner.trim() !== '') {
+                                                    if (prediction && prediction.trim() !== '') {
+                                                        const winnersList = actualWinner.split('|').map(s => s.trim().toLowerCase());
+                                                        const predictions = prediction.split('|').map(s => s.trim().toLowerCase());
+                                                        // Player is correct if ANY of their predictions match ANY of the actual winners
+                                                        isCorrect = predictions.some(pred => winnersList.includes(pred));
+                                                    } else {
+                                                    // No prediction but there is an actual winner -> incorrect
+                                                        isCorrect = false;
+                                                    }
+                                                }
                                             
-                                            const hasPrediction = prediction && prediction.trim() !== '';
+                                                const hasPrediction = prediction && prediction.trim() !== '';
                                             
-                                            return (
-                                                <Box 
-                                                    key={i}
-                                                    sx={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 1.5,
-                                                        p: 1.25,
-                                                        borderRadius: 2,
-                                                        background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
-                                                        border: '1px solid rgba(255, 20, 147, 0.2)',
-                                                        transition: 'all 0.2s ease',
-                                                        '&:hover': {
-                                                            background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.8) 0%, rgba(245, 235, 255, 0.8) 100%)',
-                                                            border: '1px solid rgba(255, 20, 147, 0.4)',
-                                                            transform: 'translateX(4px)',
-                                                            boxShadow: '0 2px 8px rgba(255, 20, 147, 0.15)'
-                                                        }
-                                                    }}
-                                                >
-                                                    <Typography 
-                                                        sx={{ 
-                                                            fontWeight: 700, 
-                                                            color: '#9B30FF',
-                                                            minWidth: '60px',
-                                                            fontSize: '1rem'
+                                                return (
+                                                    <Box 
+                                                        key={i}
+                                                        sx={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 1.5,
+                                                            p: 1.25,
+                                                            borderRadius: 2,
+                                                            background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
+                                                            border: '1px solid rgba(255, 20, 147, 0.2)',
+                                                            transition: 'all 0.2s ease',
+                                                            '&:hover': {
+                                                                background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.8) 0%, rgba(245, 235, 255, 0.8) 100%)',
+                                                                border: '1px solid rgba(255, 20, 147, 0.4)',
+                                                                transform: 'translateX(4px)',
+                                                                boxShadow: '0 2px 8px rgba(255, 20, 147, 0.15)'
+                                                            }
                                                         }}
                                                     >
-                                                        Week {i + 1}
-                                                    </Typography>
-                                                    
-                                                    {hasPrediction ? (
                                                         <Typography 
                                                             sx={{ 
-                                                                flex: 1,
-                                                                fontWeight: 500,
-                                                                fontSize: '1rem',
-                                                                color: '#333'
+                                                                fontWeight: 700, 
+                                                                color: '#9B30FF',
+                                                                minWidth: '60px',
+                                                                fontSize: '1rem'
                                                             }}
                                                         >
-                                                            {prediction}
+                                                        Week {i + 1}
                                                         </Typography>
-                                                    ) : (
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                                                    
+                                                        {hasPrediction ? (
+                                                            <Typography 
+                                                                sx={{ 
+                                                                    flex: 1,
+                                                                    fontWeight: 500,
+                                                                    fontSize: '1rem',
+                                                                    color: '#333'
+                                                                }}
+                                                            >
+                                                                {prediction}
+                                                            </Typography>
+                                                        ) : (
+                                                        // Show 'No pick' as plain text so chips (like incorrect) appear at the end consistently
+                                                            <Typography 
+                                                                sx={{ 
+                                                                    flex: 1,
+                                                                    fontWeight: 500,
+                                                                    fontSize: '1rem',
+                                                                    color: '#666'
+                                                                }}
+                                                            >
+                                                            No pick
+                                                            </Typography>
+                                                        )}
+                                                    
+                                                        {isCorrect === true && (
                                                             <Chip
-                                                                label="No pick"
+                                                                label="✓ Correct"
                                                                 size="medium"
                                                                 sx={{
-                                                                    background: 'linear-gradient(135deg, #F0F0F0 0%, #E0E0E0 100%)',
-                                                                    color: '#666',
-                                                                    fontWeight: 600,
+                                                                    background: 'linear-gradient(135deg, #50C878 0%, #3CB371 100%)',
+                                                                    color: 'white',
+                                                                    fontWeight: 700,
+                                                                    fontSize: '0.85rem',
                                                                     height: '28px',
-                                                                    '& .MuiChip-label': { px: 2 }
+                                                                    boxShadow: '0 2px 4px rgba(80, 200, 120, 0.4)',
+                                                                    '& .MuiChip-label': {
+                                                                        px: 2
+                                                                    }
                                                                 }}
                                                             />
+                                                        )}
+                                                    
+                                                        {isCorrect === false && (
                                                             <Chip
                                                                 label="✗ Incorrect"
-                                                                size="small"
+                                                                size="medium"
                                                                 sx={{
                                                                     background: 'linear-gradient(135deg, #DC143C 0%, #B22222 100%)',
                                                                     color: 'white',
                                                                     fontWeight: 700,
-                                                                    fontSize: '0.75rem',
-                                                                    height: '24px',
-                                                                    '& .MuiChip-label': { px: 1 }
+                                                                    fontSize: '0.85rem',
+                                                                    height: '28px',
+                                                                    boxShadow: '0 2px 4px rgba(220, 20, 60, 0.4)',
+                                                                    '& .MuiChip-label': {
+                                                                        px: 2
+                                                                    }
                                                                 }}
                                                             />
-                                                        </Box>
-                                                    )}
-                                                    
-                                                    {isCorrect === true && (
-                                                        <Chip
-                                                            label="✓ Correct"
-                                                            size="medium"
-                                                            sx={{
-                                                                background: 'linear-gradient(135deg, #50C878 0%, #3CB371 100%)',
-                                                                color: 'white',
-                                                                fontWeight: 700,
-                                                                fontSize: '0.85rem',
-                                                                height: '28px',
-                                                                boxShadow: '0 2px 4px rgba(80, 200, 120, 0.4)',
-                                                                '& .MuiChip-label': {
-                                                                    px: 2
-                                                                }
-                                                            }}
-                                                        />
-                                                    )}
-                                                    
-                                                    {isCorrect === false && (
-                                                        <Chip
-                                                            label="✗ Incorrect"
-                                                            size="medium"
-                                                            sx={{
-                                                                background: 'linear-gradient(135deg, #DC143C 0%, #B22222 100%)',
-                                                                color: 'white',
-                                                                fontWeight: 700,
-                                                                fontSize: '0.85rem',
-                                                                height: '28px',
-                                                                boxShadow: '0 2px 4px rgba(220, 20, 60, 0.4)',
-                                                                '& .MuiChip-label': {
-                                                                    px: 2
-                                                                }
-                                                            }}
-                                                        />
-                                                    )}
-                                                </Box>
-                                            );
-                                        })}
+                                                        )}
+                                                    </Box>
+                                                );
+                                            })}
+                                        </Box>
                                     </Box>
-                                </Box>
-                            ) : (
-                                <Typography variant="body2" color="text.secondary">
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary">
                                     No weekly predictions submitted.
-                                </Typography>
-                            )}
-                        </NestedDetails>
-                    </NestedAccordion>
-
-                    
+                                    </Typography>
+                                )}
+                            </NestedDetails>
+                        </NestedAccordion>
+                    )}
 
                     {Array.isArray(item.plBonuses) && item.plBonuses.length > 0 && (
                         <NestedAccordion
@@ -494,7 +564,12 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
                             disableGutters
                         >
                             <NestedSummary expandIcon={<ExpandMoreIcon />}>
-                                <NestedSummaryText>⭐ Bonus Predictions</NestedSummaryText>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                    <NestedSummaryText>⭐ Bonus Predictions</NestedSummaryText>
+                                    {bonusesTotal > 0 && (
+                                        <Chip label={`${bonusesTotal} pts`} size="small" sx={{ background: 'linear-gradient(135deg,#50C878 0%, #3CB371 100%)', color: 'white', fontWeight: 700 }} />
+                                    )}
+                                </Box>
                             </NestedSummary>
 
                             <NestedDetails>

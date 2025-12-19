@@ -25,6 +25,9 @@ export default function MyApp(props) {
         <CacheProvider value={emotionCache}>
             <Head>
                 <meta name="viewport" content="initial-scale=1, width=device-width" />
+                <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+                <link rel="icon" href="/favicon-32.png" sizes="32x32" />
+                <link rel="alternate icon" href="/favicon.ico" />
             </Head>
             <ThemeProvider theme={theme}>
                 <DefaultSeo {...SEO} />

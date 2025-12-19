@@ -8,7 +8,7 @@ import Countdown from "../Countdown";
 import History from "../History";
 import calculatePoints from '../../helpers/calculatePoints';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import { Box, Alert, Typography } from '@mui/material';
+import { Box, Alert, Typography, Button } from '@mui/material';
 import {
     Container,
     Header,
@@ -41,12 +41,6 @@ export default function Leagues({ userData, leagueData, playersData }) {
     const Player = AllPlayers?.find(p => p.plEmail?.toLowerCase() === User?.id?.toLowerCase()) || null;
 
     const isPlayer = !!Player;
-
-    console.log('Leagues component - userData:', userData);
-    console.log('Leagues component - League:', League);
-    console.log('Leagues component - User:', User);
-    console.log('Leagues component - AllPlayers:', AllPlayers);
-    console.log('Leagues component - Current Player:', Player);
 
     const [userEmail, setUserEmail] = useState(User?.id || '');
     const [isAdmin, setIsAdmin] = useState(() => {
@@ -275,27 +269,60 @@ export default function Leagues({ userData, leagueData, playersData }) {
                     {!isFinished && (
                         <>
                             <div className="buttonsRow" style={{ display: 'flex', gap: 8 }}>
-                                {isPlayer && (
-                                    <button
-                                        onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Submissions'); }}
-                                        aria-label="Add"
-                                        disabled={isDeadlinePassed()}
-                                        style={{
-                                            padding: '8px 12px',
-                                            borderRadius: 6,
-                                            cursor: isDeadlinePassed() ? 'not-allowed' : 'pointer',
-                                            opacity: isDeadlinePassed() ? 0.5 : 1,
-                                            background: isDeadlinePassed() ? '#ccc' : ''
-                                        }}
-                                        title={isDeadlinePassed() ? 'Deadline has passed - waiting for admin to submit results' : 'Submit your weekly pick'}
-                                    >
-                                        Submit your weekly pick
-                                    </button>
+                                {isPlayer && (Number(League?.lgChallengePoints || 0) > 0 || (League?.lgSwap && String(League.lgSwap).trim() !== '' && !isDeadlinePassed()) )&& (
+                                    (() => {
+                                        const swapsEnabled = Boolean(League?.lgSwap && String(League.lgSwap).trim() !== '');
+                                        const hasChallengePoints = Number(League?.lgChallengePoints || 0) > 0;
+                                        const label = (!hasChallengePoints && swapsEnabled) ? 'Submit swaps' : 'Submit your Maxi Challenge pick';
+                                        const title = isDeadlinePassed() ? 'Deadline has passed - waiting for admin to submit results' : label;
+                                        return (
+                                            <Button
+                                                onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Submissions'); }}
+                                                aria-label="submit-weekly"
+                                                disabled={isDeadlinePassed()}
+                                                variant="contained"
+                                                color="primary"
+                                                size="small"
+                                                title={title}
+                                                sx={{
+                                                    padding: '6px 12px',
+                                                    borderRadius: 2,
+                                                    textTransform: 'none',
+                                                    fontWeight: 700,
+                                                    boxShadow: 'none',
+                                                    minWidth: 160,
+                                                    backgroundColor: 'primary.main',
+                                                    color: 'primary.contrastText',
+                                                    '&:hover': { boxShadow: 'none', transform: 'translateY(-1px)' },
+                                                    '&.Mui-disabled': { backgroundColor: 'grey.200', color: 'text.disabled' }
+                                                }}
+                                            >
+                                                {title}
+                                            </Button>
+                                        );
+                                    })()
                                 )}
                                 {isAdmin && (
-                                    <button onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Weekly Results'); }} aria-label="Export" style={{ padding: '8px 12px', borderRadius: 6, cursor: 'pointer' }}>
+                                    <Button
+                                        onClick={() => { setShowSwapPopup(true); setSwapPopupVersion('Weekly Results'); }}
+                                        aria-label="submit-results"
+                                        variant="contained"
+                                        color="primary"
+                                        size="small"
+                                        sx={{
+                                            padding: '6px 12px',
+                                            borderRadius: 2,
+                                            textTransform: 'none',
+                                            fontWeight: 700,
+                                            boxShadow: 'none',
+                                            minWidth: 160,
+                                            backgroundColor: 'primary.main',
+                                            color: 'primary.contrastText',
+                                            '&:hover': { boxShadow: 'none', transform: 'translateY(-1px)' }
+                                        }}
+                                    >
                                         Submit weekly results
-                                    </button>
+                                    </Button>
                                 )}
                             </div>
                         </>
@@ -324,7 +351,7 @@ export default function Leagues({ userData, leagueData, playersData }) {
                             gap: 16,
                             justifyContent: 'center',
                             transition: 'filter 1200ms ease, opacity 1200ms ease',
-                            filter: revealed ? 'none' : 'blur(6px)'
+                            filter: revealed ? 'none' : 'blur(12px)'
                         }}>
                             <EmojiEventsIcon sx={{ color: '#FFD700', fontSize: { xs: 60, sm: 68 } }} />
                             <WinnerName>{winnerDisplay}</WinnerName>
@@ -350,7 +377,11 @@ export default function Leagues({ userData, leagueData, playersData }) {
 
             <MainContent>
                 <Panel role="tabpanel" hidden={tabIndex !== 0} aria-hidden={tabIndex !== 0}>
-                    {tabIndex === 0 && <PlayerRankings userData={User} leagueData={League} playersData={AllPlayers} />}
+                    {tabIndex === 0 && (
+                        <div style={{ filter: (isFinished && !revealed) ? 'blur(12px)' : 'none', transition: 'filter 1200ms ease' }}>
+                            <PlayerRankings userData={User} leagueData={League} playersData={AllPlayers} />
+                        </div>
+                    )}
                 </Panel>
 
                 <Panel role="tabpanel" hidden={tabIndex !== 1} aria-hidden={tabIndex !== 1}>

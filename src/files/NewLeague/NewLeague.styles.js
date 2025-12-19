@@ -84,6 +84,7 @@ export const InfoBanner = styled(Box)(({ theme }) => ({
     flexDirection: 'column',
     alignItems: 'center',
     gap: theme.spacing(1),
+    minHeight: 84,
     [theme.breakpoints.down('sm')]: {
         padding: theme.spacing(2),
         marginBottom: theme.spacing(3),

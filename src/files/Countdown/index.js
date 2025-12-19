@@ -95,20 +95,30 @@ export default function Countdown({ deadline, label = "Time Remaining", showDate
                 sx={{
                     display: 'inline-flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     gap: 1,
                     padding: '8px 12px',
                     border: '1px solid',
                     borderColor: isExpired ? 'error.main' : 'primary.main',
                     borderRadius: 1.5,
-                    backgroundColor: isExpired ? 'error.light' : 'primary.light',
+                    backgroundColor: isExpired ? 'rgba(220,20,60,0.06)' : 'primary.light',
+                    width: 'auto',
+                    maxWidth: '100%',
+                    textAlign: 'center',
                 }}
             >
                 <AccessTimeIcon fontSize="small" color={isExpired ? 'error' : 'primary'} />
                 <Typography 
                     variant="body2" 
                     fontWeight="bold" 
-                    color={isExpired ? 'error.dark' : 'primary.dark'}
-                    sx={{ fontFamily: 'monospace', whiteSpace: 'nowrap' }}
+                    color={isExpired ? 'error.main' : 'primary.dark'}
+                    sx={{
+                        fontFamily: 'monospace',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '100%'
+                    }}
                 >
                     {formatTimeLeft()}
                 </Typography>
@@ -126,13 +136,14 @@ export default function Countdown({ deadline, label = "Time Remaining", showDate
                 border: '1px solid',
                 borderColor: isExpired ? 'error.main' : 'primary.main',
                 borderRadius: 2,
-                backgroundColor: isExpired ? 'error.light' : 'primary.light',
+                backgroundColor: isExpired ? 'rgba(220,20,60,0.04)' : 'primary.light',
                 margin: '16px 0',
+                textAlign: 'center'
             }}
         >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <AccessTimeIcon color={isExpired ? 'error' : 'primary'} />
-                <Typography variant="subtitle2" fontWeight="bold" color={isExpired ? 'error' : 'primary'}>
+                <Typography variant="subtitle2" fontWeight="bold" color={isExpired ? 'error.main' : 'primary'}>
                     {label}
                 </Typography>
             </Box>
@@ -140,8 +151,8 @@ export default function Countdown({ deadline, label = "Time Remaining", showDate
             <Typography 
                 variant="h4" 
                 fontWeight="bold" 
-                color={isExpired ? 'error.dark' : 'primary.dark'}
-                sx={{ fontFamily: 'monospace' }}
+                color={isExpired ? 'error.main' : 'primary.dark'}
+                sx={{ fontFamily: 'monospace', textAlign: 'center' }}
             >
                 {formatTimeLeft()}
             </Typography>

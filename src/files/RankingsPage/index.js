@@ -6,7 +6,6 @@ import { updatePlayer, updateLeague } from "@/graphql/mutations";
 import { filterPipeCharacter } from "@/helpers/filterPipeChar";
 import LoadingWheel from "@/files/LoadingWheel";
 import ErrorPopup from '@/files/ErrorPopUp';
-import formatError from '@/helpers/formatError';
 import { FormContainer,
     FormSection,
     SectionTitle,
@@ -223,6 +222,25 @@ export default function RankingsPage(props){
             return;
         }
 
+        // Prevent submissions if the ranking deadline has passed
+        try {
+            const deadline = League?.lgRankingDeadline ? new Date(League.lgRankingDeadline).getTime() : null;
+            if (deadline && Date.now() >= deadline) {
+                setErrorMessage('Unable to submit: the ranking deadline has passed.');
+                setErrorPopup(true);
+                return;
+            }
+        } catch (err) {
+            // ignore parse errors and allow submit to proceed
+        }
+
+        // Prevent submissions if the league hasn't started yet
+        if (League?.lgFinished !== 'not started') {
+            setErrorMessage('Unable to submit: this league has started.');
+            setErrorPopup(true);
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -281,7 +299,7 @@ export default function RankingsPage(props){
             setLoading(false);
             
             // Show user-friendly error message
-            setErrorMessage(formatError(error) || 'Unable to submit your rankings. Please check your internet connection and try again.');
+            setErrorMessage('Unable to submit your rankings. Try again later, or make sure the deadline hasn\'t passed');
             setErrorPopup(true);
         }
     };

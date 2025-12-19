@@ -20,7 +20,7 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import { generateClient } from 'aws-amplify/api';
 import ErrorPopup from '../ErrorPopUp';
-import formatError from '@/helpers/formatError';
+
 import { updateLeague, updatePlayer } from '@/graphql/mutations';
 import {
     Container,
@@ -292,15 +292,11 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
     const validateLeague = () => {
         const errors = [];
         const entries = editedEliminatedPlayers || [];
-        if (entries.length === 0) {
-            errors.push('No elimination placements defined.');
-        } else {
-            entries.forEach((entry, idx) => {
-                if (!entry || entry.trim() === '') {
-                    errors.push(`Placement ${idx + 1} is empty.`);
-                }
-            });
-        }
+        entries.forEach((entry, idx) => {
+            if (!entry || entry.trim() === '') {
+                errors.push(`Placement ${idx + 1} is empty.`);
+            }
+        });
         return { valid: errors.length === 0, errors };
     };
 
@@ -325,7 +321,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             if (onUpdate) onUpdate();
         } catch (error) {
             console.error('Error submitting changes:', error);
-            setErrorMessage(formatError(error) || 'Error submitting changes. Please try again.');
+            setErrorMessage('Error submitting changes. Please try again.');
             setErrorPopup(true);
         }
         setSubmitting(false);

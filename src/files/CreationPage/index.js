@@ -30,7 +30,7 @@ import { FormContainer,
 import { MenuItem } from "@mui/material";
 import { useState, useEffect} from "react";
 import ErrorPopup from "../ErrorPopUp";
-import formatError from '@/helpers/formatError';
+
 
 export default function CreationPage(){
     const [queensNumber, setQueensNumber] = useState('');
@@ -73,37 +73,40 @@ export default function CreationPage(){
     const router = useRouter();
     const client = generateClient()
 
-    // use centralized formatError helper
+
 
     const numbers = Array.from({ length: 30 }, (_, i) => i + 1);
 
     useEffect(() => {
-        if (queensNumber) {
+        if (!queensNumber) return;
+        setQueenNames(prev => {
             const cleanedNames = Object.fromEntries(
-                Object.entries(queenNames).filter(([key]) => parseInt(key) < queensNumber)
+                Object.entries(prev).filter(([key]) => parseInt(key) < queensNumber)
             );
-            setQueenNames(getSortedQueenNamesObject(cleanedNames));
-        }
+            return getSortedQueenNamesObject(cleanedNames);
+        });
     }, [queensNumber]);
 
     useEffect(() => {
-        if (bonusCategories) {
+        if (!bonusCategories) return;
+        setCategoryData(prev => {
             const cleanedCategories = Object.fromEntries(
-                Object.entries(categoryData).filter(([key]) => parseInt(key) < bonusCategories)
+                Object.entries(prev).filter(([key]) => parseInt(key) < bonusCategories)
             );
-            setCategoryData(cleanedCategories);
-        }
+            return cleanedCategories;
+        });
     }, [bonusCategories]);
 
-    useEffect(() => { 
+    useEffect(() => {
+        const localClient = generateClient();
         getCurrentUser()
             .then(user => {
                 async function getUserData() {
                     try {
-                        const results = await client.graphql({
+                        const results = await localClient.graphql({
                             query: getUsers,
                             variables: { id: user.signInDetails.loginId.toLowerCase() }
-                        })
+                        });
                         setAdminEmail(results.data.getUsers.id || '');
                         setLeaguesList(results.data.getUsers.leagues || []);
                     } catch (error) {
@@ -112,10 +115,10 @@ export default function CreationPage(){
                         setLoading(false);
                     }
                 }
-                getUserData()
+                getUserData();
             })
             .catch(() => {
-                router.push('/SignIn')
+                try { window.location.assign('/SignIn'); } catch (e) { /* ignore */ }
             });
     }, []);
 
@@ -253,7 +256,7 @@ export default function CreationPage(){
             lgLipSyncPoints: lipSyncAssassin && Number(lipSyncPoints) || 0,
             lgBonusPoints: bonusArray.length ? bonusArray : null,
             lgSwap: (swap && swapType && swapPoints) && `${swapType}|${swapPoints}` || '',
-            lgDeadline: deadline && new Date(deadline).toISOString(),
+            lgDeadline: (Number(pointValue) > 0 && deadline) ? new Date(deadline).toISOString() : null,
             lgRankingDeadline: rankingDeadline && new Date(rankingDeadline).toISOString(),
             lgFinished: 'not started',
         };
@@ -312,7 +315,7 @@ export default function CreationPage(){
             router.push('/League/' + createdLeagueId);
         } catch (error) {
             console.error('Error creating league:', error);
-            setErrorMessage(formatError(error) || 'Failed to create league.');
+            setErrorMessage('Failed to create league.');
             setErrorPopup(true);
         }
     };

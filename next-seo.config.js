@@ -2,7 +2,7 @@ const siteUrl = 'https://dr91fo3klsf8b.amplifyapp.com';
 
 module.exports = {
     title: 'Drag League',
-    titleTemplate: '%s | Drag League',
+    titleTemplate: '%s',
     defaultTitle: 'Drag League',
     description: 'Drag League - competitive lip sync leagues and player rankings.',
     openGraph: {

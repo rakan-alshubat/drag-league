@@ -108,7 +108,7 @@ export default function HowToPlayPage() {
                         If your league has weekly submission enabled, you can make predictions for each episode&apos;s Maxi Challenge winner. These are extra points added to your initial rankings!
                     </StepDescription>
                     <StepList>
-                        <li>A weekly deadline is set to take submissions for each episode. An hour before it airs? Two days earlier before the promo comes out? It&apos;s up to you!</li>
+                        <li>A weekly deadline is set to take submissions for each episode. An hour before it airs? Two days earlier? Before they drop the first look on YouTube? It&apos;s up to you!</li>
                         <li>While creating the league, you can decide how many points each correct weekly prediction is worth.</li>
                         <li>The recommendation is half the number of queens in the season, rounded down.</li>
                         <li>This will keep players engaged every week throughout the competition, and can make it more competitive!</li>

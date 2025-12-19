@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ErrorPopup from '@/files/ErrorPopUp';
-import formatError from '@/helpers/formatError';
+
 import { useRouter } from 'next/router';
 import { getCurrentUser, signOut } from '@aws-amplify/auth';
 import { Tooltip, Drawer, IconButton as MuiIconButton, Box } from '@mui/material';
@@ -54,7 +54,7 @@ export default function NavBar() {
             router.push('/').then(() => { if (typeof window !== 'undefined') window.location.reload(); });
         } catch (error) {
             console.error('Error signing out:', error);
-            setErrorMessage(formatError(error) || 'Error signing out.');
+            setErrorMessage('Error signing out.');
             setErrorPopup(true);
         }
     };

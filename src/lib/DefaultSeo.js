@@ -5,9 +5,19 @@ import SEO from '../../next-seo.config';
 export default function DefaultSeo() {
     const { title, defaultTitle, titleTemplate, description, openGraph, twitter } = SEO || {};
     const og = openGraph || {};
+    const renderTitle = () => {
+        if (title) {
+            if (titleTemplate) return titleTemplate.replace('%s', title);
+            return title;
+        }
+        return defaultTitle || title || '';
+    };
+
     return (
         <Head>
-            <title>{defaultTitle || title}</title>
+            <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+            <link rel="alternate icon" href="/favicon.ico" />
+            <title>{renderTitle()}</title>
             {description && <meta name="description" content={description} />}
             {title && <meta property="og:title" content={title} />}
             {description && <meta property="og:description" content={description} />}

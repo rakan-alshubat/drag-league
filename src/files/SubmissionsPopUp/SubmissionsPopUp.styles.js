@@ -4,7 +4,7 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography, But
 export const StyledDialog = styled(Dialog)(({ theme }) => ({
     '& .MuiDialog-paper': {
         maxWidth: '600px',
-        minWidth: 690,
+        minWidth: 'auto',
         maxHeight: '85vh',
         borderRadius: '12px',
         border: '2px solid rgba(255, 20, 147, 0.3)',
@@ -12,11 +12,13 @@ export const StyledDialog = styled(Dialog)(({ theme }) => ({
     },
     [theme.breakpoints.down('sm')]: {
         '& .MuiDialog-paper': {
-            width: 'calc(100% - 16px)',
+            width: 'calc(100% - 32px)',
             minWidth: 'auto',
-            margin: '8px',
+            margin: '16px',
             borderRadius: '10px',
             maxHeight: '95vh',
+            boxSizing: 'border-box',
+            padding: theme.spacing(1),
         }
     }
 }));

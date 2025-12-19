@@ -62,6 +62,7 @@ export default function NewLeague( userData ) {
 
     const [userEmail, setUserEmail] = useState(User?.id || '');
     const [isAdmin, setIsAdmin] = useState(false);
+    const [deadlineHandled, setDeadlineHandled] = useState(false);
 
     // Keep local userEmail and isAdmin in sync when props update (fixes invite button visibility)
     useEffect(() => {
@@ -91,15 +92,17 @@ export default function NewLeague( userData ) {
 
     const [pickedPlayer, setPickedPlayer] = useState('');
     const [displayName, setDisplayName] = useState('');
+    const [shareCopySuccess, setShareCopySuccess] = useState('');
 
     useEffect(() => {
         if (!League?.lgRankingDeadline || League?.lgFinished === 'active') return;
 
         const checkDeadline = () => {
+            if (deadlineHandled) return;
             const deadlineDate = new Date(League.lgRankingDeadline);
             const now = new Date();
 
-            if (now >= deadlineDate && isAdmin) {
+            if (now >= deadlineDate) {
                 const currentHistory = League.lgHistory || [];
                 const historyEntry = new Date().toISOString() + '. Ranking deadline passed - league automatically started';
 
@@ -184,7 +187,10 @@ export default function NewLeague( userData ) {
                                 }
                             }
                         });
-                        router.push(`/League/${League.id}`);
+                        setDeadlineHandled(true);
+                        // Non-admin viewers should refresh to pick up league state changes
+                        try { router.reload(); } catch (e) { /* ignore */ }
+                        return;
                     } catch (err) {
                         console.error('Error auto-starting league (cleanup):', err);
                     }
@@ -430,12 +436,7 @@ export default function NewLeague( userData ) {
             router.reload();
         } catch (err) {
             console.error('Accept invite failed', err);
-            try {
-                const { default: formatError } = await import('@/helpers/formatError');
-                setPopUpError(formatError(err) || 'Failed to accept invite.');
-            } catch (e) {
-                setPopUpError('Failed to accept invite.');
-            }
+            setPopUpError('Failed to accept invite.');
         } finally {
             setConfirmLoading(false);
         }
@@ -455,12 +456,7 @@ export default function NewLeague( userData ) {
             router.reload();
         } catch (err) {
             console.error('Decline invite failed', err);
-            try {
-                const { default: formatError } = await import('@/helpers/formatError');
-                setPopUpError(formatError(err) || 'Failed to decline invite.');
-            } catch (e) {
-                setPopUpError('Failed to decline invite.');
-            }
+            setPopUpError('Failed to decline invite.');
         } finally {
             setConfirmLoading(false);
         }
@@ -525,15 +521,37 @@ export default function NewLeague( userData ) {
                     <SectionHeader variant="h5" sx={{ mb: 0 }}>
                         <PeopleIcon /> Current Players
                     </SectionHeader>
-                    {isAdmin && (
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        {isAdmin && (
+                            <PrimaryButton
+                                size="small"
+                                startIcon={<GroupAddIcon />}
+                                onClick={() => handleInvitePlayer()}
+                            >
+                                Invite
+                            </PrimaryButton>
+                        )}
                         <PrimaryButton
                             size="small"
-                            startIcon={<GroupAddIcon />}
-                            onClick={() => handleInvitePlayer()}
+                            startIcon={<ContentCopyIcon />}
+                            onClick={() => {
+                                try {
+                                    const inviteLink = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/League/' + (League?.id || '');
+                                    navigator.clipboard.writeText(inviteLink);
+                                    setShareCopySuccess('Link copied');
+                                    setTimeout(() => setShareCopySuccess(''), 3000);
+                                } catch (e) {
+                                    setShareCopySuccess('Copy failed');
+                                    setTimeout(() => setShareCopySuccess(''), 3000);
+                                }
+                            }}
                         >
-                            Invite
+                            Share
                         </PrimaryButton>
-                    )}
+                        {shareCopySuccess ? (
+                            <Typography variant="caption" sx={{ color: 'success.main' }}>{shareCopySuccess}</Typography>
+                        ) : null}
+                    </Box>
                 </InviteSectionHeader>
                 
                 {currentPlayerData().length > 0 ? (
@@ -741,15 +759,37 @@ export default function NewLeague( userData ) {
                     <SectionHeader variant="h5" sx={{ mb: 0 }}>
                         <GroupAddIcon /> Pending Players
                     </SectionHeader>
-                    {isAdmin && (
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        {isAdmin && (
+                            <PrimaryButton
+                                size="small"
+                                startIcon={<GroupAddIcon />}
+                                onClick={() => handleInvitePlayer()}
+                            >
+                                Invite
+                            </PrimaryButton>
+                        )}
                         <PrimaryButton
                             size="small"
-                            startIcon={<GroupAddIcon />}
-                            onClick={() => handleInvitePlayer()}
+                            startIcon={<ContentCopyIcon />}
+                            onClick={() => {
+                                try {
+                                    const inviteLink = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/League/' + (League?.id || '');
+                                    navigator.clipboard.writeText(inviteLink);
+                                    setShareCopySuccess('Link copied');
+                                    setTimeout(() => setShareCopySuccess(''), 3000);
+                                } catch (e) {
+                                    setShareCopySuccess('Copy failed');
+                                    setTimeout(() => setShareCopySuccess(''), 3000);
+                                }
+                            }}
                         >
-                            Invite
+                            Share
                         </PrimaryButton>
-                    )}
+                        {shareCopySuccess ? (
+                            <Typography variant="caption" sx={{ color: 'success.main' }}>{shareCopySuccess}</Typography>
+                        ) : null}
+                    </Box>
                 </InviteSectionHeader>
                 {pendingPlayerData().length > 0 ? (
                     <TableContainer>
@@ -886,7 +926,8 @@ export default function NewLeague( userData ) {
 
                         if(popUpTitle === 'Start League?'){
                             const currentHistory = League.lgHistory || [];
-                            const historyEntry = new Date().toISOString() + '. League manually started by admin';
+                            const adminName = (User && (User.name || User.id)) ? (User.name || User.id) : 'an admin';
+                            const historyEntry = new Date().toISOString() + '. League manually started by ' + adminName;
 
                             try {
                                 // fetch players and delete those who didn't submit
@@ -902,6 +943,10 @@ export default function NewLeague( userData ) {
                                         await client.graphql({ query: deletePlayer, variables: { input: { id: p.id } } });
                                     } catch (e) {
                                         console.warn('Failed to delete unsubmitted player(s)');
+                                    }
+
+                                    if (targetEmail && adminEmailsManual.includes(targetEmail)) {
+                                        continue;
                                     }
 
                                     // remove league from user's leagues array if present
@@ -1124,7 +1169,7 @@ export default function NewLeague( userData ) {
                                 setPopUpDescription(
                                     <Box sx={{ mt: 2 }}>
                                         <Typography variant="body1" sx={{ mb: 1 }}>
-                                            Invite added for <strong>{popUpNameInput || inviteEmail}</strong>. Share the link below with the player so they can join the league:
+                                            Invite added for <strong>{popUpNameInput || inviteEmail}</strong>. Share the link below with the player so they can join the league, or it should appear in their pending requests once they signup/login:
                                         </Typography>
                                         <TextField
                                             fullWidth
@@ -1146,9 +1191,6 @@ export default function NewLeague( userData ) {
                                                 )
                                             }}
                                         />
-                                        <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-                                            Instructions: copy the link and send it to the invitee via your preferred method (email, SMS, chat). When they open the link they can accept the invitation and join the league.
-                                        </Typography>
                                     </Box>
                                 );
                                 setInviteProcessed(true);
@@ -1466,12 +1508,7 @@ export default function NewLeague( userData ) {
                         }
                     } catch (err) {
                         console.error('Error performing action:', err);
-                        try {
-                            const { default: formatError } = await import('@/helpers/formatError');
-                            setPopUpError(formatError(err));
-                        } catch (e) {
-                            setPopUpError(String(err) || 'An error occurred');
-                        }
+                        setPopUpError('An error occurred');
                     } finally {
                         setConfirmLoading(false);
                     }

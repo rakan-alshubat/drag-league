@@ -8,7 +8,6 @@ import { getUsers, getLeague, playersByLeagueId} from "@/graphql/queries";
 import { createPlayer, updateLeague, updateUsers } from "@/graphql/mutations";
 import LoadingWheel from "@/files/LoadingWheel";
 import ErrorPopup from "@/files/ErrorPopUp";
-import formatError from '@/helpers/formatError';
 import PopUp from "@/files/PopUp";
 import { Box, Typography, TextField } from '@mui/material';
 import { useEffect, useState, useRef } from "react";
@@ -141,7 +140,7 @@ export default function League(){
                         if (error.graphQLErrors) console.error('graphQLErrors:', error.graphQLErrors);
                         if (error.networkError) console.error('networkError:', error.networkError);
 
-                        setErrorMessage(formatError(error) || 'Failed to load league.');
+                        setErrorMessage('Failed to load league.');
                         setErrorPopup(true);
                     } finally {
                         setLoading(false);
@@ -179,11 +178,29 @@ export default function League(){
         try {
             setLoading(true);
             const userEmail = userData?.id?.toLowerCase();
-            const userName = userData?.name || 'Player';
+
+            // Prefer the name supplied in the league's pending entry (admin-provided)
+            let userName = userData?.name || 'Player';
+            try {
+                const pending = Array.isArray(leagueData.lgPendingPlayers) ? leagueData.lgPendingPlayers : [];
+                for (const raw of pending) {
+                    if (!raw) continue;
+                    const parts = String(raw || '').split('|').map(s => s.trim()).filter(Boolean);
+                    // expected format: [type, email, name]
+                    const emailPart = parts[1] ? String(parts[1]).toLowerCase() : '';
+                    const namePart = parts[2] ? parts[2] : '';
+                    if (emailPart && emailPart === userEmail && namePart) {
+                        userName = namePart;
+                        break;
+                    }
+                }
+            } catch (e) {
+                // ignore and fall back to userData.name
+            }
 
             // Remove from pending players list
             const updatedPending = (leagueData.lgPendingPlayers || []).filter(p => {
-                const pl = p.split('|').map(s => s.trim()).filter(Boolean);
+                const pl = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
                 return pl[1]?.toLowerCase() !== userEmail;
             });
 
@@ -238,7 +255,7 @@ export default function League(){
             window.location.reload();
         } catch (error) {
             console.error('Error accepting invitation:', error);
-            setErrorMessage(formatError(error) || 'Failed to accept invitation.');
+            setErrorMessage('Failed to accept invitation.');
             setErrorPopup(true);
             setLoading(false);
         }
@@ -289,7 +306,7 @@ export default function League(){
             router.push('/Player');
         } catch (error) {
             console.error('Error declining invitation:', error);
-            setErrorMessage(formatError(error) || 'Failed to decline invitation.');
+            setErrorMessage('Failed to decline invitation.');
             setErrorPopup(true);
             setLoading(false);
         }
@@ -669,11 +686,25 @@ export default function League(){
 
     if(!leagueNotStarted){
         return (
-            <Leagues userData={userData} leagueData={leagueData} playersData={playersData}  />
+            <>
+                <NextSeo
+                    title={leagueData?.lgName || 'League'}
+                    description={leagueData?.lgDescription || 'League details, players, and standings on Drag League.'}
+                    canonical={typeof window !== 'undefined' && window.location ? window.location.href : `https://dr91fo3klsf8b.amplifyapp.com/League/${id}`}
+                />
+                <Leagues userData={userData} leagueData={leagueData} playersData={playersData}  />
+            </>
         )
     }else{
         return (
-            <NewLeague userData={userData} leagueData={leagueData} playersData={playersData} />
+            <>
+                <NextSeo
+                    title={leagueData?.lgName || 'League'}
+                    description={leagueData?.lgDescription || 'League details, players, and standings on Drag League.'}
+                    canonical={typeof window !== 'undefined' && window.location ? window.location.href : `https://dr91fo3klsf8b.amplifyapp.com/League/${id}`}
+                />
+                <NewLeague userData={userData} leagueData={leagueData} playersData={playersData} />
+            </>
         )
     }
 }

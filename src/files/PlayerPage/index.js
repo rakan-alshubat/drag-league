@@ -2,14 +2,14 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from "next/router";
 import { getCurrentUser, signOut } from "aws-amplify/auth";
 import LoadingWheel from "@/files/LoadingWheel";
+import Countdown from '@/files/Countdown';
 import parseToArray from '@/helpers/parseToArray';
 import { generateClient } from 'aws-amplify/api'
 import { getUsers, getLeague, listLeagues } from "@/graphql/queries";
 import { createUsers, updateUsers, deleteUsers } from '@/graphql/mutations';
 import ErrorPopup from "../ErrorPopUp";
-import formatError from '@/helpers/formatError';
 import { onCreateUsers, onUpdateUsers, onDeleteUsers, onUpdateLeague } from '@/graphql/subscriptions';
-import { Box, Typography, Button, Tabs, Tab, TextField, Stack, List, ListItemButton, ListItemText, CircularProgress } from '@mui/material';
+import { Box, Typography, Button, Tabs, Tab, TextField, Stack, List, ListItemButton, ListItemText, CircularProgress, Chip } from '@mui/material';
 import {
     StyledDialog as PopupDialog,
     StyledDialogTitle,
@@ -91,7 +91,7 @@ export default function PlayerPage() {
 
                     } catch (error){
                         console.error('Error with user data:', error);
-                        setErrorMessage(formatError(error) || 'Error loading user data.');
+                        setErrorMessage('Error loading user data.');
                         setErrorPopup(true);
                     } finally {
                         setLoading(false)
@@ -171,14 +171,14 @@ export default function PlayerPage() {
         setSearchLoading(true);
         const timer = setTimeout(async () => {
             try {
-                const filter = {
-                    lgPublic: { eq: true },
-                    lgName: { contains: searchName }
-                };
-                const res = await client.graphql({ query: listLeagues, variables: { filter, limit: 10 } });
+                // Fetch public leagues and apply a case-insensitive filter client-side
+                const filter = { lgPublic: { eq: true } };
+                const res = await client.graphql({ query: listLeagues, variables: { filter, limit: 100 } });
                 const items = res?.data?.listLeagues?.items || [];
                 if (!active) return;
-                setSearchResults(items.slice(0, 5));
+                const needle = String(searchName || '').toLowerCase();
+                const matched = items.filter(i => (String(i.lgName || i.name || '')).toLowerCase().includes(needle));
+                setSearchResults(matched.slice(0, 5));
             } catch (err) {
                 console.error('League search error', err);
                 if (active) setSearchResults([]);
@@ -269,13 +269,21 @@ export default function PlayerPage() {
                     const league = r.data.getLeague;
                     if (league) {
                         const isAdmin = Array.isArray(league.lgAdmin) && league.lgAdmin.map(a => String(a||'').toLowerCase()).includes((userID || '').toLowerCase());
-                        results.push({ id: entry.id, name: league.lgName || entry.name, date: league.createdAt || entry.date, isAdmin });
+                        results.push({
+                            id: entry.id,
+                            name: league.lgName || entry.name,
+                            date: league.createdAt || entry.date,
+                            isAdmin,
+                            finished: league.lgFinished === 'finished',
+                            started: league.lgFinished !== 'not started',
+                            rankingDeadline: league.lgRankingDeadline || null
+                        });
                     } else {
-                        results.push({ id: entry.id, name: entry.name, date: entry.date, isAdmin: false });
+                        results.push({ id: entry.id, name: entry.name, date: entry.date, isAdmin: false, finished: false, started: false, rankingDeadline: null });
                     }
                 } catch (err) {
                     console.error('Error fetching league meta:', err);
-                    setErrorMessage(formatError(err) || 'Failed to fetch league meta.');
+                    setErrorMessage('Failed to fetch league meta.');
                     setErrorPopup(true);
                     results.push({ id: entry.id, name: entry.name, date: entry.date, isAdmin: false });
                 }
@@ -294,7 +302,7 @@ export default function PlayerPage() {
                     const parsed = sortedLeagues(leagues || []);
                     const ids = parsed.map(p => p.id);
                     if (ids.includes(updated.id)) {
-                        setLeaguesWithMeta(prev => prev.map(item => item.id === updated.id ? { ...item, name: updated.lgName || item.name } : item));
+                        setLeaguesWithMeta(prev => prev.map(item => item.id === updated.id ? { ...item, name: updated.lgName || item.name, finished: updated.lgFinished === 'finished', started: updated.lgFinished !== 'not started', rankingDeadline: updated.lgRankingDeadline || null } : item));
                     }
 
                     // update pending names too in case a pending league changed
@@ -317,7 +325,7 @@ export default function PlayerPage() {
             router.push('/')
         } catch (error) {
             console.error('Could not sign out', error)
-            setErrorMessage(formatError(error) || 'Could not sign out.');
+            setErrorMessage('Could not sign out.');
             setErrorPopup(true);
         }
     }
@@ -331,7 +339,7 @@ export default function PlayerPage() {
             setName(nameInput || '');
         } catch (err) {
             console.error('Save settings error', err);
-            setErrorMessage(formatError(err) || 'Failed to save settings.');
+            setErrorMessage('Failed to save settings.');
             setErrorPopup(true);
         } finally {
             setSaving(false);
@@ -348,7 +356,7 @@ export default function PlayerPage() {
             router.push('/SignIn');
         } catch (err) {
             console.error('Delete account error', err);
-            setErrorMessage(formatError(err) || 'Failed to delete account.');
+            setErrorMessage('Failed to delete account.');
             setErrorPopup(true);
         } finally {
             setDeleting(false);
@@ -390,6 +398,12 @@ export default function PlayerPage() {
                                                 <Box component="span" sx={{ ml: 1, px: '6px', py: '2px', borderRadius: '12px', fontSize: '0.75rem', background: 'rgba(155,48,255,0.12)', color: '#9B30FF', fontWeight: 700, textShadow: '0 1px 0 rgba(0,0,0,0.1)', WebkitTextStroke: '0.35px rgba(0,0,0,0.6)' }}>
                                                     Admin
                                                 </Box>
+                                            )}
+                                            {league.finished && (
+                                                <Chip label="Finished" size="small" sx={{ ml: 1, background: 'linear-gradient(135deg,#9B30FF 0%, #6A0DAD 100%)', color: 'white', fontWeight: 700 }} />
+                                            )}
+                                            {!league.started && (
+                                                <Chip label="Not started" size="small" sx={{ ml: 1, background: 'linear-gradient(135deg,#FFC107 0%, #FF9800 100%)', color: '#333', fontWeight: 700 }} />
                                             )}
                                         </Box>
                                     </LeagueLink>

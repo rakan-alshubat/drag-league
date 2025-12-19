@@ -149,6 +149,10 @@ export const faqData = [
             {
                 question: "How do I submit weekly results as an admin?",
                 answer: "After each episode airs, use the Submissions popup to enter results. Add the challenge winner, lip sync winner, and eliminated queen(s). For ties (double wins/eliminations), you can enter multiple queens. Scores update automatically for all players once you submit."
+            },
+            {
+                question: "Cam I run a league without playing myself?",
+                answer: "Yes! As the league admin, you can choose not to participate as a player. Simply create the league and manage it without submitting any rankings or predictions yourself."
             }
         ]
     },
