@@ -3,7 +3,7 @@ import { generateClient } from 'aws-amplify/api'
 import { useRouter } from "next/router";
 import { getUsers} from "@/graphql/queries";
 import Link from "next/link";
-import { createLeague, updateUsers, createPlayer, deleteLeague } from '@/graphql/mutations';
+import { createLeague, updateLeague, updateUsers, createPlayer, deleteLeague } from '@/graphql/mutations';
 import LoadingWheel from "@/files/LoadingWheel";
 import { filterPipeCharacter } from "@/helpers/filterPipeChar";
 import { FormContainer,
@@ -27,12 +27,12 @@ import { FormContainer,
     DescriptionText,
     TitleRow,
     ErrorAlert} from "./CreationPage.styles";
-import { MenuItem } from "@mui/material";
+import { MenuItem, Alert } from "@mui/material";
 import { useState, useEffect} from "react";
 import ErrorPopup from "../ErrorPopUp";
 
 
-export default function CreationPage(){
+export default function CreationPage({ editMode = false, leagueData = null }){
     const [queensNumber, setQueensNumber] = useState('');
     const [pointValue, setPointValue] = useState('');
     const [queenNames, setQueenNames] = useState({});
@@ -122,6 +122,55 @@ export default function CreationPage(){
             });
     }, []);
 
+    // Prefill form when in edit mode
+    useEffect(() => {
+        if (!editMode || !leagueData) return;
+        try {
+            setLeagueName(leagueData.lgName || '');
+            setLeagueDescription(leagueData.lgDescription || '');
+            setPublicLeague(Boolean(leagueData.lgPublic));
+            setPointValue(Number(leagueData.lgChallengePoints) || 0);
+            setLipSyncAssassin(Boolean(leagueData.lgLipSyncPoints && leagueData.lgLipSyncPoints > 0));
+            setLipSyncPoints(Number(leagueData.lgLipSyncPoints) || '');
+            // swap stored as "type|points" or empty
+            if (leagueData.lgSwap) {
+                const parts = String(leagueData.lgSwap || '').split('|').map(s => s.trim());
+                setSwap(Boolean(parts[0]));
+                setSwapType(parts[0] || '');
+                setSwapPoints(parts[1] || '');
+            }
+            // bonus categories
+            if (Array.isArray(leagueData.lgBonusPoints) && leagueData.lgBonusPoints.length > 0) {
+                setBonusPoints(true);
+                setBonusCategories(leagueData.lgBonusPoints.length);
+                const parsed = {};
+                leagueData.lgBonusPoints.forEach((b, i) => {
+                    const p = String(b || '').split('|').map(s => s.trim());
+                    parsed[i] = { name: p[0] || '', points: p[1] || '', type: p[2] || '' };
+                });
+                setCategoryData(parsed);
+            }
+            // queens
+            const q = Array.isArray(leagueData.lgQueenNames) ? leagueData.lgQueenNames : [];
+            setQueensNumber(q.length);
+            const qObj = {};
+            q.forEach((name, idx) => { qObj[idx] = name; });
+            setQueenNames(qObj);
+
+            // deadlines: convert ISO to local datetime-local string
+            const toLocal = (iso) => {
+                if (!iso) return '';
+                const d = new Date(iso);
+                const tzOffset = d.getTimezoneOffset();
+                return new Date(d.getTime() - tzOffset * 60000).toISOString().slice(0,16);
+            }
+            setDeadline(leagueData.lgDeadline ? toLocal(leagueData.lgDeadline) : '');
+            setRankingDeadline(leagueData.lgRankingDeadline ? toLocal(leagueData.lgRankingDeadline) : '');
+        } catch (e) {
+            console.warn('Failed to prefill creation form', e);
+        }
+    }, [editMode, leagueData]);
+
     const handleQueenNameChange = (index, value) => {
         setQueenNames(prev => ({
             ...prev,
@@ -162,7 +211,8 @@ export default function CreationPage(){
             setNameError(true);
             hasError = true;
         }
-        if (String(displayName || '').trim() === '') {
+        // displayName is required for creating a league, but not when editing
+        if (!editMode && String(displayName || '').trim() === '') {
             setPlayerNameError(true);
             hasError = true;
         }
@@ -242,13 +292,15 @@ export default function CreationPage(){
             })
             .filter(Boolean);
 
+        const historyEntry = new Date().toISOString() + (editMode ? ('. League updated by ' + (displayName || adminEmail)) : ('. League created by ' + displayName));
+
         const league = {
             lgName: leagueName,
             lgDescription: leagueDescription || '',
             lgAdmin: [adminEmail],
             lgPendingPlayers: [],
             lgFollowers: [],
-            lgHistory: [new Date().toISOString() + '. League created by ' + displayName],
+            lgHistory: editMode ? ([...(leagueData?.lgHistory || []), historyEntry]) : [historyEntry],
             lgQueenNames: queenArray,
             lgPublic: publicLeague,
             lgFullyPrivate: !publicLeague,
@@ -274,6 +326,22 @@ export default function CreationPage(){
             return;
         }
 
+        // If editing, call updateLeague
+        if (editMode && leagueData && leagueData.id) {
+            try {
+                const updateInput = { id: leagueData.id, ...input };
+                await client.graphql({ query: updateLeague, variables: { input: updateInput } });
+                router.push('/League/' + leagueData.id);
+                return;
+            } catch (err) {
+                console.error('Error updating league:', err);
+                setErrorMessage('Failed to update league.');
+                setErrorPopup(true);
+                return;
+            }
+        }
+
+        // create new league (original flow)
         let createdLeagueId = null;
         const prevLeaguesList = Array.isArray(leaguesList) ? [...leaguesList] : [];
 
@@ -334,7 +402,7 @@ export default function CreationPage(){
 
     return(
         <FormContainer>
-            <CreationTitleBox>Create New League</CreationTitleBox>
+            <CreationTitleBox>{editMode ? 'Edit League' : 'Create New League'}</CreationTitleBox>
 
             <DescriptionBox>
                 <DescriptionText>
@@ -357,34 +425,44 @@ export default function CreationPage(){
                         )}
                     </TitleRow>
                     <ExplanationText>Give your league a fun name/title. This will be at the top of the league page.</ExplanationText>
-                    <StyledTextField placeholder="League Name" onChange={(e) => {
-                        const filtered = filterPipeCharacter(e.target.value);
-                        setLeagueName(filtered);
-                        if(filtered.trim() !== ''){
-                            setNameError(false);
-                        }
-                    }} />
+                    <StyledTextField
+                        placeholder="League Name"
+                        value={leagueName}
+                        onChange={(e) => {
+                            const filtered = filterPipeCharacter(e.target.value);
+                            setLeagueName(filtered);
+                            if(filtered.trim() !== ''){
+                                setNameError(false);
+                            }
+                        }}
+                    />
                 </FormSection>
             </SectionWrapper>
 
-            <SectionWrapper>
-                <FormSection>
-                    <TitleRow>
-                        <SectionTitle>Your Display Name</SectionTitle>
-                        {playerNameError && (
-                            <ErrorAlert severity="error">Missing your name</ErrorAlert>
-                        )}
-                    </TitleRow>
-                    <ExplanationText>This is YOUR name that you will use for this league and how people will know who you are in the ranking. You can use different display names for different leagues.</ExplanationText>
-                    <StyledTextField placeholder="e.g. Sam, Hannah, MM flip it around? WW!!! Anything!" onChange={(e) => {
-                        const filtered = filterPipeCharacter(e.target.value);
-                        setDisplayName(filtered);
-                        if(filtered.trim() !== ''){
-                            setPlayerNameError(false);
-                        }
-                    }} />
-                </FormSection>
-            </SectionWrapper>
+            {!editMode && (
+                <SectionWrapper>
+                    <FormSection>
+                        <TitleRow>
+                            <SectionTitle>Your Display Name</SectionTitle>
+                            {playerNameError && (
+                                <ErrorAlert severity="error">Missing your name</ErrorAlert>
+                            )}
+                        </TitleRow>
+                        <ExplanationText>This is YOUR name that you will use for this league and how people will know who you are in the ranking. You can use different display names for different leagues.</ExplanationText>
+                        <StyledTextField
+                            placeholder="e.g. Sam, Hannah, MM flip it around? WW!!! Anything!"
+                            value={displayName}
+                            onChange={(e) => {
+                                const filtered = filterPipeCharacter(e.target.value);
+                                setDisplayName(filtered);
+                                if(filtered.trim() !== ''){
+                                    setPlayerNameError(false);
+                                }
+                            }}
+                        />
+                    </FormSection>
+                </SectionWrapper>
+            )}
 
             <SectionWrapper>
 
@@ -572,15 +650,14 @@ export default function CreationPage(){
                 <TitleRow>
                     <InputGroupWithCheckbox>
                         <CheckboxLabel
-                            control={<StyledCheckbox />}
-                            label=""
-                            onChange={(e) => {
+                            control={<StyledCheckbox checked={lipSyncAssassin} onChange={(e) => {
                                 setLipSyncAssassin(e.target.checked);
                                 if (!e.target.checked) {
                                     setLipSyncPoints('');
                                     setLipSyncAssassinError(false);
                                 }
-                            }}
+                            }} />}
+                            label=""
                         />
                         <SectionTitle>Lip Sync Assassin (optional)</SectionTitle>
                         {lipSyncAssassin && (
@@ -619,9 +696,7 @@ export default function CreationPage(){
                 <TitleRow>
                     <InputGroupWithCheckbox>
                         <CheckboxLabel
-                            control={<StyledCheckbox />}
-                            label=""
-                            onChange={(e) => {
+                            control={<StyledCheckbox checked={swap} onChange={(e) => {
                                 const checked = e.target.checked;
                                 setSwap(checked);
                                 if (!checked) {
@@ -629,7 +704,8 @@ export default function CreationPage(){
                                     setSwapPoints('');
                                     setSwapError(false);
                                 }
-                            }}
+                            }} />}
+                            label=""
                         />
                         <SectionTitle>Swap (optional)</SectionTitle>
                     </InputGroupWithCheckbox>
@@ -691,9 +767,7 @@ export default function CreationPage(){
                 <TitleRow>
                     <InputGroupWithCheckbox>
                         <CheckboxLabel
-                            control={<StyledCheckbox />}
-                            label=""
-                            onChange={(e) => {
+                            control={<StyledCheckbox checked={bonusPoints} onChange={(e) => {
                                 setBonusPoints(e.target.checked);
                                 if (!e.target.checked) {
                                     setBonusCategories('');
@@ -701,7 +775,8 @@ export default function CreationPage(){
                                     setCategoryNumberError(false);
                                     setCategoryTypeError(false);
                                 }
-                            }}
+                            }} />}
+                            label=""
                         />
                         <SectionTitle>Bonus Points (optional)</SectionTitle>
                     </InputGroupWithCheckbox>
@@ -801,10 +876,21 @@ export default function CreationPage(){
                     </BonusPointContainer>
                 )}
             </SectionWrapper>
+            {editMode && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                    You are editing an existing league — If submissions have been made, make sure the players edit their rankings as some things might have changed. Proceed with caution.
+                </Alert>
+            )}
             <SubmitContainer>
                 <CancelButton
                     variant="outlined"
-                    onClick={() => router.push('/Player')}
+                    onClick={() => {
+                        if (editMode && leagueData && leagueData.id) {
+                            router.push('/League/' + leagueData.id);
+                        } else {
+                            router.push('/Player');
+                        }
+                    }}
                     type="button"
                 >
                     Cancel
@@ -815,7 +901,7 @@ export default function CreationPage(){
                     onClick={handleSubmitChange}
                     onChange={handleSubmitChange} // included per request (buttons also accept onChange)
                 >
-                    Create League
+                    {editMode ? 'Save Changes' : 'Create League'}
                 </SubmitButton>
             </SubmitContainer>
             <ErrorPopup
