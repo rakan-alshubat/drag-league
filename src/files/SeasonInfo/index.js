@@ -98,7 +98,7 @@ export default function SeasonInfo(props) {
                                                 sx={{ 
                                                     fontWeight: 500,
                                                     fontSize: '1rem',
-                                                    color: item.isTie ? '#FF1493' : 'inherit'
+                                                    color:'inherit'
                                                 }}
                                             >
                                                 {item.queens.length === 1 

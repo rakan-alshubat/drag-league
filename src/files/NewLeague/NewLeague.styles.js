@@ -409,12 +409,12 @@ export const TableRowCurrent = styled(Box)(({ theme, isAdmin }) => ({
         borderRadius: theme.spacing(1),
         background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(250, 245, 255, 0.6) 100%)',
         boxShadow: '0 6px 18px rgba(0,0,0,0.03)',
-        ...(isAdmin && {
-            '& > *:nth-of-type(1)': { gridColumn: '1 / 2', gridRow: '1', justifySelf: 'start', alignSelf: 'center' },
-            '& > *:nth-of-type(2)': { gridColumn: '2 / 3', gridRow: '1', justifySelf: 'end', alignSelf: 'center' },
-            '& > *:nth-of-type(3)': { gridColumn: '1 / 2', gridRow: '2', justifySelf: 'start', alignSelf: 'center' },
-            '& > *:nth-of-type(4)': { gridColumn: '2 / 3', gridRow: '2', justifySelf: 'end', alignSelf: 'center' },
-        }),
+        // Place children explicitly so each cell (name, role, rankings, actions)
+        // appears in a predictable corner on mobile regardless of admin flag
+        '& > *:nth-of-type(1)': { gridColumn: '1 / 2', gridRow: '1', justifySelf: 'start', alignSelf: 'center' },
+        '& > *:nth-of-type(2)': { gridColumn: '2 / 3', gridRow: '1', justifySelf: 'end', alignSelf: 'center' },
+        '& > *:nth-of-type(3)': { gridColumn: '1 / 2', gridRow: '2', justifySelf: 'start', alignSelf: 'center' },
+        '& > *:nth-of-type(4)': { gridColumn: '2 / 3', gridRow: '2', justifySelf: 'end', alignSelf: 'center' },
     },
 }));
 

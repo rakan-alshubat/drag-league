@@ -429,7 +429,7 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
 
                                         {/* Weekly predictions list */}
                                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                            {item.plWinners.map((prediction, i) => {
+                                            {item.plWinners.reverse().map((prediction, i) => {
                                                 const challengeWinners = leagueData?.lgChallengeWinners || [];
                                                 const actualWinner = challengeWinners[i] || null;
                                             

@@ -503,14 +503,18 @@ export default function SubmissionsPopup({
             }
 
             try {
-                // Get all rankings from finalRankingRows - each row can have multiple values (ties)
-                const rankings = finalRankingRows
-                    .flatMap(r => r.values || [])
-                    .filter(Boolean);
-                
-                // Add rankings to lgEliminatedPlayers in reverse order (last to first)
+                // Get rankings per row; each row can contain multiple values (ties).
+                // Store ties as a single pipe-separated string (same format as challenge/lipSync winners).
                 const currentEliminated = leagueData.lgEliminatedPlayers || [];
-                const reversedRankings = [...rankings].reverse();
+                const perRow = finalRankingRows
+                    .map(r => (r.values || []).filter(Boolean))
+                    .filter(arr => Array.isArray(arr) && arr.length > 0);
+
+                // Convert each placement (possibly a tie) into a pipe-separated string
+                const rankingsPerRow = perRow.map(arr => arr.join('|'));
+
+                // Add rankings to lgEliminatedPlayers in reverse order (last to first)
+                const reversedRankings = [...rankingsPerRow].reverse();
                 const updatedEliminated = [...currentEliminated, ...reversedRankings];
                 
                 // Process lgSubmissions and map to player plWinners
@@ -547,9 +551,9 @@ export default function SubmissionsPopup({
                     await Promise.all(updatePromises);
                 }
                 
-                // Add 1st place to lgChallengeWinners
+                // Add 1st place to lgChallengeWinners (handle ties by joining with pipes)
                 const currentChallengeWinners = leagueData.lgChallengeWinners || [];
-                const firstPlace = rankings.length > 0 ? rankings[0] : "";
+                const firstPlace = perRow.length > 0 ? perRow[0].join('|') : "";
                 const updatedChallengeWinners = [...currentChallengeWinners, firstPlace];
                 
                 // Process bonus category results and update lgBonusPoints
@@ -574,7 +578,8 @@ export default function SubmissionsPopup({
                 const bonusHistoryPart = bonusCategoryRows.filter(r => r.values && r.values.length > 0).length > 0
                     ? '. Bonus results: ' + bonusCategoryRows.filter(r => r.values && r.values.length > 0).map(r => `${r.name}: ${r.values.join(', ')}`).join(', ')
                     : '';
-                const historyEntry = new Date().toISOString() + '. Final episode results submitted. Winner: ' + firstPlace + bonusHistoryPart;
+                const firstPlaceDisplay = perRow.length > 0 ? perRow[0].join(' & ') : '';
+                const historyEntry = new Date().toISOString() + '. Final episode results submitted. Winner: ' + firstPlaceDisplay + bonusHistoryPart;
                 
                 // Update league: set deadlines to null, lgFinished to 'finished'
                 const leagueInput = {
@@ -820,7 +825,7 @@ export default function SubmissionsPopup({
                                             label="Queen #1"
                                             onChange={(e) => setFirstSwap(e.target.value)}
                                         >
-                                            <MenuItem value="" disabled>-- Queen #1 --</MenuItem>
+                                            <MenuItem value="">None</MenuItem>
                                             {(optionsList || []).map((opt, i) => <MenuItem key={`first-${i}-${String(opt)}`} value={opt}>{opt}</MenuItem>)}
                                         </Select>
                                     </FormControl>
@@ -833,7 +838,7 @@ export default function SubmissionsPopup({
                                             label="Queen #2"
                                             onChange={(e) => setSecondSwap(e.target.value)}
                                         >
-                                            <MenuItem value="" disabled>-- Queen #2 --</MenuItem>
+                                            <MenuItem value="">None</MenuItem>
                                             {(optionsList || []).map((opt, i) => <MenuItem key={`second-${i}-${String(opt)}`} value={opt} disabled={opt === firstSwap}>{opt}</MenuItem>)}
                                         </Select>
                                     </FormControl>
