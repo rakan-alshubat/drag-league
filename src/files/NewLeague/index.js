@@ -521,15 +521,29 @@ export default function NewLeague( userData ) {
                 </ActionRow>
             )}
 
-            {isAdmin && (
-                <ActionRow>
-                    <SecondaryButton
-                        startIcon={<EmojiEventsIcon />}
-                        onClick={() => handleStartLeague()}
-                    >
-                        Start League
-                    </SecondaryButton>
-                </ActionRow>
+            {isAdmin && League?.lgFinished === 'not started' && (
+                <>
+                    <ActionRow>
+                        <SecondaryButton
+                            startIcon={<EditIcon />}
+                            onClick={() => router.push(`/CreateLeague?edit=${League.id}`)}
+                        >
+                            Edit
+                        </SecondaryButton>
+                        <SecondaryButton
+                            startIcon={<EmojiEventsIcon />}
+                            onClick={() => handleStartLeague()}
+                        >
+                            Start League
+                        </SecondaryButton>
+                    </ActionRow>
+
+                    {(League?.lgHistory || []).some(h => String(h).includes('League updated by')) ? (
+                        <Box sx={{ mt: 1 }}>
+                            <Alert severity="warning">League rules were updated by an admin — please review changes and check your submissions to make sure all the info is still there.</Alert>
+                        </Box>
+                    ) : null}
+                </>
             )}
 
             <CardSection elevation={0}>
@@ -670,12 +684,31 @@ export default function NewLeague( userData ) {
                                             );
                                         })()
                                     ) : (
-                                        <StatusChip
-                                            label="Submitted"
-                                            statuscolor="submitted"
-                                            size="small"
-                                            icon={<CheckIcon />}
-                                        />
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <StatusChip
+                                                label="Submitted"
+                                                statuscolor="submitted"
+                                                size="small"
+                                                icon={<CheckIcon />}
+                                            />
+                                            {(() => {
+                                                const loggedIn = userEmail ? String(userEmail).toLowerCase().trim() : '';
+                                                const playerEmail = player.email || '';
+                                                const canEdit = (playerEmail && loggedIn && playerEmail === loggedIn && League?.lgFinished === 'not started');
+                                                if (!canEdit) return null;
+                                                return (
+                                                    <Tooltip title="Edit Rankings">
+                                                        <IconButton
+                                                            size="small"
+                                                            sx={{ color: '#1976d2' }}
+                                                            onClick={() => router.push(`/Rank/${League.id}?edit=true`)}
+                                                        >
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                );
+                                            })()}
+                                        </Box>
                                     )}
                                 </TableCell>
                                 {isAdmin && (
