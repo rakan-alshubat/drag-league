@@ -1,0 +1,398 @@
+// Mock data for demo league showcase
+
+export const demoLeagueData = {
+    id: "demo-league-001",
+    lgName: "The season 16 girlies!",
+    lgDescription: "Lets predict some winners and have fun this year!",
+    lgAdmin: ["admin@demo.com"],
+    lgPendingPlayers: [],
+    lgFollowers: [],
+    lgHistory: [
+        "2024-01-01T12:00:00.000Z. League created by Rakan",
+        "2024-01-03T08:15:00.000Z. Admin added bonus category: Miss Congeniality (5 points)",
+        "2024-01-05T14:30:00.000Z. Wissam joined the league",
+        "2024-01-05T15:00:00.000Z. Hannah joined the league",
+        "2024-01-06T10:00:00.000Z. Roudell joined the league",
+        "2024-01-07T09:00:00.000Z. Weekly results: Challenge Winner: Sapphira Cristál, Lip Sync Winner: Dawn, Eliminated: Xunami Muse",
+        "2024-01-08T11:45:00.000Z. Alessandra used her swap to switch Nymphia Wind and Sapphira Cristál",
+        "2024-01-14T09:00:00.000Z. Weekly results: Challenge Winner: Plane Jane, Lip Sync Winner: Plane Jane, Eliminated: Q",
+        "2024-01-15T16:20:00.000Z. Nathan joined the league",
+        "2024-01-18T19:05:00.000Z. Admin edited league name from RuPaul's Drag Race Season 16 Fantasy League to RuPaul's Drag Race Fantasy League (Demo)",
+        "2024-01-21T09:00:00.000Z. Weekly results: Challenge Winner: Nymphia Wind, Lip Sync Winner: Plasma & Dawn, Eliminated: Dawn",
+        "2024-01-22T10:00:00.000Z. Justin joined the league",
+        "2024-01-25T14:00:00.000Z. Bonus results posted: Miss Congeniality winner: Mirage",
+        "2024-01-28T09:00:00.000Z. Weekly results: Challenge Winner: Morphine Love Dion, Lip Sync Winner: Plane Jane, Eliminated: Megami & Amanda Tori Meating",
+        "2024-02-02T12:00:00.000Z. Sam joined the league",
+        "2024-02-09T09:00:00.000Z. Weekly results: Challenge Winner: Mirage, Lip Sync Winner: Plane Jane, Eliminated: Morphine Love Dion",
+    ],
+    lgQueenNames: [
+        "Nymphia Wind",
+        "Sapphira Cristál",
+        "Plane Jane",
+        "Morphine Love Dion",
+        "Dawn",
+        "Mhi'ya Iman Le'Paige",
+        "Plasma",
+        "Q",
+        "Xunami Muse",
+        "Megami",
+        "Amanda Tori Meating",
+        "Hershii LiqCour-Jeté",
+        "Geneva Karr",
+        "Mirage",
+    ],
+    lgPublic: true,
+    lgFullyPrivate: false,
+    lgChallengePoints: 6,
+    lgLipSyncPoints: 6,
+    lgBonusPoints: [
+        "Snatch Game Winner|4|Queens",
+        "Episodes Without Elimination|3|Number",
+    ],
+    lgChallengeWinners: [
+        "Sapphira Cristál",
+        "Plane Jane",
+        "Nymphia Wind",
+        "Morphine Love Dion",
+        "Sapphira Cristál",
+        "Nymphia Wind|Sapphira Cristál",
+        "Plane Jane",
+        "Mirage",
+    ],
+    lgLipSyncWinners: [
+        "Dawn",
+        "Plane Jane",
+        "Plasma|Dawn",
+        "Morphine Love Dion",
+        "Nymphia Wind",
+        "Sapphira Cristál",
+        "Plane Jane",
+        "Plane Jane",
+    ],
+    lgEliminatedPlayers: [
+        "Xunami Muse",
+        "Q",
+        "Dawn",
+        "Megami|Amanda Tori Meating",
+        "Hershii LiqCour-Jeté",
+        "Geneva Karr",
+        "Morphine Love Dion",
+    ],
+    lgSwap: "1",
+    lgSubmissions: [],
+    lgDeadline: null, // No active deadline for demo
+    lgRankingDeadline: null,
+    lgFinished: "active",
+    createdAt: "2024-01-01T12:00:00.000Z",
+    updatedAt: "2024-01-21T09:00:00.000Z",
+    players: [], // Will be populated with demoPlayersData
+};
+
+export const demoPlayersData = [
+    {
+        id: "alice@demo.com",
+        leagueId: "demo-league-001",
+        plEmail: "alice@demo.com",
+        plName: "Rakan",
+        plStatus: "Admin",
+        plLipSyncAssassin: "Nymphia Wind",
+        plRankings: [
+            "Nymphia Wind",
+            "Sapphira Cristál",
+            "Plane Jane",
+            "Morphine Love Dion",
+            "Mhi'ya Iman Le'Paige",
+            "Plasma",
+            "Dawn",
+            "Q",
+            "Xunami Muse",
+            "Megami",
+            "Amanda Tori Meating",
+            "Hershii LiqCour-Jeté",
+            "Geneva Karr",
+            "Mirage",
+        ],
+        plWinners: [
+            "Sapphira Cristál", // Week 1 - Correct!
+            "Plane Jane",       // Week 2 - Correct!
+            "Nymphia Wind",     // Week 3 - Correct!
+            "Morphine Love Dion", // Week 4 - Correct!
+            "Plane Jane", // Week 5 - Correct!
+            "Nymphia Wind",     // Week 6 - Correct! (tie)
+            "Plane Jane",       // Week 7 - Correct!
+            "Mirage",           // Week 8
+        ],
+        plSwap: "Nymphia Wind|Sapphira Cristál",
+        plBonusPoints: [],
+        plBonuses: [
+            "Snatch Game Winner|Mirage",
+            "Episodes Without Elimination|1",
+        ],
+        createdAt: "2024-01-05T14:30:00.000Z",
+        updatedAt: "2024-01-21T09:00:00.000Z",
+    },
+    {
+        id: "bob@demo.com",
+        leagueId: "demo-league-001",
+        plEmail: "bob@demo.com",
+        plName: "Sam",
+        plStatus: "Player",
+        plLipSyncAssassin: "Plane Jane",
+        plRankings: [
+            "Sapphira Cristál",
+            "Nymphia Wind",
+            "Plane Jane",
+            "Plasma",
+            "Morphine Love Dion",
+            "Dawn",
+            "Mhi'ya Iman Le'Paige",
+            "Q",
+            "Amanda Tori Meating",
+            "Xunami Muse",
+            "Megami",
+            "Hershii LiqCour-Jeté",
+            "Geneva Karr",
+            "Mirage",
+        ],
+        plWinners: [
+            "Sapphira Cristál", // Week 1 - Correct!
+            "Nymphia Wind",     // Week 2 - Wrong
+            "Plasma",           // Week 3 - Wrong
+            "Morphine Love Dion", // Week 4 - Correct!
+            "Sapphira Cristál", // Week 5 - Correct!
+            "Sapphira Cristál", // Week 6 - Correct! (tie)
+            "Nymphia Wind",     // Week 7 - Wrong
+            "Plane Jane",       // Week 8
+        ],
+        plSwap: "Plasma|Dawn",
+        plBonusPoints: [],
+        plBonuses: [
+            "Snatch Game Winner|Plane Jane",
+            "Episodes Without Elimination|2",
+        ],
+        createdAt: "2024-01-05T15:00:00.000Z",
+        updatedAt: "2024-01-21T09:00:00.000Z",
+    },
+    {
+        id: "carol@demo.com",
+        leagueId: "demo-league-001",
+        plEmail: "carol@demo.com",
+        plName: "Roudell",
+        plStatus: "Player",
+        plLipSyncAssassin: "Morphine Love Dion",
+        plRankings: [
+            "Plane Jane",
+            "Morphine Love Dion",
+            "Nymphia Wind",
+            "Sapphira Cristál",
+            "Plasma",
+            "Mhi'ya Iman Le'Paige",
+            "Dawn",
+            "Xunami Muse",
+            "Q",
+            "Megami",
+            "Amanda Tori Meating",
+            "Geneva Karr",
+            "Hershii LiqCour-Jeté",
+            "Mirage",
+        ],
+        plWinners: [
+            "Plane Jane",       // Week 1 - Wrong
+            "Plane Jane",       // Week 2 - Correct!
+            "Nymphia Wind",     // Week 3 - Correct!
+            "Plane Jane",       // Week 4 - Wrong
+            "Nymphia Wind",     // Week 5 - Wrong
+            "Plane Jane",       // Week 6 - Wrong
+            "Plane Jane",       // Week 7 - Correct!
+            "Plane Jane",       // Week 8
+        ],
+        plSwap: "",
+        plBonusPoints: [],
+        plBonuses: [
+            "Snatch Game Winner|Sapphira Cristál",
+            "Episodes Without Elimination|1",
+        ],
+        createdAt: "2024-01-06T10:00:00.000Z",
+        updatedAt: "2024-01-21T09:00:00.000Z",
+    },
+    {
+        id: "david@demo.com",
+        leagueId: "demo-league-001",
+        plEmail: "david@demo.com",
+        plName: "Nathan",
+        plStatus: "Player",
+        plLipSyncAssassin: "Sapphira Cristál",
+        plRankings: [
+            "Morphine Love Dion",
+            "Nymphia Wind",
+            "Sapphira Cristál",
+            "Plasma",
+            "Plane Jane",
+            "Mhi'ya Iman Le'Paige",
+            "Dawn",
+            "Q",
+            "Xunami Muse",
+            "Amanda Tori Meating",
+            "Megami",
+            "Hershii LiqCour-Jeté",
+            "Geneva Karr",
+            "Mirage",
+        ],
+        plWinners: [
+            "Morphine Love Dion", // Week 1 - Wrong
+            "Nymphia Wind",       // Week 2 - Wrong
+            "Nymphia Wind",       // Week 3 - Correct!
+            "Morphine Love Dion", // Week 4 - Correct!
+            "Sapphira Cristál",   // Week 5 - Correct!
+            "Nymphia Wind",       // Week 6 - Correct! (tie)
+            "Morphine Love Dion", // Week 7 - Wrong
+            "Mirage",             // Week 8
+        ],
+        plSwap: "",
+        plBonusPoints: [],
+        plBonuses: [
+            "Snatch Game Winner|Nymphia Wind",
+            "Episodes Without Elimination|0",
+        ],
+        createdAt: "2024-01-06T11:00:00.000Z",
+        updatedAt: "2024-01-21T09:00:00.000Z",
+    },
+    {
+        id: "emma@demo.com",
+        leagueId: "demo-league-001",
+        plEmail: "emma@demo.com",
+        plName: "Justin",
+        plStatus: "Player",
+        plLipSyncAssassin: "Plasma",
+        plRankings: [
+            "Sapphira Cristál",
+            "Plane Jane",
+            "Nymphia Wind",
+            "Plasma",
+            "Morphine Love Dion",
+            "Dawn",
+            "Mhi'ya Iman Le'Paige",
+            "Q",
+            "Xunami Muse",
+            "Megami",
+            "Amanda Tori Meating",
+            "Hershii LiqCour-Jeté",
+            "Geneva Karr",
+            "Mirage",
+        ],
+        plWinners: [
+            "Sapphira Cristál",
+            "Plane Jane",
+            "Plasma",
+            "Morphine Love Dion",
+            "Sapphira Cristál",
+            "Nymphia Wind",
+            "Plane Jane",
+            "Plane Jane",
+        ],
+        plSwap: "",
+        plBonusPoints: [],
+        plBonuses: [
+            "Snatch Game Winner|Plane Jane",
+            "Episodes Without Elimination|3",
+        ],
+        createdAt: "2024-01-07T08:00:00.000Z",
+        updatedAt: "2024-01-21T09:00:00.000Z",
+    },
+    {
+        id: "frank@demo.com",
+        leagueId: "demo-league-001",
+        plEmail: "frank@demo.com",
+        plName: "Alessandra",
+        plStatus: "Admin",
+        plLipSyncAssassin: "Dawn",
+        plRankings: [
+            "Morphine Love Dion",
+            "Plasma",
+            "Nymphia Wind",
+            "Sapphira Cristál",
+            "Plane Jane",
+            "Mhi'ya Iman Le'Paige",
+            "Dawn",
+            "Q",
+            "Xunami Muse",
+            "Megami",
+            "Amanda Tori Meating",
+            "Hershii LiqCour-Jeté",
+            "Geneva Karr",
+            "Mirage",
+        ],
+        plWinners: [
+            "Morphine Love Dion",
+            "Plane Jane",
+            "Plasma",
+            "Morphine Love Dion",
+            "Sapphira Cristál",
+            "Nymphia Wind",
+            "Plane Jane",
+            "Plane Jane",
+        ],
+        plSwap: "",
+        plBonusPoints: [],
+        plBonuses: [
+            "Snatch Game Winner|Mirage",
+            "Episodes Without Elimination|1",
+        ],
+        createdAt: "2024-01-07T08:30:00.000Z",
+        updatedAt: "2024-01-21T09:00:00.000Z",
+    },
+    {
+        id: "grace@demo.com",
+        leagueId: "demo-league-001",
+        plEmail: "grace@demo.com",
+        plName: "Hannah",
+        plStatus: "Player",
+        plLipSyncAssassin: "Nymphia Wind",
+        plRankings: [
+            "Nymphia Wind",
+            "Sapphira Cristál",
+            "Plane Jane",
+            "Morphine Love Dion",
+            "Plasma",
+            "Mhi'ya Iman Le'Paige",
+            "Dawn",
+            "Q",
+            "Xunami Muse",
+            "Megami",
+            "Amanda Tori Meating",
+            "Hershii LiqCour-Jeté",
+            "Geneva Karr",
+            "Mirage",
+        ],
+        plWinners: [
+            "Sapphira Cristál",
+            "Plane Jane",
+            "Plasma",
+            "Morphine Love Dion",
+            "Nymphia Wind",
+            "Nymphia Wind",
+            "Plane Jane",
+            "Plane Jane",
+        ],
+        plSwap: "",
+        plBonusPoints: [],
+        plBonuses: [
+            "Snatch Game Winner|Sapphira Cristál",
+            "Episodes Without Elimination|2",
+        ],
+        createdAt: "2024-01-07T09:00:00.000Z",
+        updatedAt: "2024-01-21T09:00:00.000Z",
+    },
+];
+
+// Add players reference to league data
+demoLeagueData.players = demoPlayersData;
+
+export const demoUserData = {
+    id: "viewer@demo.com",
+    name: "Demo Viewer",
+    email: "viewer@demo.com",
+    leagues: [],
+    followedLeagues: [],
+    pendingLeagues: [],
+};

@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://dr91fo3klsf8b.amplifyapp.com
+
+# Sitemaps
+Sitemap: https://dr91fo3klsf8b.amplifyapp.com/sitemap.xml
