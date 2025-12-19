@@ -107,7 +107,8 @@ export default function LeagueSettings(props) {
             const updatedPending = (leagueData.lgPendingPlayers || []).filter(p => (p || '').toLowerCase() !== userData.id.toLowerCase());
             // update league pending and history
             const currentHistory = leagueData.lgHistory || [];
-            const historyEntry = new Date().toISOString() + '. ' + (userData.name || userData.id) + ' accepted invite';
+            const accepterName = userData?.name || 'A user';
+            const historyEntry = new Date().toISOString() + '. ' + accepterName + ' accepted invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
             // create player record
             await client.graphql({ query: createPlayer, variables: { input: { leagueId: leagueData.id, plEmail: userData.id, plName: userData.name || '', plStatus: 'Member' } } });
@@ -127,7 +128,8 @@ export default function LeagueSettings(props) {
             setConfirmLoading(true);
             const updatedPending = (leagueData.lgPendingPlayers || []).filter(p => (p || '').toLowerCase() !== userData.id.toLowerCase());
             const currentHistory = leagueData.lgHistory || [];
-            const historyEntry = new Date().toISOString() + '. ' + (userData.name || userData.id) + ' declined invite';
+            const declinerName = userData?.name || 'A user';
+            const historyEntry = new Date().toISOString() + '. ' + declinerName + ' declined invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
             window.location.reload();
         } catch (err) {

@@ -406,12 +406,26 @@ export default function NewLeague( userData ) {
         try {
             setConfirmLoading(true);
             const normalized = String(userEmail || '').toLowerCase().trim();
-            const updatedPending = (League.lgPendingPlayers || []).filter(p => {
+            // find pending entry name if available (pending format: type|email|name)
+            const pendingList = Array.isArray(League?.lgPendingPlayers) ? League.lgPendingPlayers : [];
+            let pendingName = '';
+            for (const raw of pendingList) {
+                if (!raw) continue;
+                const parts = String(raw || '').split('|').map(s => s.trim()).filter(Boolean);
+                const emailPart = parts[1] ? String(parts[1]).toLowerCase().trim() : String(raw || '').toLowerCase().trim();
+                if (emailPart === normalized) {
+                    pendingName = parts[2] || '';
+                    break;
+                }
+            }
+
+            const updatedPending = pendingList.filter(p => {
                 const pl = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
                 return pl[1]?.toLowerCase() !== normalized;
             });
 
-            const createPlayerResult = await client.graphql({ query: createPlayer, variables: { input: { leagueId: League.id, plEmail: normalized, plName: User?.name || '', plStatus: 'Player' } } });
+            const playerNameToUse = pendingName || User?.name || '';
+            const createPlayerResult = await client.graphql({ query: createPlayer, variables: { input: { leagueId: League.id, plEmail: normalized, plName: playerNameToUse, plStatus: 'Player' } } });
             try {
                 const userRes = await client.graphql({ query: getUsers, variables: { id: normalized } });
                 const userObj = userRes?.data?.getUsers;
@@ -431,7 +445,8 @@ export default function NewLeague( userData ) {
             }
 
             const currentHistory = League.lgHistory || [];
-            const historyEntry = new Date().toISOString() + '. ' + (User?.name || normalized) + ' accepted invite';
+            const accepterName = pendingName || User?.name || 'A user';
+            const historyEntry = new Date().toISOString() + '. ' + accepterName + ' accepted invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
             router.reload();
         } catch (err) {
@@ -451,7 +466,8 @@ export default function NewLeague( userData ) {
                 return pl[1]?.toLowerCase() !== normalized;
             });
             const currentHistory = League.lgHistory || [];
-            const historyEntry = new Date().toISOString() + '. ' + (User?.name || normalized) + ' declined invite';
+            const declinerName = User?.name || 'A user';
+            const historyEntry = new Date().toISOString() + '. ' + declinerName + ' declined invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
             router.reload();
         } catch (err) {
@@ -926,7 +942,7 @@ export default function NewLeague( userData ) {
 
                         if(popUpTitle === 'Start League?'){
                             const currentHistory = League.lgHistory || [];
-                            const adminName = (User && (User.name || User.id)) ? (User.name || User.id) : 'an admin';
+                            const adminName = (User && User.name) ? User.name : 'an admin';
                             const historyEntry = new Date().toISOString() + '. League manually started by ' + adminName;
 
                             try {
@@ -1220,7 +1236,7 @@ export default function NewLeague( userData ) {
 
                             updatedPending.push(`requested|${requestEmail}|${requestName}`);
                             const currentHistoryReq = League.lgHistory || [];
-                            const historyEntryReq = new Date().toISOString() + '. ' + requestName + ' (' + requestEmail + ') requested to join';
+                            const historyEntryReq = new Date().toISOString() + '. ' + requestName + ' requested to join';
 
                             await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistoryReq, historyEntryReq] } } });
 
