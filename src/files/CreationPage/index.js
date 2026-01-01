@@ -292,14 +292,14 @@ export default function CreationPage({ editMode = false, leagueData = null }){
             })
             .filter(Boolean);
 
-        const historyEntry = new Date().toISOString() + (editMode ? ('. League updated by ' + (displayName || adminEmail)) : ('. League created by ' + displayName));
+        const historyEntry = new Date().toISOString() + (editMode ? ('. League updated by ' + (displayName)) : ('. League created by ' + displayName));
 
         const league = {
             lgName: leagueName,
             lgDescription: leagueDescription || '',
             lgAdmin: [adminEmail],
-            lgPendingPlayers: [],
-            lgFollowers: [],
+            lgPendingPlayers: editMode ? undefined : [],
+            lgFollowers: editMode ? undefined : [],
             lgHistory: editMode ? ([...(leagueData?.lgHistory || []), historyEntry]) : [historyEntry],
             lgQueenNames: queenArray,
             lgPublic: publicLeague,
