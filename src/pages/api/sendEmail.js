@@ -57,10 +57,16 @@ export default async function handler(req, res) {
             name: fromName
         },
         subject: subject,
-        text: text || '',
-        html: html || '',
         replyTo: secretReplyToEmail || undefined,
     };
+
+    // Only include text/html if they have actual content
+    if (text && text.trim()) {
+        msg.text = text;
+    }
+    if (html && html.trim()) {
+        msg.html = html;
+    }
 
     try {
         
