@@ -1,9 +1,8 @@
 import sgMail from '@sendgrid/mail';
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 
-const client = new SecretsManagerClient({ region: "us-west-2" });
-
 async function getSecretValue(secretName) {
+    const client = new SecretsManagerClient({ region: "us-west-2" });
     try {
         const command = new GetSecretValueCommand({ SecretId: secretName });
         const response = await client.send(command);
@@ -15,6 +14,12 @@ async function getSecretValue(secretName) {
 }
 
 export default async function handler(req, res) {
+        console.log('=== HANDLER STARTED ===', {
+        method: req.method,
+        headers: req.headers,
+        bodyKeys: Object.keys(req.body || {})
+    });
+
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
     const { to, subject, html, text } = req.body || {};
