@@ -51,106 +51,220 @@ export default function League(){
 
     useEffect(() => { 
         if (!router.isReady) return;
-        getCurrentUser()
-            .then(user => {
-                async function getUserData() {
+        
+        // First, check if league is public using API key (unauthenticated)
+        async function checkLeagueAccess() {
+            try {
+                // Use API key to check league privacy without requiring authentication
+                const leagueCheckResult = await client.graphql({
+                    query: getLeague,
+                    variables: { id: id },
+                    authMode: 'apiKey'
+                });
+
+                const league = leagueCheckResult.data.getLeague;
+                if (!league) {
+                    setErrorMessage('League not found.');
+                    setErrorPopup(true);
+                    setLoading(false);
+                    return;
+                }
+
+                const leagueIsPublic = league.lgPublic === true;
+
+                // If league is private, require authentication
+                if (!leagueIsPublic) {
                     try {
-                        const userResults = await client.graphql({
-                            query: getUsers,
-                            variables: { id: user.signInDetails.loginId.toLowerCase() }
-                        })
-                        const leagueResults = await client.graphql({
-                            query: getLeague,
-                            variables: { id: id }
-                        })
-
-
-                        if(userResults.data.getUsers && leagueResults.data.getLeague) {
-                            setUserData(userResults.data.getUsers);
-                            setLeagueData(leagueResults.data.getLeague);
-                            const playersResults = await client.graphql({
-                                query: playersByLeagueId,
-                                variables: { leagueId: id }
-                            })
-                            const players = playersResults?.data?.playersByLeagueId?.items
-                            ?? playersResults?.data?.playersByLeagueId
-                            ?? [];
-                            setPlayersData(players);
-
-                            const league = leagueResults.data.getLeague;
-                            const userEmail = user.signInDetails.loginId.toLowerCase();
-                            
-                            // Check if league is private
-                            const leagueIsPrivate = !league.lgPublic;
-                            setIsPrivate(leagueIsPrivate);
-
-                            // Check if user is a player or admin in this league
-                            const userPlayer = players.find(p => p.plEmail === userEmail);
-                            const userIsAdmin = league.lgAdmin?.includes(userEmail);
-                            const isAuthorized = userIsAdmin || userPlayer;
-                            setIsPlayerOrAdmin(!!isAuthorized);
-
-                            // Determine pending type for the current user (invited vs requested)
-                            let pendingForUser = null;
-                            const pendingList = Array.isArray(league.lgPendingPlayers) ? league.lgPendingPlayers : [];
-                            for (const p of pendingList) {
-                                const parts = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
-                                // parts format: [type, email, name]
-                                if (parts[1] && parts[1].toLowerCase() === userEmail) {
-                                    const t = (parts[0] || '').toLowerCase();
-                                    pendingForUser = t === 'requested' ? 'requested' : 'invited';
-                                    break;
-                                }
-                                // fallback: plain email stored directly
-                                if (String(p).toLowerCase() === userEmail) {
-                                    pendingForUser = 'invited';
-                                    break;
-                                }
-                            }
-                            // If not found in league pending list, but user's pendingLeagues includes the league, treat as requested
-                            if (!pendingForUser && userResults.data.getUsers?.pendingLeagues?.includes(id)) {
-                                pendingForUser = 'requested';
-                            }
-
-                            setPendingType(pendingForUser);
-                            setIsInvited(pendingForUser === 'invited');
-
-                            // If private and user is not authorized
-                            if (leagueIsPrivate && !isAuthorized) {
-                                // Check if league has started
-                                if (league.lgFinished === 'not started') {
-                                    // Show request to join popup
-                                    setShowRequestPopup(true);
-                                } else {
-                                    // League already started, just redirect
-                                    setLoading(false);
-                                    return;
-                                }
-                            }
-
-                            if(league.lgFinished === 'not started'){
-                                setLeagueNotStarted(true);
-                            }
-                        }else{
-                            router.push('/SignIn')
-                        }
+                        const user = await getCurrentUser();
+                        await loadAuthenticatedData(user, league);
                     } catch (error) {
-                        console.error('Error fetching user data:', error);
-                        if (error.errors) console.error('errors:', error.errors);
-                        if (error.graphQLErrors) console.error('graphQLErrors:', error.graphQLErrors);
-                        if (error.networkError) console.error('networkError:', error.networkError);
-
-                        setErrorMessage('Failed to load league.');
-                        setErrorPopup(true);
-                    } finally {
-                        setLoading(false);
+                        // User not authenticated, show basic league info with private message
+                        await loadPrivateLeagueForUnauthenticated(league);
+                        return;
+                    }
+                } else {
+                    // League is public, try to get user data if authenticated, but don't require it
+                    try {
+                        const user = await getCurrentUser();
+                        await loadAuthenticatedData(user, league);
+                    } catch (error) {
+                        // User not authenticated, load public data only
+                        await loadPublicData(league);
                     }
                 }
-                getUserData()
-            })
-            .catch(() => {
-                router.push('/SignIn')
-            });
+            } catch (error) {
+                console.error('Error checking league access:', error);
+                setErrorMessage('Failed to load league.');
+                setErrorPopup(true);
+                setLoading(false);
+            }
+        }
+
+        async function loadAuthenticatedData(user, preloadedLeague = null) {
+            try {
+                const userResults = await client.graphql({
+                    query: getUsers,
+                    variables: { id: user.signInDetails.loginId.toLowerCase() }
+                });
+                
+                const leagueResults = preloadedLeague ? { data: { getLeague: preloadedLeague } } : await client.graphql({
+                    query: getLeague,
+                    variables: { id: id }
+                });
+
+
+                if(userResults.data.getUsers && leagueResults.data.getLeague) {
+                    setUserData(userResults.data.getUsers);
+                    setLeagueData(leagueResults.data.getLeague);
+                    const playersResults = await client.graphql({
+                        query: playersByLeagueId,
+                        variables: { leagueId: id }
+                    })
+                    const players = playersResults?.data?.playersByLeagueId?.items
+                    ?? playersResults?.data?.playersByLeagueId
+                    ?? [];
+                    setPlayersData(players);
+
+                    const league = leagueResults.data.getLeague;
+                    const userEmail = user.signInDetails.loginId.toLowerCase();
+                    
+                    // Check if league is private
+                    const leagueIsPrivate = !league.lgPublic;
+                    setIsPrivate(leagueIsPrivate);
+
+                    // Check if user is a player or admin in this league
+                    const userPlayer = players.find(p => p.plEmail === userEmail);
+                    const userIsAdmin = league.lgAdmin?.includes(userEmail);
+                    const isAuthorized = userIsAdmin || userPlayer;
+                    setIsPlayerOrAdmin(!!isAuthorized);
+
+                    // Determine pending type for the current user (invited vs requested)
+                    let pendingForUser = null;
+                    const pendingList = Array.isArray(league.lgPendingPlayers) ? league.lgPendingPlayers : [];
+                    for (const p of pendingList) {
+                        const parts = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
+                        // parts format: [type, email, name]
+                        if (parts[1] && parts[1].toLowerCase() === userEmail) {
+                            const t = (parts[0] || '').toLowerCase();
+                            pendingForUser = t === 'requested' ? 'requested' : 'invited';
+                            break;
+                        }
+                        // fallback: plain email stored directly
+                        if (String(p).toLowerCase() === userEmail) {
+                            pendingForUser = 'invited';
+                            break;
+                        }
+                    }
+                    // If not found in league pending list, but user's pendingLeagues includes the league, treat as requested
+                    if (!pendingForUser && userResults.data.getUsers?.pendingLeagues?.includes(id)) {
+                        pendingForUser = 'requested';
+                    }
+
+                    setPendingType(pendingForUser);
+                    setIsInvited(pendingForUser === 'invited');
+
+                    // If private and user is not authorized
+                    if (leagueIsPrivate && !isAuthorized) {
+                        // Check if league has started
+                        if (league.lgFinished === 'not started') {
+                            // Show request to join popup
+                            setShowRequestPopup(true);
+                        } else {
+                            // League already started, just redirect
+                            setLoading(false);
+                            return;
+                        }
+                    }
+
+                    if(league.lgFinished === 'not started'){
+                        setLeagueNotStarted(true);
+                    }
+                } else {
+                    setErrorMessage('Failed to load league data.');
+                    setErrorPopup(true);
+                }
+            } catch (error) {
+                console.error('Error fetching authenticated data:', error);
+                if (error.errors) console.error('errors:', error.errors);
+                if (error.graphQLErrors) console.error('graphQLErrors:', error.graphQLErrors);
+                if (error.networkError) console.error('networkError:', error.networkError);
+
+                setErrorMessage('Failed to load league.');
+                setErrorPopup(true);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function loadPublicData(league) {
+            try {
+                setLeagueData(league);
+                
+                // For public leagues, load players using API key
+                const playersResults = await client.graphql({
+                    query: playersByLeagueId,
+                    variables: { leagueId: id },
+                    authMode: 'apiKey'
+                });
+                
+                const players = playersResults?.data?.playersByLeagueId?.items
+                ?? playersResults?.data?.playersByLeagueId
+                ?? [];
+                setPlayersData(players);
+
+                // Check if league is private (should be false for public leagues)
+                const leagueIsPrivate = !league.lgPublic;
+                setIsPrivate(leagueIsPrivate);
+                
+                // No user data for unauthenticated users
+                setIsPlayerOrAdmin(false);
+
+                if(league.lgFinished === 'not started'){
+                    setLeagueNotStarted(true);
+                }
+            } catch (error) {
+                console.error('Error fetching public data:', error);
+                setErrorMessage('Failed to load league.');
+                setErrorPopup(true);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function loadPrivateLeagueForUnauthenticated(league) {
+            try {
+                setLeagueData(league);
+                setIsPrivate(true);
+                setIsPlayerOrAdmin(false);
+                
+                // Load players using API key to show basic info
+                const playersResults = await client.graphql({
+                    query: playersByLeagueId,
+                    variables: { leagueId: id },
+                    authMode: 'apiKey'
+                });
+                
+                const players = playersResults?.data?.playersByLeagueId?.items
+                ?? playersResults?.data?.playersByLeagueId
+                ?? [];
+                setPlayersData(players);
+
+                if(league.lgFinished === 'not started'){
+                    setLeagueNotStarted(true);
+                }
+
+                // Show the private league message/popup
+                setShowRequestPopup(true);
+            } catch (error) {
+                console.error('Error fetching private league data:', error);
+                setErrorMessage('This is a private league. Please sign in to request access.');
+                setErrorPopup(true);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        checkLeagueAccess();
     }, [router.isReady, id]);
 
     // Update leagueNotStarted when leagueData changes
@@ -314,40 +428,44 @@ export default function League(){
 
     useEffect(() => {
         if (!router.isReady) return;
+        
+        // Only set up subscriptions for authenticated users
+        if (!userData) {
+            return;
+        }
+        
         const subs = [];
 
         // watch current user updates
-        if (userData?.id) {
-            const subU = client.graphql({ query: onUpdateUsers }).subscribe({
-                next: ({ value }) => {
-                    const updated = value?.data?.onUpdateUsers;
-                    if (updated && updated.id === userData.id) {
-                        setUserData(updated);
-                    }
-                },
-                error: err => console.warn('user sub error', err)
-            });
-            subs.push(subU);
-
-            const subUC = client.graphql({ query: onCreateUsers }).subscribe({
-                next: ({ value }) => {
-                    const created = value?.data?.onCreateUsers;
-                    if (created && created.id === userData.id) setUserData(created);
+        const subU = client.graphql({ query: onUpdateUsers }).subscribe({
+            next: ({ value }) => {
+                const updated = value?.data?.onUpdateUsers;
+                if (updated && updated.id === userData.id) {
+                    setUserData(updated);
                 }
-            });
-            subs.push(subUC);
+            },
+            error: err => console.warn('user sub error', err)
+        });
+        subs.push(subU);
 
-            const subUD = client.graphql({ query: onDeleteUsers }).subscribe({
-                next: ({ value }) => {
-                    const deleted = value?.data?.onDeleteUsers;
-                    if (deleted && deleted.id === userData.id) {
-                        // user deleted — navigate to sign in or handle appropriately
-                        router.push('/SignIn');
-                    }
+        const subUC = client.graphql({ query: onCreateUsers }).subscribe({
+            next: ({ value }) => {
+                const created = value?.data?.onCreateUsers;
+                if (created && created.id === userData.id) setUserData(created);
+            }
+        });
+        subs.push(subUC);
+
+        const subUD = client.graphql({ query: onDeleteUsers }).subscribe({
+            next: ({ value }) => {
+                const deleted = value?.data?.onDeleteUsers;
+                if (deleted && deleted.id === userData.id) {
+                    // user deleted — navigate to sign in or handle appropriately
+                    router.push('/SignIn');
                 }
-            });
-            subs.push(subUD);
-        }
+            }
+        });
+        subs.push(subUD);
 
         // watch league updates
         const subLeagueU = client.graphql({ query: onUpdateLeague }).subscribe({

@@ -498,7 +498,7 @@ export default function NewLeague( userData ) {
                 </InfoBanner>
             )}
 
-            {League?.lgPublic && !currentUserIsMember() && (
+            {League?.lgPublic && !currentUserIsMember() && userEmail && (
                 <ActionRow sx={{ mb: 2, justifyContent: 'center' }}>
                     {(() => {
                         const pendingType = currentUserPendingType();
