@@ -1,19 +1,17 @@
 import sgMail from '@sendgrid/mail';
-import { secret } from '@aws-amplify/backend';
+import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 
-// Configure SendGrid with API key from environment variables
-if (process.env.SENDGRID_API_KEY) {
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
+const client = new SecretsManagerClient({ region: "us-west-2" });
 
-// Temporary diagnostic log: masked key and env presence (remove after debugging)
-{
-    try {
-        const raw = process.env.SENDGRID_API_KEY || '';
-        const masked = raw ? `***${String(raw).slice(-4)}` : 'MISSING';
-    } catch (e) {
-        console.log('sendEmail diagnostic log failed', e && e.message);
-    }
+async function getSecretValue(secretName) {
+  try {
+    const command = new GetSecretValueCommand({ SecretId: secretName });
+    const response = await client.send(command);
+    return JSON.parse(response.SecretString);
+  } catch (error) {
+    console.error("Error retrieving secret:", error);
+    throw error;
+  }
 }
 
 export default async function handler(req, res) {
@@ -24,16 +22,23 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Missing required fields: to, subject, html/text" });
     }
 
+    const secretAPIKey = await getSecretValue("sendGridApiKey");
+    const secretReplyToEmail = await getSecretValue("sendGridReplyToEmail");
+    const secretFromName = await getSecretValue("sendGridFromName");
+    const secretFromEmail = await getSecretValue("sendGridFromEmail");
+
     // Check if SendGrid API key is configured
-    if (!process.env.SENDGRID_API_KEY) {
+    if (!secretAPIKey) {
         console.error('SendGrid API key not configured');
         return res.status(500).json({ 
             error: "SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable." 
         });
     }
 
+    sgMail.setApiKey(secretAPIKey);
+
     // Check if from email is configured
-    if (!process.env.SENDGRID_FROM_EMAIL) {
+    if (!secretFromEmail) {
         console.error('SendGrid from email not configured');
         return res.status(500).json({ 
             error: "Sender email not configured. Please set SENDGRID_FROM_EMAIL environment variable." 
@@ -43,8 +48,8 @@ export default async function handler(req, res) {
     const toAddresses = Array.isArray(to) ? to : [to];
 
     // Configure sender with optional custom name
-    const fromEmail = process.env.SENDGRID_FROM_EMAIL;
-    const fromName = process.env.SENDGRID_FROM_NAME || 'Drag League';
+    const fromEmail = secretFromEmail;
+    const fromName = secretFromName || 'Drag League';
     
     const msg = {
         to: toAddresses,
@@ -55,7 +60,7 @@ export default async function handler(req, res) {
         subject: subject,
         text: text || '',
         html: html || '',
-        replyTo: process.env.SENDGRID_REPLY_TO_EMAIL || undefined,
+        replyTo: secretReplyToEmail || undefined,
     };
 
     try {

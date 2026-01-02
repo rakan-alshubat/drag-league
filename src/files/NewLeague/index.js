@@ -3,7 +3,8 @@ import { useRouter } from "next/router";
 import { generateClient } from 'aws-amplify/api'
 import { createPlayer, updateLeague, deleteLeague, createUsers, updateUsers, deletePlayer, updatePlayer } from '@/graphql/mutations';
 import { getUsers, playersByLeagueId, listUsers } from '@/graphql/queries';
-// email sending removed for MVP; invites are added to league and a shareable link is shown
+import { sendEmailAPI } from "@/helpers/sendEmail";
+import { generateInviteEmail } from "@/helpers/inviteEmailTemplate";
 import { filterPipeCharacter } from "@/helpers/filterPipeChar";
 import { Box, Typography, IconButton, Tooltip, TextField, Alert, InputAdornment, Button } from "@mui/material";
 import CheckIcon from '@mui/icons-material/Check';
@@ -1211,14 +1212,32 @@ export default function NewLeague( userData ) {
                                     }
                                 }
 
-                                // For MVP: do not send email. Show a shareable invite link and simple instructions instead.
+                                // Send invite email
+                                const inviteLink = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/League/' + (League?.id || '');
+                                try {
+                                    const { html, text } = generateInviteEmail({
+                                        inviterName: inviterName,
+                                        leagueName: League?.lgName || 'a league',
+                                        inviteLink: inviteLink
+                                    });
+                                    await sendEmailAPI({
+                                        to: inviteEmail,
+                                        subject: `🏁 You're invited to join ${League?.lgName || 'a league'} on Drag League!`,
+                                        html: html,
+                                        text: text
+                                    });
+                                } catch (emailError) {
+                                    console.error('Failed to send invite email:', emailError);
+                                    // Don't block the invite flow if email fails - user can still use the link
+                                }
+
+                                // Show a shareable invite link and simple instructions
                                 setPopUpNameInput('');
                                 setPopUpEmailInput('');
-                                const inviteLink = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/League/' + (League?.id || '');
                                 setPopUpDescription(
                                     <Box sx={{ mt: 2 }}>
                                         <Typography variant="body1" sx={{ mb: 1 }}>
-                                            Invite added for <strong>{popUpNameInput || inviteEmail}</strong>. Share the link below with the player so they can join the league, or it should appear in their pending requests once they signup/login:
+                                            ✉️ Invite sent to <strong>{inviteName}</strong> ({inviteEmail})! They'll receive an email with instructions. You can also share this link directly:
                                         </Typography>
                                         <TextField
                                             fullWidth
