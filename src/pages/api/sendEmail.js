@@ -14,7 +14,7 @@ async function getSecretValue(secretName) {
 }
 
 export default async function handler(req, res) {
-        console.log('=== HANDLER STARTED ===', {
+    console.log('=== HANDLER STARTED ===', {
         method: req.method,
         headers: req.headers,
         bodyKeys: Object.keys(req.body || {})
