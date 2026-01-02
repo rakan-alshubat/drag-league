@@ -22,19 +22,18 @@
     "@mui/x-charts": "^7.23.6",
     "@next/font": "13.1.6",
     "@sendgrid/mail": "^8.1.6",
-    "aws-amplify": "^6.15.5",
+    "aws-amplify": "^6.15.9",
     "eslint": "8.34.0",
     "eslint-config-next": "13.1.6",
     "fs": "^0.0.1-security",
     "next": "13.1.6",
+    "next-seo": "^6.1.0",
+    "next-sitemap": "^4.1.7",
     "react": "^17.0.0 || ^18.0.0 || ^19.0.0",
     "react-chartjs-2": "^5.3.0",
     "react-confetti": "^6.2.3",
     "react-dom": "^17.0.0 || ^18.0.0 || ^19.0.0",
     "react-use": "^17.6.0"
-    ,
-    "next-sitemap": "^4.1.7",
-    "next-seo": "^6.1.0"
   },
   "devDependencies": {
     "@types/node": "20.11.5"
