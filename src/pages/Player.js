@@ -1,5 +1,5 @@
 import PlayerPage from "@/files/PlayerPage";
-import { secret } from "@aws-amplify/backend"
+import { secret } from '@aws-amplify/backend';
 import { NextSeo } from 'next-seo';
 
 export default function Player(){
