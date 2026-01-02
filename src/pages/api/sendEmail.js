@@ -1,22 +1,8 @@
 import sgMail from '@sendgrid/mail';
-import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
-
-async function getSecretValue(secretName) {
-    const client = new SecretsManagerClient({ region: "us-west-2" });
-    try {
-        const command = new GetSecretValueCommand({ SecretId: secretName });
-        const response = await client.send(command);
-        return JSON.parse(response.SecretString);
-    } catch (error) {
-        console.error("Error retrieving secret:", error);
-        throw error;
-    }
-}
 
 export default async function handler(req, res) {
     console.log('=== HANDLER STARTED ===', {
         method: req.method,
-        headers: req.headers,
         bodyKeys: Object.keys(req.body || {})
     });
 
@@ -27,15 +13,17 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Missing required fields: to, subject, html/text" });
     }
 
-    const secretAPIKey = await getSecretValue("sendGridApiKey");
-    const secretReplyToEmail = await getSecretValue("sendGridReplyToEmail");
-    const secretFromName = await getSecretValue("sendGridFromName");
-    const secretFromEmail = await getSecretValue("sendGridFromEmail");
+    // Get secrets from Amplify environment variables
+    const secretAPIKey = process.env.SENDGRID_API_KEY;
+    const secretReplyToEmail = process.env.SENDGRID_REPLY_TO_EMAIL;
+    const secretFromName = process.env.SENDGRID_FROM_NAME;
+    const secretFromEmail = process.env.SENDGRID_FROM_EMAIL;
 
-    console.log('Retrieved secrets:', {
-        replyToEmail: secretReplyToEmail || 'not found',
-        fromName: secretFromName || 'not found',
-        fromEmail: secretFromEmail || 'not found'
+    console.log('Retrieved env vars:', {
+        secretAPIKey: secretAPIKey,
+        secretFromEmail: secretFromEmail,
+        secretReplyToEmail: secretReplyToEmail,
+        secretFromName: secretFromName
     });
 
     // Check if SendGrid API key is configured
