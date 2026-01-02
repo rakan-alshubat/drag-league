@@ -75,7 +75,8 @@ export default async function handler(req, res) {
         console.error("SendGrid send error details:", {
             message: err.message,
             code: err.code,
-            response: err.response?.body,
+            responseBody: JSON.stringify(err.response?.body, null, 2),
+            errors: err.response?.body?.errors
         });
         
         // Provide helpful error messages
