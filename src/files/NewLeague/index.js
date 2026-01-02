@@ -1237,7 +1237,7 @@ export default function NewLeague( userData ) {
                                 setPopUpDescription(
                                     <Box sx={{ mt: 2 }}>
                                         <Typography variant="body1" sx={{ mb: 1 }}>
-                                            ✉️ Invite sent to <strong>{inviteName}</strong> ({inviteEmail})! They'll receive an email with instructions. You can also share this link directly:
+                                            ✉️ Invite sent to <strong>{inviteName}</strong> ({inviteEmail})! They&apos;ll receive an email with instructions. You can also share this link directly:
                                         </Typography>
                                         <TextField
                                             fullWidth

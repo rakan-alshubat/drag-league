@@ -4,14 +4,14 @@ import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-sec
 const client = new SecretsManagerClient({ region: "us-west-2" });
 
 async function getSecretValue(secretName) {
-  try {
-    const command = new GetSecretValueCommand({ SecretId: secretName });
-    const response = await client.send(command);
-    return JSON.parse(response.SecretString);
-  } catch (error) {
-    console.error("Error retrieving secret:", error);
-    throw error;
-  }
+    try {
+        const command = new GetSecretValueCommand({ SecretId: secretName });
+        const response = await client.send(command);
+        return JSON.parse(response.SecretString);
+    } catch (error) {
+        console.error("Error retrieving secret:", error);
+        throw error;
+    }
 }
 
 export default async function handler(req, res) {
