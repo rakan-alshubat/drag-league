@@ -1,10 +1,6 @@
 import sgMail from '@sendgrid/mail';
 
 export default async function handler(req, res) {
-    console.log('=== HANDLER STARTED ===', {
-        method: req.method,
-        bodyKeys: Object.keys(req.body || {})
-    });
 
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
@@ -18,13 +14,6 @@ export default async function handler(req, res) {
     const secretReplyToEmail = process.env.SENDGRID_REPLY_TO_EMAIL;
     const secretFromName = process.env.SENDGRID_FROM_NAME;
     const secretFromEmail = process.env.SENDGRID_FROM_EMAIL;
-
-    console.log('Retrieved env vars:', {
-        secretAPIKey: secretAPIKey,
-        secretFromEmail: secretFromEmail,
-        secretReplyToEmail: secretReplyToEmail,
-        secretFromName: secretFromName
-    });
 
     // Check if SendGrid API key is configured
     if (!secretAPIKey) {
