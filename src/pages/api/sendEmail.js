@@ -32,6 +32,12 @@ export default async function handler(req, res) {
     const secretFromName = await getSecretValue("sendGridFromName");
     const secretFromEmail = await getSecretValue("sendGridFromEmail");
 
+    console.log('Retrieved secrets:', {
+        replyToEmail: secretReplyToEmail || 'not found',
+        fromName: secretFromName || 'not found',
+        fromEmail: secretFromEmail || 'not found'
+    });
+
     // Check if SendGrid API key is configured
     if (!secretAPIKey) {
         console.error('SendGrid API key not configured');
