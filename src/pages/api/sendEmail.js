@@ -1,4 +1,5 @@
 import sgMail from '@sendgrid/mail';
+import { secret } from '@aws-amplify/backend';
 
 // Configure SendGrid with API key from environment variables
 if (process.env.SENDGRID_API_KEY) {
