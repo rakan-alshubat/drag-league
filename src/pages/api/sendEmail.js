@@ -1,10 +1,22 @@
 import sgMail from '@sendgrid/mail';
 
 export default async function handler(req, res) {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Or specify your domain
+    // Set CORS headers - allow requests from the same origin
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+        process.env.NEXT_PUBLIC_SITE_URL,
+        'http://localhost:3000',
+        'https://localhost:3000'
+    ].filter(Boolean);
+    
+    // If origin is allowed or if it's a same-origin request (no origin header), allow it
+    if (!origin || allowedOrigins.includes(origin) || origin.includes('amplifyapp.com')) {
+        res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    }
+    
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
 
     // Handle preflight OPTIONS request
     if (req.method === 'OPTIONS') {
