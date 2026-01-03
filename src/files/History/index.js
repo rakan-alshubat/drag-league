@@ -61,8 +61,8 @@ export default function History({ leagueData }) {
                             const displayText = isAdminEdit 
                                 ? actionText.replace('[ADMIN EDIT] ', '') 
                                 : isAnnouncement 
-                                ? actionText.replace('[ANNOUNCEMENT] ', '') 
-                                : actionText;
+                                    ? actionText.replace('[ANNOUNCEMENT] ', '') 
+                                    : actionText;
 
                             return (
                                 <HistoryItem key={index} isAdminEdit={isAdminEdit} isAnnouncement={isAnnouncement}>
