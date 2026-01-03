@@ -8,6 +8,7 @@ import Countdown from "../Countdown";
 import History from "../History";
 import calculatePoints from '../../helpers/calculatePoints';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import { Box, Alert, Typography, Button } from '@mui/material';
 import {
     Container,
@@ -79,6 +80,53 @@ export default function Leagues({ userData, leagueData, playersData }) {
             console.warn('Error checking admin edit history:', e);
         }
         return false;
+    })();
+
+    // Check for recent announcements or admin edits in the past week
+    const recentUpdates = (() => {
+        try {
+            const history = League?.lgHistory || [];
+            if (!history || history.length === 0) return { hasUpdates: false, count: 0, types: [] };
+
+            // Calculate one week ago from deadline, or from today if no deadline
+            const endDate = League?.lgDeadline ? new Date(League.lgDeadline) : new Date();
+            const startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - 7);
+
+            let announcementCount = 0;
+            let adminEditCount = 0;
+
+            for (const entry of history) {
+                if (!entry || typeof entry !== 'string') continue;
+                const parts = entry.split('. ');
+                const dateStr = parts[0];
+                const text = parts.slice(1).join('. ') || '';
+                const parsed = new Date(dateStr);
+                if (isNaN(parsed.getTime())) continue;
+
+                // Check if entry is within the past week
+                if (parsed > startDate && parsed <= endDate) {
+                    if (text.startsWith('[ANNOUNCEMENT]')) announcementCount++;
+                    if (text.startsWith('[ADMIN EDIT]')) adminEditCount++;
+                }
+            }
+
+            const totalCount = announcementCount + adminEditCount;
+            const types = [];
+            if (announcementCount > 0) types.push(`${announcementCount} announcement${announcementCount > 1 ? 's' : ''}`);
+            if (adminEditCount > 0) types.push(`${adminEditCount} admin edit${adminEditCount > 1 ? 's' : ''}`);
+
+            return {
+                hasUpdates: totalCount > 0,
+                count: totalCount,
+                types: types,
+                announcementCount,
+                adminEditCount
+            };
+        } catch (e) {
+            console.warn('Error checking recent updates:', e);
+            return { hasUpdates: false, count: 0, types: [] };
+        }
     })();
 
     // compute display name(s) for the season winner(s) by points
@@ -361,6 +409,83 @@ export default function Leagues({ userData, leagueData, playersData }) {
                         )}
                     </WinnerBanner>
                 </>
+            )}
+
+            {recentUpdates.hasUpdates && (
+                <Box
+                    sx={{
+                        mt: 2,
+                        mb: 2,
+                        padding: '16px 20px',
+                        borderRadius: '12px',
+                        background: 'linear-gradient(135deg, rgba(74, 144, 226, 0.12) 0%, rgba(123, 104, 238, 0.12) 100%)',
+                        border: '1px solid rgba(74, 144, 226, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        transition: 'all 0.3s ease',
+                        cursor: 'pointer',
+                        '&:hover': {
+                            background: 'linear-gradient(135deg, rgba(74, 144, 226, 0.18) 0%, rgba(123, 104, 238, 0.18) 100%)',
+                            borderColor: 'rgba(74, 144, 226, 0.5)',
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 4px 12px rgba(74, 144, 226, 0.2)',
+                        }
+                    }}
+                    onClick={() => setTabIndex(3)}
+                >
+                    <NotificationsActiveIcon 
+                        sx={{ 
+                            color: '#4A90E2',
+                            fontSize: 28,
+                            animation: 'pulse 2s ease-in-out infinite',
+                            '@keyframes pulse': {
+                                '0%, 100%': { transform: 'scale(1)' },
+                                '50%': { transform: 'scale(1.1)' },
+                            }
+                        }} 
+                    />
+                    <Box sx={{ flex: 1 }}>
+                        <Typography 
+                            sx={{ 
+                                fontWeight: 700, 
+                                color: '#4A90E2',
+                                fontSize: '1rem',
+                                mb: 0.5
+                            }}
+                        >
+                            Recent Updates
+                        </Typography>
+                        <Typography 
+                            sx={{ 
+                                fontSize: '0.9rem', 
+                                color: '#555',
+                                lineHeight: 1.4
+                            }}
+                        >
+                            {recentUpdates.types.join(' and ')} in the past week. Click to view in History.
+                        </Typography>
+                    </Box>
+                    <Button
+                        variant="contained"
+                        size="small"
+                        sx={{
+                            background: 'linear-gradient(135deg, #4A90E2 0%, #7B68EE 100%)',
+                            color: 'white',
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            padding: '6px 16px',
+                            borderRadius: '8px',
+                            boxShadow: 'none',
+                            '&:hover': {
+                                background: 'linear-gradient(135deg, #3A80D2 0%, #6B58DE 100%)',
+                                boxShadow: '0 2px 8px rgba(74, 144, 226, 0.3)',
+                            }
+                        }}
+                    >
+                        View History
+                    </Button>
+                </Box>
             )}
 
             <TabsContainer

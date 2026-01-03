@@ -322,7 +322,7 @@ export default function PlayerPage() {
     const handleSignOut = async () => {
         try{
             await signOut()
-            router.push('/')
+            router.push('/').then(() => { if (typeof window !== 'undefined') window.location.reload(); });
         } catch (error) {
             console.error('Could not sign out', error)
             setErrorMessage('Could not sign out.');

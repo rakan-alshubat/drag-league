@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ErrorPopup from '@/files/ErrorPopUp';
 
 import { useRouter } from 'next/router';
-import { getCurrentUser, signOut } from '@aws-amplify/auth';
+import { getCurrentUser, signOut } from 'aws-amplify/auth';
 import { Tooltip, Drawer, IconButton as MuiIconButton, Box } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';

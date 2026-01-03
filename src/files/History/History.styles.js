@@ -35,27 +35,33 @@ export const HistoryList = styled(Box)({
     gap: '8px',
 });
 
-export const HistoryItem = styled(Box)(({ isAdminEdit }) => ({
+export const HistoryItem = styled(Box)(({ isAdminEdit, isAnnouncement }) => ({
     padding: '12px 16px',
     borderRadius: '8px',
     background: isAdminEdit 
         ? 'linear-gradient(135deg, rgba(255, 107, 53, 0.15) 0%, rgba(255, 20, 147, 0.15) 100%)'
+        : isAnnouncement
+        ? 'linear-gradient(135deg, rgba(74, 144, 226, 0.15) 0%, rgba(123, 104, 238, 0.15) 100%)'
         : 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
     border: isAdminEdit
         ? '1px solid rgba(255, 107, 53, 0.4)'
+        : isAnnouncement
+        ? '1px solid rgba(74, 144, 226, 0.4)'
         : '1px solid rgba(255, 20, 147, 0.2)',
     transition: 'all 0.2s ease',
     '&:hover': {
-        borderColor: isAdminEdit ? '#FF6B35' : '#FFB6D9',
+        borderColor: isAdminEdit ? '#FF6B35' : isAnnouncement ? '#4A90E2' : '#FFB6D9',
         boxShadow: isAdminEdit 
             ? '0 2px 8px rgba(255, 107, 53, 0.2)'
+            : isAnnouncement
+            ? '0 2px 8px rgba(74, 144, 226, 0.2)'
             : '0 2px 8px rgba(255, 20, 147, 0.1)',
     },
 }));
 
-export const HistoryDate = styled(Typography)(({ isAdminEdit }) => ({
+export const HistoryDate = styled(Typography)(({ isAdminEdit, isAnnouncement }) => ({
     fontSize: '0.85rem',
-    color: isAdminEdit ? '#FF6B35' : '#9B30FF',
+    color: isAdminEdit ? '#FF6B35' : isAnnouncement ? '#4A90E2' : '#9B30FF',
     marginBottom: '6px',
     fontWeight: 600,
 }));
