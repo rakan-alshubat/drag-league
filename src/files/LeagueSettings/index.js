@@ -145,75 +145,24 @@ export default function LeagueSettings(props) {
                     to: playerEmails,
                     subject: `Message from ${senderName} - ${leagueName}`,
                     html: `
-                        <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">
-                            <tr>
-                                <td style="padding: 20px 0;">
-                                    <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                        <!-- Header -->
-                                        <tr>
-                                            <td style="background: linear-gradient(135deg, #FF1493 0%, #9B30FF 50%, #FFD700 100%); padding: 30px 20px; text-align: center;">
-                                                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-                                                    🏁 Message from ${senderName}
-                                                </h1>
-                                            </td>
-                                        </tr>
-                                        
-                                        <!-- Main Content -->
-                                        <tr>
-                                            <td style="padding: 40px 30px;">
-                                                <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">
-                                                    <strong style="color: #1a1a1a;">${senderName}</strong> sent a message to players of 
-                                                    <strong style="color: #1a1a1a;">${leagueName}</strong>
-                                                </p>
-                                                
-                                                <div style="margin: 30px 0; padding: 20px; background-color: #fff5f8; border-radius: 8px; border-left: 4px solid #FF1493;">
-                                                    <p style="margin: 0; font-size: 16px; color: #333; white-space: pre-wrap; line-height: 1.6;">
-                                                        ${userMessage.replace(/\n/g, '<br>')}
-                                                    </p>
-                                                </div>
-                                                
-                                                <!-- CTA Button -->
-                                                <table role="presentation" style="margin: 0 auto;">
-                                                    <tr>
-                                                        <td style="text-align: center; padding: 20px 0;">
-                                                            <a href="${leagueUrl}" 
-                                                               style="background: linear-gradient(135deg, #FF1493 0%, #C71585 100%); color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 12px rgba(255, 20, 147, 0.4); text-shadow: 0 1px 2px rgba(0,0,0,0.2);">
-                                                                View League
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                </table>
-                                                
-                                                <!-- Fallback Link -->
-                                                <p style="margin: 30px 0 0 0; padding: 20px; background-color: #fff5f8; border-radius: 8px; font-size: 14px; color: #666; border-left: 4px solid #FF1493;">
-                                                    <strong style="color: #FF1493;">Button not working?</strong><br>
-                                                    Copy and paste this link into your browser:<br>
-                                                    <a href="${leagueUrl}" style="color: #FF1493; word-break: break-all; font-weight: 600;">${leagueUrl}</a>
-                                                </p>
-                                            </td>
-                                        </tr>
-                                        
-                                        <!-- Footer -->
-                                        <tr>
-                                            <td style="padding: 30px; background-color: #f9f9f9; border-top: 1px solid #e0e0e0;">
-                                                <p style="margin: 0 0 10px 0; font-size: 12px; color: #999; text-align: center; line-height: 1.5;">
-                                                    This is an automated notification from Drag League.<br>
-                                                    You received this email because you are a member of ${leagueName}.
-                                                </p>
-                                                <p style="margin: 15px 0 0 0; font-size: 12px; text-align: center;">
-                                                    <a href="${window.location.origin}/Support" style="color: #FF1493; text-decoration: underline; font-weight: 600;">Contact Support</a>
-                                                    <span style="color: #ccc; margin: 0 8px;">|</span>
-                                                    <a href="${window.location.origin}/FAQ" style="color: #FF1493; text-decoration: underline; font-weight: 600;">FAQ</a>
-                                                </p>
-                                                <p style="margin: 15px 0 0 0; font-size: 11px; color: #aaa; text-align: center;">
-                                                    © 2026 Drag League. All rights reserved.
-                                                </p>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                </td>
-                            </tr>
-                        </table>
+                        <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif">
+                            <div style="background:#FF1493;padding:20px;text-align:center">
+                                <h1 style="color:#fff;margin:0">🏁 Message from ${senderName}</h1>
+                            </div>
+                            <div style="padding:30px;background:#fff">
+                                <p><strong>${senderName}</strong> sent a message to <strong>${leagueName}</strong> players:</p>
+                                <div style="margin:20px 0;padding:15px;background:#fff5f8;border-left:4px solid #FF1493">
+                                    <p style="margin:0;white-space:pre-wrap">${userMessage.replace(/\n/g, '<br>')}</p>
+                                </div>
+                                <div style="text-align:center;margin:20px 0">
+                                    <a href="${leagueUrl}" style="background:#FF1493;color:#fff;padding:12px 30px;text-decoration:none;border-radius:5px;display:inline-block">View League</a>
+                                </div>
+                                <p style="font-size:12px;color:#666">Link: <a href="${leagueUrl}" style="color:#FF1493">${leagueUrl}</a></p>
+                            </div>
+                            <div style="padding:20px;background:#f9f9f9;font-size:11px;color:#999;text-align:center">
+                                <p>Drag League • <a href="${window.location.origin}/Support" style="color:#FF1493">Support</a> | <a href="${window.location.origin}/FAQ" style="color:#FF1493">FAQ</a></p>
+                            </div>
+                        </div>
                     `
                 })
             });
