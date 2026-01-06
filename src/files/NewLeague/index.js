@@ -767,7 +767,7 @@ export default function NewLeague( userData ) {
                                     📢 Latest Announcement from {recentAnnouncement.sender}
                                 </Typography>
                                 <Typography sx={{ color: '#666', fontSize: '0.95rem', fontStyle: 'italic' }}>
-                                    "{recentAnnouncement.message}"
+                                    &ldquo;{recentAnnouncement.message}&rdquo;
                                 </Typography>
                             </Alert>
                         </Box>
