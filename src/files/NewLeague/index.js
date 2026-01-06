@@ -16,6 +16,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import RuleIcon from '@mui/icons-material/Rule';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import EditIcon from '@mui/icons-material/Edit';
+import EmailIcon from '@mui/icons-material/Email';
 import PopUp from "@/files/PopUp";
 import Countdown from "@/files/Countdown";
 import {
@@ -94,6 +95,13 @@ export default function NewLeague( userData ) {
     const [pickedPlayer, setPickedPlayer] = useState('');
     const [displayName, setDisplayName] = useState('');
     const [shareCopySuccess, setShareCopySuccess] = useState('');
+    
+    // Announcement state
+    const [emailPopupOpen, setEmailPopupOpen] = useState(false);
+    const [emailMessage, setEmailMessage] = useState('');
+    const [emailError, setEmailError] = useState('');
+    const [emailSending, setEmailSending] = useState(false);
+    const [emailSuccess, setEmailSuccess] = useState('');
 
     useEffect(() => {
         if (!League?.lgRankingDeadline || League?.lgFinished === 'active') return;
@@ -347,6 +355,156 @@ export default function NewLeague( userData ) {
         setPopUpDescription(<InviteSectionTitle>Invite a new player by entering their name and email.</InviteSectionTitle>)
         setConfirmOpen(true)
     }
+    
+    const handleEmailAllPlayers = async () => {
+        const players = currentPlayerData();
+        
+        if (!players || players.length === 0) {
+            setEmailError('No players to email.');
+            return;
+        }
+
+        if (!emailMessage || emailMessage.trim() === '') {
+            setEmailError('Please enter a message to send.');
+            return;
+        }
+
+        setEmailSending(true);
+        setEmailSuccess('');
+        setEmailError('');
+        
+        try {
+            const playerEmails = players
+                .map(p => p.email)
+                .filter(email => email && email.trim() !== '');
+
+            if (playerEmails.length === 0) {
+                setEmailError('No valid player emails found.');
+                setEmailSending(false);
+                return;
+            }
+
+            const leagueName = League?.lgName || 'Your League';
+            
+            // Find sender name
+            let senderName = 'League Admin';
+            const currentUserId = (User?.id || '').toLowerCase();
+            
+            const currentPlayer = players.find(p => {
+                const pEmail = (p.email || '').toLowerCase();
+                return pEmail === currentUserId;
+            });
+            
+            if (currentPlayer?.name && currentPlayer.name.trim() !== '') {
+                senderName = currentPlayer.name;
+            } else if (User?.name && User.name.trim() !== '') {
+                senderName = User.name;
+            }
+            
+            const leagueUrl = `${window.location.origin}/League/${League?.id}`;
+            const userMessage = emailMessage.trim();
+
+            const response = await fetch('/api/sendEmail', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: playerEmails,
+                    subject: `Message from ${senderName} - ${leagueName}`,
+                    html: `
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f4f4f4;">
+                            <tr>
+                                <td style="padding: 20px 0;">
+                                    <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        <tr>
+                                            <td style="background: linear-gradient(135deg, #FF1493 0%, #9B30FF 50%, #FFD700 100%); padding: 30px 20px; text-align: center;">
+                                                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                                                    🏁 Message from ${senderName}
+                                                </h1>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 40px 30px;">
+                                                <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">
+                                                    <strong style="color: #1a1a1a;">${senderName}</strong> sent a message to players of 
+                                                    <strong style="color: #1a1a1a;">${leagueName}</strong>
+                                                </p>
+                                                <div style="margin: 30px 0; padding: 20px; background-color: #fff5f8; border-radius: 8px; border-left: 4px solid #FF1493;">
+                                                    <p style="margin: 0; font-size: 16px; color: #333; white-space: pre-wrap; line-height: 1.6;">
+                                                        ${userMessage.replace(/\n/g, '<br>')}
+                                                    </p>
+                                                </div>
+                                                <table role="presentation" style="margin: 0 auto;">
+                                                    <tr>
+                                                        <td style="text-align: center; padding: 20px 0;">
+                                                            <a href="${leagueUrl}" 
+                                                               style="background: linear-gradient(135deg, #FF1493 0%, #C71585 100%); color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 12px rgba(255, 20, 147, 0.4); text-shadow: 0 1px 2px rgba(0,0,0,0.2);">
+                                                                View League
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                                <p style="margin: 30px 0 0 0; padding: 20px; background-color: #fff5f8; border-radius: 8px; font-size: 14px; color: #666; border-left: 4px solid #FF1493;">
+                                                    <strong style="color: #FF1493;">Button not working?</strong><br>
+                                                    Copy and paste this link into your browser:<br>
+                                                    <a href="${leagueUrl}" style="color: #FF1493; word-break: break-all; font-weight: 600;">${leagueUrl}</a>
+                                                </p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 30px; background-color: #f9f9f9; border-top: 1px solid #e0e0e0;">
+                                                <p style="margin: 0 0 10px 0; font-size: 12px; color: #999; text-align: center; line-height: 1.5;">
+                                                    This is an automated notification from Drag League.<br>
+                                                    You received this email because you are a member of ${leagueName}.
+                                                </p>
+                                                <p style="margin: 15px 0 0 0; font-size: 12px; text-align: center;">
+                                                    <a href="${window.location.origin}/Support" style="color: #FF1493; text-decoration: underline; font-weight: 600;">Contact Support</a>
+                                                    <span style="color: #ccc; margin: 0 8px;">|</span>
+                                                    <a href="${window.location.origin}/FAQ" style="color: #FF1493; text-decoration: underline; font-weight: 600;">FAQ</a>
+                                                </p>
+                                                <p style="margin: 15px 0 0 0; font-size: 11px; color: #aaa; text-align: center;">
+                                                    © 2026 Drag League. All rights reserved.
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    `
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to send email');
+            }
+
+            // Add to league history
+            const currentHistory = League?.lgHistory || [];
+            const historyEntry = `${new Date().toISOString()}. [ANNOUNCEMENT] ${senderName} sent an announcement to all players: "${userMessage.length > 100 ? userMessage.substring(0, 100) + '...' : userMessage}"`;
+            
+            await client.graphql({
+                query: updateLeague,
+                variables: {
+                    input: {
+                        id: League.id,
+                        lgHistory: [...currentHistory, historyEntry]
+                    }
+                }
+            });
+
+            setEmailSuccess(`Email sent successfully to ${playerEmails.length} player${playerEmails.length > 1 ? 's' : ''}!`);
+            setEmailPopupOpen(false);
+            setEmailMessage('');
+            
+            // Clear success message after 5 seconds
+            setTimeout(() => setEmailSuccess(''), 5000);
+        } catch (error) {
+            console.error('Error sending email:', error);
+            setEmailError('Failed to send email to players. Please try again.');
+        } finally {
+            setEmailSending(false);
+        }
+    };
 
     const handlePromoteRequest = (player) => {
         setPopUpTitle('Promote to Admin')
@@ -393,6 +551,53 @@ export default function NewLeague( userData ) {
         }
         return null;
     }
+    
+    // Get most recent announcement from league history
+    const getMostRecentAnnouncement = () => {
+        try {
+            const history = League?.lgHistory || [];
+            if (!history || history.length === 0) return null;
+            
+            // Filter for announcements and sort by date (most recent first)
+            const announcements = [];
+            for (const entry of history) {
+                if (!entry || typeof entry !== 'string') continue;
+                const parts = entry.split('. ');
+                const dateStr = parts[0];
+                const text = parts.slice(1).join('. ') || '';
+                
+                if (!text.startsWith('[ANNOUNCEMENT]')) continue;
+                
+                const parsed = new Date(dateStr);
+                if (isNaN(parsed.getTime())) continue;
+                
+                // Extract the actual message from the announcement
+                // Format: "[ANNOUNCEMENT] Name sent an announcement to all players: "message""
+                const messageMatch = text.match(/:\s*"(.+)"$/);
+                const message = messageMatch ? messageMatch[1] : text.replace('[ANNOUNCEMENT]', '').trim();
+                const senderMatch = text.match(/\[ANNOUNCEMENT\]\s*(.+?)\s+sent an announcement/);
+                const sender = senderMatch ? senderMatch[1] : 'Admin';
+                
+                announcements.push({
+                    date: parsed,
+                    message: message,
+                    sender: sender,
+                    fullText: text
+                });
+            }
+            
+            if (announcements.length === 0) return null;
+            
+            // Sort by date descending and return the most recent
+            announcements.sort((a, b) => b.date - a.date);
+            return announcements[0];
+        } catch (e) {
+            console.warn('Error getting recent announcement:', e);
+            return null;
+        }
+    };
+    
+    const recentAnnouncement = getMostRecentAnnouncement();
 
 
     const handleRequestJoinOpen = () => {
@@ -532,12 +737,41 @@ export default function NewLeague( userData ) {
                             Edit
                         </SecondaryButton>
                         <SecondaryButton
+                            startIcon={<EmailIcon />}
+                            onClick={() => setEmailPopupOpen(true)}
+                        >
+                            Announcement
+                        </SecondaryButton>
+                        <SecondaryButton
                             startIcon={<EmojiEventsIcon />}
                             onClick={() => handleStartLeague()}
                         >
                             Start League
                         </SecondaryButton>
                     </ActionRow>
+
+                    {recentAnnouncement && (
+                        <Box sx={{ mt: 2, mb: 3 }}>
+                            <Alert 
+                                severity="info"
+                                sx={{
+                                    background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.8) 0%, rgba(245, 235, 255, 0.8) 100%)',
+                                    border: '1px solid rgba(255, 20, 147, 0.3)',
+                                    borderRadius: '12px',
+                                    '& .MuiAlert-icon': {
+                                        color: '#FF1493'
+                                    }
+                                }}
+                            >
+                                <Typography sx={{ fontWeight: 600, color: '#333', mb: 0.5 }}>
+                                    📢 Latest Announcement from {recentAnnouncement.sender}
+                                </Typography>
+                                <Typography sx={{ color: '#666', fontSize: '0.95rem', fontStyle: 'italic' }}>
+                                    "{recentAnnouncement.message}"
+                                </Typography>
+                            </Alert>
+                        </Box>
+                    )}
 
                     {(League?.lgHistory || []).some(h => String(h).includes('League updated by')) ? (
                         <Box sx={{ mt: 1 }}>
@@ -1623,6 +1857,71 @@ export default function NewLeague( userData ) {
                     </Box>
                 )}
             </PopUp>
+            
+            <PopUp
+                open={emailPopupOpen}
+                title="Send Announcement"
+                confirmText={emailSending ? "Sending..." : "Send"}
+                cancelText="Cancel"
+                loading={emailSending}
+                onCancel={() => {
+                    setEmailPopupOpen(false);
+                    setEmailMessage('');
+                    setEmailError('');
+                }}
+                onConfirm={handleEmailAllPlayers}
+            >
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Typography sx={{ color: '#666', fontSize: '0.95rem' }}>
+                        Enter your message to send to all {currentPlayerData().length} player{currentPlayerData().length !== 1 ? 's' : ''} in this league.
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={6}
+                        label="Your message"
+                        value={emailMessage}
+                        onChange={(e) => {
+                            setEmailMessage(e.target.value);
+                            setEmailError('');
+                        }}
+                        placeholder="Type your message here..."
+                        variant="outlined"
+                        error={!!emailError}
+                        helperText={emailError || `${emailMessage.length} characters`}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                '&.Mui-focused fieldset': {
+                                    borderColor: '#FF1493',
+                                },
+                            },
+                            '& .MuiInputLabel-root.Mui-focused': {
+                                color: '#FF1493',
+                            },
+                        }}
+                    />
+                </Box>
+            </PopUp>
+            
+            {emailSuccess && (
+                <Box
+                    sx={{
+                        position: 'fixed',
+                        top: 20,
+                        right: 20,
+                        zIndex: 10000,
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        background: 'linear-gradient(135deg, rgba(80, 200, 120, 0.95) 0%, rgba(60, 179, 113, 0.95) 100%)',
+                        border: '1px solid rgba(80, 200, 120, 0.3)',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    }}
+                >
+                    <Typography sx={{ color: 'white', fontWeight: 600, fontSize: '0.9rem' }}>
+                        ✓ {emailSuccess}
+                    </Typography>
+                </Box>
+            )}
         </PageContainer>
     );
 }

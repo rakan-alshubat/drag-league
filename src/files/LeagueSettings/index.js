@@ -720,6 +720,9 @@ export default function LeagueSettings(props) {
                                 color: 'white',
                                 fontWeight: 600,
                                 textTransform: 'none',
+                                px: { xs: 2, sm: 3 },
+                                py: { xs: 1, sm: 1.25 },
+                                fontSize: { xs: '0.775rem', sm: '1rem' },
                                 '&:hover': {
                                     background: 'linear-gradient(135deg, #E6127A 0%, #B01070 100%)',
                                 },
