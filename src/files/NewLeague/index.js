@@ -404,6 +404,8 @@ export default function NewLeague( userData ) {
             const leagueUrl = `${window.location.origin}/League/${League?.id}`;
             const userMessage = emailMessage.trim();
 
+            console.log('Sending email to:', playerEmails.length, 'players');
+            
             const response = await fetch('/api/sendEmail', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -474,9 +476,17 @@ export default function NewLeague( userData ) {
                 })
             });
 
+            console.log('Response status:', response.status);
+            console.log('Response ok:', response.ok);
+            
             if (!response.ok) {
-                throw new Error('Failed to send email');
+                const errorText = await response.text();
+                console.error('Response error:', errorText);
+                throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
             }
+
+            const result = await response.json();
+            console.log('Email sent successfully:', result);
 
             // Add to league history
             const currentHistory = League?.lgHistory || [];
@@ -500,7 +510,22 @@ export default function NewLeague( userData ) {
             setTimeout(() => setEmailSuccess(''), 5000);
         } catch (error) {
             console.error('Error sending email:', error);
-            setEmailError('Failed to send email to players. Please try again.');
+            console.error('Error details:', {
+                message: error.message,
+                name: error.name,
+                stack: error.stack
+            });
+            
+            let errorMsg = 'Failed to send email to players. ';
+            if (error.message.includes('403')) {
+                errorMsg += 'Access forbidden - check environment variables in Amplify Console.';
+            } else if (error.message.includes('401')) {
+                errorMsg += 'Unauthorized - authentication may be required.';
+            } else {
+                errorMsg += 'Please try again.';
+            }
+            
+            setEmailError(errorMsg);
         } finally {
             setEmailSending(false);
         }
