@@ -449,7 +449,7 @@ export default function NewLeague( userData ) {
 
             // Add to league history
             const currentHistory = League?.lgHistory || [];
-            const historyEntry = `${new Date().toISOString()}. [ANNOUNCEMENT] ${senderName} sent an announcement to all players: "${userMessage.length > 100 ? userMessage.substring(0, 100) + '...' : userMessage}"`;
+            const historyEntry = `${new Date().toISOString()}. [ANNOUNCEMENT] ${senderName} sent an announcement to all players: "${userMessage}"`;
             
             await client.graphql({
                 query: updateLeague,
