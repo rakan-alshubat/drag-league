@@ -190,8 +190,8 @@ export default function LeagueSettings(props) {
             setEmailPopupOpen(false);
             setEmailMessage('');
             
-            // Clear success message after 5 seconds
-            setTimeout(() => setEmailSuccess(''), 5000);
+            // Refresh page to show updated history
+            setTimeout(() => window.location.reload(), 1000);
         } catch (error) {
             console.error('Error sending email:', error);
             setErrorMessage('Failed to send email to players. Please try again.');

@@ -5,8 +5,6 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 import { SESClient, SendTemplatedEmailCommand } from '@aws-sdk/client-ses';
 import { createPlayer, updateLeague, deleteLeague, createUsers, updateUsers, deletePlayer, updatePlayer } from '@/graphql/mutations';
 import { getUsers, playersByLeagueId, listUsers } from '@/graphql/queries';
-import { sendEmailAPI } from "@/helpers/sendEmail";
-import { generateInviteEmail } from "@/helpers/inviteEmailTemplate";
 import { filterPipeCharacter } from "@/helpers/filterPipeChar";
 import { Box, Typography, IconButton, Tooltip, TextField, Alert, InputAdornment, Button } from "@mui/material";
 import CheckIcon from '@mui/icons-material/Check';
@@ -457,8 +455,8 @@ export default function NewLeague( userData ) {
             setEmailPopupOpen(false);
             setEmailMessage('');
             
-            // Clear success message after 5 seconds
-            setTimeout(() => setEmailSuccess(''), 5000);
+            // Refresh page to show updated history
+            setTimeout(() => window.location.reload(), 1000);
         } catch (error) {
             console.error('Error sending email:', error);
             console.error('Error details:', {
@@ -1422,20 +1420,38 @@ export default function NewLeague( userData ) {
                                     }
                                 }
 
-                                // Send invite email
+                                // Send invite email using SES template
                                 const inviteLink = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/League/' + (League?.id || '');
                                 try {
-                                    const { html, text } = generateInviteEmail({
-                                        inviterName: inviterName,
-                                        leagueName: League?.lgName || 'a league',
-                                        inviteLink: inviteLink
+                                    // Get AWS credentials from Amplify Auth
+                                    const session = await fetchAuthSession();
+                                    const credentials = session.credentials;
+
+                                    // Create SES client
+                                    const sesClient = new SESClient({
+                                        region: 'us-west-2',
+                                        credentials: credentials
                                     });
-                                    await sendEmailAPI({
-                                        to: inviteEmail,
-                                        subject: `🏁 You're invited to join ${League?.lgName || 'a league'} on Drag League!`,
-                                        html: html,
-                                        text: text
+
+                                    // Send templated email
+                                    const command = new SendTemplatedEmailCommand({
+                                        Source: 'noreply@drag-league.com',
+                                        Destination: {
+                                            ToAddresses: [inviteEmail],
+                                        },
+                                        Template: 'DragLeagueInvitation',
+                                        TemplateData: JSON.stringify({
+                                            inviterName: inviterName,
+                                            leagueName: League?.lgName || 'a league',
+                                            inviteLink: inviteLink,
+                                            supportUrl: `${window.location.origin}/Support`,
+                                            faqUrl: `${window.location.origin}/FAQ`
+                                        }),
+                                        ReplyToAddresses: ['noreply@drag-league.com']
                                     });
+
+                                    await sesClient.send(command);
+                                    console.log('Invite email sent successfully via SES template');
                                 } catch (emailError) {
                                     console.error('Failed to send invite email:', emailError);
                                     // Don't block the invite flow if email fails - user can still use the link
