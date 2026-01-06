@@ -1553,6 +1553,74 @@ export default function NewLeague( userData ) {
                             await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistoryReq, historyEntryReq] } } });
                             await serverLogInfo('User requested to join league', { leagueId: League.id, requestName: requestName, requestEmail: requestEmail });
 
+                            // Send email notification to all admins
+                            try {
+                                const adminEmails = Array.isArray(League.lgAdmin) ? League.lgAdmin : [];
+                                const leagueUrl = `${window.location.origin}/League/${League.id}`;
+
+                                // Get AWS credentials from Amplify Auth
+                                const session = await fetchAuthSession();
+                                const credentials = session.credentials;
+
+                                // Create SES client
+                                const sesClient = new SESClient({
+                                    region: 'us-west-2',
+                                    credentials: credentials
+                                });
+
+                                // Send email to each admin
+                                for (const adminEmail of adminEmails) {
+                                    try {
+                                        // Get admin name if available
+                                        let adminName = 'Admin';
+                                        try {
+                                            const adminRes = await client.graphql({ query: getUsers, variables: { id: adminEmail.toLowerCase() } });
+                                            adminName = adminRes?.data?.getUsers?.name || adminEmail.split('@')[0];
+                                        } catch (e) {
+                                            adminName = adminEmail.split('@')[0];
+                                        }
+
+                                        const command = new SendTemplatedEmailCommand({
+                                            Source: 'noreply@drag-league.com',
+                                            Destination: {
+                                                ToAddresses: [adminEmail],
+                                            },
+                                            Template: 'DragLeagueJoinRequest',
+                                            TemplateData: JSON.stringify({
+                                                adminName: adminName,
+                                                requesterName: requestName,
+                                                requesterEmail: requestEmail,
+                                                leagueName: League.lgName || 'a league',
+                                                leagueUrl: leagueUrl,
+                                                supportUrl: `${window.location.origin}/Support`,
+                                                faqUrl: `${window.location.origin}/FAQ`
+                                            }),
+                                            ReplyToAddresses: ['noreply@drag-league.com']
+                                        });
+
+                                        await sesClient.send(command);
+                                        await serverLogInfo('Join request notification email sent', {
+                                            leagueId: League.id,
+                                            adminEmail: adminEmail,
+                                            requesterName: requestName,
+                                            requesterEmail: requestEmail
+                                        });
+                                    } catch (emailError) {
+                                        await serverLogError('Failed to send join request email to admin', {
+                                            leagueId: League.id,
+                                            adminEmail: adminEmail,
+                                            error: emailError.message
+                                        });
+                                    }
+                                }
+                            } catch (emailError) {
+                                await serverLogError('Failed to send join request emails', {
+                                    leagueId: League.id,
+                                    error: emailError.message
+                                });
+                                // Don't block the request flow if email fails
+                            }
+
                             try {
                                 const userRes = await client.graphql({ query: getUsers, variables: { id: requestEmail } });
                                 const userObj = userRes?.data?.getUsers;
