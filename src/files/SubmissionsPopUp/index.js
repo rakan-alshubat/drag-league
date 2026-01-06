@@ -14,6 +14,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { Typography } from "@mui/material";
 import { generateClient } from 'aws-amplify/api';
 import { updatePlayer, updateLeague } from "@/graphql/mutations";
+import { serverLogInfo, serverLogError, serverLogWarn } from '@/helpers/serverLog';
 import { getLeague } from "@/graphql/queries";
 import {
     StyledDialog,
@@ -339,9 +340,11 @@ export default function SubmissionsPopup({
         const isDemo = String(leagueData?.id || '').toLowerCase().includes('demo');
         
         if (version === "Submissions") {
+            await serverLogInfo('Weekly picks submission started', { leagueId: leagueData?.id, userId: userData?.id, playerName: playerData?.plName });
             try {
                 const dl = leagueData?.lgDeadline ? new Date(leagueData.lgDeadline) : null;
                 if (dl && Date.now() >= dl.getTime()) {
+                    await serverLogWarn('Weekly picks submission rejected: deadline passed', { leagueId: leagueData?.id, userId: userData?.id, deadline: dl.toISOString() });
                     setErrorMessage('Submission failed: the Maxi Challenge deadline has passed.');
                     return;
                 }
@@ -388,6 +391,7 @@ export default function SubmissionsPopup({
                             query: updatePlayer,
                             variables: { input: playerInput }
                         });
+                        await serverLogInfo('Player swap performed', { leagueId: leagueData?.id, playerId: playerData.id, firstSwap: firstSwap, secondSwap: secondSwap });
 
                         // Add history entry for swap
                         if (playerUpdates.plRankings && leagueData?.id) {
@@ -402,6 +406,7 @@ export default function SubmissionsPopup({
                                     }
                                 }
                             });
+                            await serverLogInfo('League history updated with swap', { leagueId: leagueData.id, playerName: playerData.plName, firstSwap: firstSwap, secondSwap: secondSwap });
                         }
                     } else {
                         // Demo mode: mutate local objects and log instead of network calls
@@ -415,6 +420,7 @@ export default function SubmissionsPopup({
                     }
 
                 } catch (error) {
+                    await serverLogError('Error updating player swap', { error: error.message, leagueId: leagueData?.id, playerId: playerData?.id });
                     setErrorMessage('Error updating player.');
                 }
             }
@@ -432,7 +438,7 @@ export default function SubmissionsPopup({
                             latestLeague = leagueRes.data.getLeague;
                         }
                     } catch (fetchErr) {
-                        console.warn('Could not fetch latest league before updating submissions:', fetchErr);
+                        await serverLogWarn('Could not fetch latest league before updating submissions', { error: fetchErr.message });
                     }
 
                     const currentSubmissions = latestLeague.lgSubmissions || [];
@@ -468,6 +474,7 @@ export default function SubmissionsPopup({
                             query: updateLeague,
                             variables: { input: leagueInput }
                         });
+                        await serverLogInfo('Weekly picks submitted to league', { leagueId: leagueData.id, userId: userEmail, playerName: playerData?.plName, picksCount: selected.length, action: actionText });
                     } else {
                         // Demo: update local league object and log
                         leagueData.lgSubmissions = leagueInput.lgSubmissions;
@@ -475,6 +482,7 @@ export default function SubmissionsPopup({
                     }
 
                 } catch (error) {
+                    await serverLogError('Error updating league submissions', { error: error.message, leagueId: leagueData?.id, userId: userData?.id });
                     setErrorMessage('Error updating league submissions.');
                 }
             }
@@ -491,6 +499,7 @@ export default function SubmissionsPopup({
 
         // Handle final episode
         if (version === "Weekly Results" && isFinalEpisode && leagueData?.id) {
+            await serverLogInfo('Final episode submission started', { leagueId: leagueData.id, adminName: userData?.name || userData?.id });
             // Ensure admin ranked all remaining queens before allowing final submission
             const eliminatedListForCheck = getEliminatedQueensList();
             const totalQueens = (leagueData.lgQueenNames || []).length;
@@ -498,6 +507,7 @@ export default function SubmissionsPopup({
             const providedList = finalRankingRows.flatMap(r => r.values || []).filter(Boolean);
             const uniqueProvided = Array.from(new Set(providedList));
             if (uniqueProvided.length !== remainingCount) {
+                await serverLogWarn('Final episode submission validation failed', { leagueId: leagueData.id, provided: uniqueProvided.length, required: remainingCount });
                 setErrorMessage(`You ranked ${uniqueProvided.length} of ${remainingCount} remaining queen${remainingCount === 1 ? '' : 's'}. Please rank all remaining queens before submitting the final episode.`);
                 return;
             }
@@ -549,6 +559,7 @@ export default function SubmissionsPopup({
                     });
 
                     await Promise.all(updatePromises);
+                    await serverLogInfo('Final episode: all player winners updated', { leagueId: leagueData.id, playerCount: allPlayers.length });
                 }
                 
                 // Add 1st place to lgChallengeWinners (handle ties by joining with pipes)
@@ -599,6 +610,7 @@ export default function SubmissionsPopup({
                         query: updateLeague,
                         variables: { input: leagueInput }
                     });
+                    await serverLogInfo('Final episode completed', { leagueId: leagueData.id, winner: firstPlaceDisplay, bonusCategories: bonusCategoryRows.length });
                 } else {
                     // Demo: apply updates locally
                     leagueData.lgEliminatedPlayers = updatedEliminated;
@@ -612,6 +624,7 @@ export default function SubmissionsPopup({
                 }
                 
             } catch (error) {
+                await serverLogError('Error processing final episode', { error: error.message, leagueId: leagueData.id });
                 setErrorMessage('Error processing final episode.');
             }
             
@@ -625,6 +638,7 @@ export default function SubmissionsPopup({
 
         // Handle regular weekly results (non-final episode)
         if (leagueData?.id && version === "Weekly Results" && !isFinalEpisode) {
+            await serverLogInfo('Weekly results submission started', { leagueId: leagueData.id, adminName: userData?.name || userData?.id, challengeWinners: challengeWinners.length, lipSyncWinners: lipSyncWinners.length, eliminated: eliminatedQueens.length });
             try {
                 // Process lgSubmissions and map to player plWinners
                 const submissions = leagueData.lgSubmissions || [];
@@ -646,6 +660,7 @@ export default function SubmissionsPopup({
                     });
                     if (missing.length > 0) {
                         const names = missing.map(p => p.plName || p.plEmail || p.id).join(', ');
+                        await serverLogWarn('Weekly results submitted with missing player picks', { leagueId: leagueData.id, missingCount: missing.length, missingPlayers: names });
                         // Show a warning but DO NOT block admin from submitting
                         setErrorMessage(`Warning: ${missing.length} player(s) have not submitted: ${names}`);
                     } else {
@@ -678,8 +693,9 @@ export default function SubmissionsPopup({
                     });
 
                     await Promise.all(updatePromises);
+                    await serverLogInfo('Weekly results: all player winners updated', { leagueId: leagueData.id, playerCount: allPlayers.length });
                 } else {
-                    console.warn('No players array found in leagueData or array is empty');
+                    await serverLogWarn('No players array found in leagueData or array is empty');
                 }
 
                 // If admin selected a lip sync winner but didn't press +, include it now (unless blank)
@@ -737,6 +753,7 @@ export default function SubmissionsPopup({
                         query: updateLeague,
                         variables: { input: leagueInput }
                     });
+                    await serverLogInfo('Weekly results submitted to league', { leagueId: leagueData.id, challengeWinners: challengeWinners.join(' & '), lipSyncWinners: (effectiveLipSyncWinners || []).join(' & '), eliminated: eliminatedQueens.join(' & '), nextDeadline: nextWeekDeadline });
                 } else {
                     // Demo: apply updates locally
                     leagueData.lgChallengeWinners = leagueUpdates.lgChallengeWinners;
@@ -748,7 +765,7 @@ export default function SubmissionsPopup({
                 }
 
             } catch (error) {
-                console.error('Error updating league weekly results:', error);
+                await serverLogError('Error updating league weekly results', { error: error.message, leagueId: leagueData?.id });
                 setErrorMessage('Error submitting weekly results');
                 return;
             }

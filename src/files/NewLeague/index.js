@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { generateClient } from 'aws-amplify/api'
+import { fetchAuthSession } from 'aws-amplify/auth';
+import { SESClient, SendTemplatedEmailCommand } from '@aws-sdk/client-ses';
+import { serverLogInfo, serverLogError, serverLogWarn } from '@/helpers/serverLog';
 import { createPlayer, updateLeague, deleteLeague, createUsers, updateUsers, deletePlayer, updatePlayer } from '@/graphql/mutations';
 import { getUsers, playersByLeagueId, listUsers } from '@/graphql/queries';
-// email sending removed for MVP; invites are added to league and a shareable link is shown
 import { filterPipeCharacter } from "@/helpers/filterPipeChar";
 import { Box, Typography, IconButton, Tooltip, TextField, Alert, InputAdornment, Button } from "@mui/material";
 import CheckIcon from '@mui/icons-material/Check';
@@ -15,6 +17,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import RuleIcon from '@mui/icons-material/Rule';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import EditIcon from '@mui/icons-material/Edit';
+import EmailIcon from '@mui/icons-material/Email';
 import PopUp from "@/files/PopUp";
 import Countdown from "@/files/Countdown";
 import {
@@ -93,6 +96,13 @@ export default function NewLeague( userData ) {
     const [pickedPlayer, setPickedPlayer] = useState('');
     const [displayName, setDisplayName] = useState('');
     const [shareCopySuccess, setShareCopySuccess] = useState('');
+    
+    // Announcement state
+    const [emailPopupOpen, setEmailPopupOpen] = useState(false);
+    const [emailMessage, setEmailMessage] = useState('');
+    const [emailError, setEmailError] = useState('');
+    const [emailSending, setEmailSending] = useState(false);
+    const [emailSuccess, setEmailSuccess] = useState('');
 
     useEffect(() => {
         if (!League?.lgRankingDeadline || League?.lgFinished === 'active') return;
@@ -125,7 +135,7 @@ export default function NewLeague( userData ) {
                             try {
                                 await client.graphql({ query: deletePlayer, variables: { input: { id: p.id } } });
                             } catch (e) {
-                                console.warn('Failed to delete player during auto-start cleanup:', p.id, e);
+                                await serverLogWarn('Failed to delete player during auto-start cleanup', { playerId: p.id, error: e.message });
                             }
 
                             // remove league from user's leagues array if present
@@ -145,7 +155,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             } catch (e) {
-                                console.warn('Failed to update user record during auto-start cleanup:', e);
+                                await serverLogWarn('Failed to update user record during auto-start cleanup', { playerId: p.id, error: e.message });
                             }
                         }
 
@@ -169,11 +179,11 @@ export default function NewLeague( userData ) {
                                         }
                                     }
                                 } catch (e) {
-                                    console.warn('Failed to remove pending league from user during auto-start cleanup:', raw, e);
+                                    await serverLogWarn('Failed to remove pending league from user during auto-start cleanup', { rawData: raw, error: e.message });
                                 }
                             }
                         } catch (e) {
-                            console.warn('Failed to process pending users during auto-start cleanup:', e);
+                            await serverLogWarn('Failed to process pending users during auto-start cleanup', { error: e.message });
                         }
 
                         const result = await client.graphql({
@@ -187,12 +197,13 @@ export default function NewLeague( userData ) {
                                 }
                             }
                         });
+                        await serverLogInfo('League auto-started', { leagueId: League.id, leagueName: League.lgName });
                         setDeadlineHandled(true);
                         // Non-admin viewers should refresh to pick up league state changes
                         try { router.reload(); } catch (e) { /* ignore */ }
                         return;
                     } catch (err) {
-                        console.error('Error auto-starting league (cleanup):', err);
+                        await serverLogError('Error auto-starting league (cleanup)', { error: err.message });
                     }
                 })();
             }
@@ -346,6 +357,140 @@ export default function NewLeague( userData ) {
         setPopUpDescription(<InviteSectionTitle>Invite a new player by entering their name and email.</InviteSectionTitle>)
         setConfirmOpen(true)
     }
+    
+    const handleEmailAllPlayers = async () => {
+        const players = currentPlayerData();
+        
+        if (!players || players.length === 0) {
+            setEmailError('No players to email.');
+            return;
+        }
+
+        if (!emailMessage || emailMessage.trim() === '') {
+            setEmailError('Please enter a message to send.');
+            return;
+        }
+
+        setEmailSending(true);
+        setEmailSuccess('');
+        setEmailError('');
+        
+        try {
+            const playerEmails = players
+                .map(p => p.email)
+                .filter(email => email && email.trim() !== '');
+
+            if (playerEmails.length === 0) {
+                setEmailError('No valid player emails found.');
+                setEmailSending(false);
+                return;
+            }
+
+            const leagueName = League?.lgName || 'Your League';
+            
+            // Find sender name
+            let senderName = 'League Admin';
+            const currentUserId = (User?.id || '').toLowerCase();
+            
+            const currentPlayer = players.find(p => {
+                const pEmail = (p.email || '').toLowerCase();
+                return pEmail === currentUserId;
+            });
+            
+            if (currentPlayer?.name && currentPlayer.name.trim() !== '') {
+                senderName = currentPlayer.name;
+            } else if (User?.name && User.name.trim() !== '') {
+                senderName = User.name;
+            }
+            
+            const leagueUrl = `${window.location.origin}/League/${League?.id}`;
+            const userMessage = emailMessage.trim();
+
+            await serverLogInfo('Sending announcement email via SES', { playerCount: playerEmails.length, leagueId: League?.id });
+            
+            // Get AWS credentials from Amplify Auth
+            const session = await fetchAuthSession();
+            const credentials = session.credentials;
+
+            // Create SES client with user's credentials
+            const sesClient = new SESClient({
+                region: 'us-west-2',
+                credentials: credentials
+            });
+
+            // Send templated email using SES
+            const command = new SendTemplatedEmailCommand({
+                Source: 'noreply@drag-league.com',
+                Destination: {
+                    ToAddresses: playerEmails,
+                },
+                Template: 'DragLeagueAnnouncement',
+                TemplateData: JSON.stringify({
+                    senderName: senderName,
+                    leagueName: leagueName,
+                    message: userMessage,
+                    leagueUrl: leagueUrl,
+                    supportUrl: `${window.location.origin}/Support`,
+                    faqUrl: `${window.location.origin}/FAQ`
+                }),
+                ReplyToAddresses: ['noreply@drag-league.com']
+            });
+
+            await sesClient.send(command);
+            await serverLogInfo('Email sent successfully via SES template', { leagueId: League?.id, playerCount: playerEmails.length });
+            
+            await serverLogInfo('Announcement email sent', {
+                leagueId: League?.id,
+                leagueName: League?.lgName,
+                senderName: senderName,
+                recipientCount: playerEmails.length,
+                messageLength: userMessage.length
+            });
+
+            // Add to league history
+            const currentHistory = League?.lgHistory || [];
+            const historyEntry = `${new Date().toISOString()}. [ANNOUNCEMENT] ${senderName} sent an announcement to all players: "${userMessage.length > 100 ? userMessage.substring(0, 100) + '...' : userMessage}"`;
+            
+            await client.graphql({
+                query: updateLeague,
+                variables: {
+                    input: {
+                        id: League.id,
+                        lgHistory: [...currentHistory, historyEntry]
+                    }
+                }
+            });
+            await serverLogInfo('League history updated with announcement', { leagueId: League.id, leagueName: League.lgName });
+
+            setEmailSuccess(`Email sent successfully to ${playerEmails.length} player${playerEmails.length > 1 ? 's' : ''}!`);
+            setEmailPopupOpen(false);
+            setEmailMessage('');
+            
+            // Refresh page to show updated history
+            setTimeout(() => window.location.reload(), 1000);
+        } catch (error) {
+            await serverLogError('Failed to send announcement email', {
+                leagueId: League?.id,
+                leagueName: League?.lgName,
+                error: error.message,
+                errorName: error.name,
+                recipientCount: playerEmails?.length || 0
+            });
+            
+            let errorMsg = 'Failed to send email to players. ';
+            if (error.message.includes('403')) {
+                errorMsg += 'Access forbidden - check environment variables in Amplify Console.';
+            } else if (error.message.includes('401')) {
+                errorMsg += 'Unauthorized - authentication may be required.';
+            } else {
+                errorMsg += 'Please try again.';
+            }
+            
+            setEmailError(errorMsg);
+        } finally {
+            setEmailSending(false);
+        }
+    };
 
     const handlePromoteRequest = (player) => {
         setPopUpTitle('Promote to Admin')
@@ -392,6 +537,53 @@ export default function NewLeague( userData ) {
         }
         return null;
     }
+    
+    // Get most recent announcement from league history
+    const getMostRecentAnnouncement = () => {
+        try {
+            const history = League?.lgHistory || [];
+            if (!history || history.length === 0) return null;
+            
+            // Filter for announcements and sort by date (most recent first)
+            const announcements = [];
+            for (const entry of history) {
+                if (!entry || typeof entry !== 'string') continue;
+                const parts = entry.split('. ');
+                const dateStr = parts[0];
+                const text = parts.slice(1).join('. ') || '';
+                
+                if (!text.startsWith('[ANNOUNCEMENT]')) continue;
+                
+                const parsed = new Date(dateStr);
+                if (isNaN(parsed.getTime())) continue;
+                
+                // Extract the actual message from the announcement
+                // Format: "[ANNOUNCEMENT] Name sent an announcement to all players: "message""
+                const messageMatch = text.match(/:\s*"(.+)"$/);
+                const message = messageMatch ? messageMatch[1] : text.replace('[ANNOUNCEMENT]', '').trim();
+                const senderMatch = text.match(/\[ANNOUNCEMENT\]\s*(.+?)\s+sent an announcement/);
+                const sender = senderMatch ? senderMatch[1] : 'Admin';
+                
+                announcements.push({
+                    date: parsed,
+                    message: message,
+                    sender: sender,
+                    fullText: text
+                });
+            }
+            
+            if (announcements.length === 0) return null;
+            
+            // Sort by date descending and return the most recent
+            announcements.sort((a, b) => b.date - a.date);
+            return announcements[0];
+        } catch (e) {
+            serverLogWarn('Error getting recent announcement', { error: e.message });
+            return null;
+        }
+    };
+    
+    const recentAnnouncement = getMostRecentAnnouncement();
 
 
     const handleRequestJoinOpen = () => {
@@ -433,24 +625,27 @@ export default function NewLeague( userData ) {
 
                 if (!userObj) {
                     await client.graphql({ query: createUsers, variables: { input: { id: normalized, leagues: [leagueEntry], pendingLeagues: [] } } });
+                    await serverLogInfo('User created when accepting invite', { userId: normalized, leagueId: League.id });
                 } else {
                     const existingLeagues = Array.isArray(userObj.leagues) ? userObj.leagues.slice() : [];
                     const existingPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
                     if (!existingLeagues.some(l => String(l||'').split('|')[1] === League.id)) existingLeagues.push(leagueEntry);
                     const filteredPending = existingPending.filter(pid => String(pid) !== String(League.id));
                     await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, leagues: existingLeagues, pendingLeagues: filteredPending } } });
+                    await serverLogInfo('User updated when accepting invite', { userId: userObj.id, leagueId: League.id });
                 }
             } catch (e) {
-                console.warn('Failed to update user record after accepting invite:', e);
+                await serverLogWarn('Failed to update user record after accepting invite', { error: e.message });
             }
 
             const currentHistory = League.lgHistory || [];
             const accepterName = pendingName || User?.name || 'A user';
             const historyEntry = new Date().toISOString() + '. ' + accepterName + ' accepted invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
+            await serverLogInfo('Invite accepted, league updated', { leagueId: League.id, userId: userEmail, userName: accepterName });
             router.reload();
         } catch (err) {
-            console.error('Accept invite failed', err);
+            await serverLogError('Accept invite failed', { error: err.message });
             setPopUpError('Failed to accept invite.');
         } finally {
             setConfirmLoading(false);
@@ -469,9 +664,10 @@ export default function NewLeague( userData ) {
             const declinerName = User?.name || 'A user';
             const historyEntry = new Date().toISOString() + '. ' + declinerName + ' declined invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
+            await serverLogInfo('Invite declined, league updated', { leagueId: League.id, userId: userEmail, userName: declinerName });
             router.reload();
         } catch (err) {
-            console.error('Decline invite failed', err);
+            await serverLogError('Decline invite failed', { error: err.message });
             setPopUpError('Failed to decline invite.');
         } finally {
             setConfirmLoading(false);
@@ -497,7 +693,7 @@ export default function NewLeague( userData ) {
                 </InfoBanner>
             )}
 
-            {League?.lgPublic && !currentUserIsMember() && (
+            {League?.lgPublic && !currentUserIsMember() && userEmail && (
                 <ActionRow sx={{ mb: 2, justifyContent: 'center' }}>
                     {(() => {
                         const pendingType = currentUserPendingType();
@@ -531,12 +727,41 @@ export default function NewLeague( userData ) {
                             Edit
                         </SecondaryButton>
                         <SecondaryButton
+                            startIcon={<EmailIcon />}
+                            onClick={() => setEmailPopupOpen(true)}
+                        >
+                            Announcement
+                        </SecondaryButton>
+                        <SecondaryButton
                             startIcon={<EmojiEventsIcon />}
                             onClick={() => handleStartLeague()}
                         >
                             Start League
                         </SecondaryButton>
                     </ActionRow>
+
+                    {recentAnnouncement && (
+                        <Box sx={{ mt: 2, mb: 3 }}>
+                            <Alert 
+                                severity="info"
+                                sx={{
+                                    background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.8) 0%, rgba(245, 235, 255, 0.8) 100%)',
+                                    border: '1px solid rgba(255, 20, 147, 0.3)',
+                                    borderRadius: '12px',
+                                    '& .MuiAlert-icon': {
+                                        color: '#FF1493'
+                                    }
+                                }}
+                            >
+                                <Typography sx={{ fontWeight: 600, color: '#333', mb: 0.5 }}>
+                                    📢 Latest Announcement from {recentAnnouncement.sender}
+                                </Typography>
+                                <Typography sx={{ color: '#666', fontSize: '0.95rem', fontStyle: 'italic' }}>
+                                    &ldquo;{recentAnnouncement.message}&rdquo;
+                                </Typography>
+                            </Alert>
+                        </Box>
+                    )}
 
                     {(League?.lgHistory || []).some(h => String(h).includes('League updated by')) ? (
                         <Box sx={{ mt: 1 }}>
@@ -991,7 +1216,7 @@ export default function NewLeague( userData ) {
                                     try {
                                         await client.graphql({ query: deletePlayer, variables: { input: { id: p.id } } });
                                     } catch (e) {
-                                        console.warn('Failed to delete unsubmitted player(s)');
+                                        await serverLogWarn('Failed to delete unsubmitted player(s)', { error: e.message });
                                     }
 
                                     if (targetEmail && adminEmailsManual.includes(targetEmail)) {
@@ -1015,11 +1240,11 @@ export default function NewLeague( userData ) {
                                             }
                                         }
                                     } catch (e) {
-                                        console.warn('Failed to update user after deleting unsubmitted player:', e);
+                                        await serverLogWarn('Failed to update user after deleting unsubmitted player', { playerId: p.id, error: e.message });
                                     }
                                 }
                             } catch (e) {
-                                console.warn('Error during start-league cleanup:', e);
+                                await serverLogWarn('Error during start-league cleanup', { error: e.message });
                             }
 
                             // remove pending league references from users (so invited/requested users no longer see it)
@@ -1042,11 +1267,11 @@ export default function NewLeague( userData ) {
                                             }
                                         }
                                     } catch (e) {
-                                        console.warn('Failed to remove pending league from user during manual-start cleanup:', raw, e);
+                                        await serverLogWarn('Failed to remove pending league from user during manual-start cleanup', { rawData: raw, error: e.message });
                                     }
                                 }
                             } catch (e) {
-                                console.warn('Failed to process pending users during manual-start cleanup:', e);
+                                await serverLogWarn('Failed to process pending users during manual-start cleanup', { error: e.message });
                             }
 
                             const startResult = await client.graphql({
@@ -1060,6 +1285,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
+                            await serverLogInfo('League manually started', { leagueId: League.id, leagueName: League.lgName });
                             window.location.reload();
                         } else if(popUpTitle === 'Delete League?'){
 
@@ -1077,6 +1303,7 @@ export default function NewLeague( userData ) {
                                     variables: { input: { id: player.id } }
                                 });
                             }
+                            await serverLogInfo('All players deleted from league', { leagueId: League.id, playerCount: players.length });
 
                             // Step 3: Get all users to remove league references
                             const allUsersResult = await client.graphql({
@@ -1128,6 +1355,7 @@ export default function NewLeague( userData ) {
                                 query: deleteLeague,
                                 variables: { input: { id: League.id } }
                             });
+                            await serverLogInfo('League deleted', { leagueId: League.id, leagueName: League.lgName });
 
                             // Close popup and redirect
                             setConfirmOpen(false);
@@ -1187,6 +1415,7 @@ export default function NewLeague( userData ) {
                                         }
                                     }
                                 });
+                                await serverLogInfo('Player invited to league', { leagueId: League.id, inviteeName: inviteName, inviteeEmail: inviteEmail });
 
                                 const results = await client.graphql({
                                     query: getUsers,
@@ -1201,6 +1430,7 @@ export default function NewLeague( userData ) {
                                         query: createUsers,
                                         variables: { input: newUser }
                                     });
+                                    await serverLogInfo('User created for invite', { userId: inviteEmail });
                                 }else{
                                     const existingPending = results.data.getUsers.pendingLeagues || [];
                                     if (!existingPending.includes(League.id)) {
@@ -1208,17 +1438,66 @@ export default function NewLeague( userData ) {
                                             query: updateUsers,
                                             variables: { input: { id: inviteEmail, pendingLeagues: [...existingPending, League.id] } }
                                         });
+                                        await serverLogInfo('User pendingLeagues updated for invite', { userId: inviteEmail, leagueId: League.id });
                                     }
                                 }
 
-                                // For MVP: do not send email. Show a shareable invite link and simple instructions instead.
+                                // Send invite email using SES template
+                                const inviteLink = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/League/' + (League?.id || '');
+                                try {
+                                    // Get AWS credentials from Amplify Auth
+                                    const session = await fetchAuthSession();
+                                    const credentials = session.credentials;
+
+                                    // Create SES client
+                                    const sesClient = new SESClient({
+                                        region: 'us-west-2',
+                                        credentials: credentials
+                                    });
+
+                                    // Send templated email
+                                    const command = new SendTemplatedEmailCommand({
+                                        Source: 'noreply@drag-league.com',
+                                        Destination: {
+                                            ToAddresses: [inviteEmail],
+                                        },
+                                        Template: 'DragLeagueInvitation',
+                                        TemplateData: JSON.stringify({
+                                            inviterName: inviterName,
+                                            leagueName: League?.lgName || 'a league',
+                                            inviteLink: inviteLink,
+                                            supportUrl: `${window.location.origin}/Support`,
+                                            faqUrl: `${window.location.origin}/FAQ`
+                                        }),
+                                        ReplyToAddresses: ['noreply@drag-league.com']
+                                    });
+
+                                    await sesClient.send(command);
+                                    
+                                    await serverLogInfo('Invite email sent', {
+                                        leagueId: League?.id,
+                                        leagueName: League?.lgName,
+                                        inviterName: inviterName,
+                                        inviteeEmail: inviteEmail,
+                                        inviteeName: inviteName
+                                    });
+                                } catch (emailError) {
+                                    await serverLogError('Failed to send invite email', {
+                                        leagueId: League?.id,
+                                        leagueName: League?.lgName,
+                                        inviteeEmail: inviteEmail,
+                                        error: emailError.message
+                                    });
+                                    // Don't block the invite flow if email fails - user can still use the link
+                                }
+
+                                // Show a shareable invite link and simple instructions
                                 setPopUpNameInput('');
                                 setPopUpEmailInput('');
-                                const inviteLink = (typeof window !== 'undefined' ? window.location.origin : 'https://drag-league.com') + '/League/' + (League?.id || '');
                                 setPopUpDescription(
                                     <Box sx={{ mt: 2 }}>
                                         <Typography variant="body1" sx={{ mb: 1 }}>
-                                            Invite added for <strong>{popUpNameInput || inviteEmail}</strong>. Share the link below with the player so they can join the league, or it should appear in their pending requests once they signup/login:
+                                            ✉️ Invite sent to <strong>{inviteName}</strong> ({inviteEmail})! They&apos;ll receive an email with instructions. You can also share this link directly:
                                         </Typography>
                                         <TextField
                                             fullWidth
@@ -1272,20 +1551,23 @@ export default function NewLeague( userData ) {
                             const historyEntryReq = new Date().toISOString() + '. ' + requestName + ' requested to join';
 
                             await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistoryReq, historyEntryReq] } } });
+                            await serverLogInfo('User requested to join league', { leagueId: League.id, requestName: requestName, requestEmail: requestEmail });
 
                             try {
                                 const userRes = await client.graphql({ query: getUsers, variables: { id: requestEmail } });
                                 const userObj = userRes?.data?.getUsers;
                                 if (!userObj) {
                                     await client.graphql({ query: createUsers, variables: { input: { id: requestEmail, leagues: [], pendingLeagues: [League.id] } } });
+                                    await serverLogInfo('User created for join request', { userId: requestEmail, leagueId: League.id });
                                 } else {
                                     const existingPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
                                     if (!existingPending.includes(League.id)) {
                                         await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, pendingLeagues: [...existingPending, League.id] } } });
+                                        await serverLogInfo('User pendingLeagues updated for join request', { userId: userObj.id, leagueId: League.id });
                                     }
                                 }
                             } catch (e) {
-                                console.warn('Failed to update user pending leagues for request:', e);
+                                await serverLogWarn('Failed to update user pending leagues for request', { error: e.message });
                             }
 
                             setPopUpNameInput('');
@@ -1309,6 +1591,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
+                            await serverLogInfo('Player promoted to admin', { leagueId: League.id, promotedEmail: pickedPlayer, promotedName: displayName });
 
 
                             // Also update the player's plStatus so UI reflects admin role
@@ -1329,9 +1612,10 @@ export default function NewLeague( userData ) {
                                             }
                                         }
                                     });
+                                    await serverLogInfo('Player status updated to Admin', { playerId: targetPlayerId, leagueId: League.id });
                                 }
                             } catch (errUpdatePlayer) {
-                                console.warn('Failed to update player status:', errUpdatePlayer);
+                                await serverLogWarn('Failed to update player status', { error: errUpdatePlayer.message });
                             }
 
                             router.reload();
@@ -1347,6 +1631,7 @@ export default function NewLeague( userData ) {
                                 query: createPlayer,
                                 variables: { input: { leagueId: League.id, plEmail: normalizedEmail, plName: displayName, plStatus: 'Player' } }
                             });
+                            await serverLogInfo('Player created from accepted request', { leagueId: League.id, playerEmail: normalizedEmail, playerName: displayName });
 
                             // Update the requesting user's record: add this league to `leagues` and remove from `pendingLeagues`
                             try {
@@ -1357,6 +1642,7 @@ export default function NewLeague( userData ) {
                                 if (!userObj) {
                                     // create a minimal user record with this league
                                     await client.graphql({ query: createUsers, variables: { input: { id: pickedPlayer, leagues: [leagueEntry], pendingLeagues: [] } } });
+                                    await serverLogInfo('User created when accepting request', { userId: pickedPlayer, leagueId: League.id });
                                 } else {
                                     const existingLeagues = Array.isArray(userObj.leagues) ? userObj.leagues.slice() : [];
                                     const existingPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
@@ -1372,9 +1658,10 @@ export default function NewLeague( userData ) {
                                     const filteredPending = existingPending.filter(pid => String(pid) !== String(League.id));
 
                                     await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, leagues: existingLeagues, pendingLeagues: filteredPending } } });
+                                    await serverLogInfo('User updated when accepting request', { userId: userObj.id, leagueId: League.id });
                                 }
                             } catch (e) {
-                                console.warn('Failed to update user record after accepting request:', e);
+                                await serverLogWarn('Failed to update user record after accepting request', { error: e.message });
                             }
 
                             const currentHistory = League.lgHistory || [];
@@ -1390,6 +1677,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
+                            await serverLogInfo('League updated after accepting player request', { leagueId: League.id, playerEmail: pickedPlayer });
                             router.reload();
                         } else if(popUpTitle === 'Revoke invite?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
@@ -1415,6 +1703,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
+                            await serverLogInfo('Invite revoked', { leagueId: League.id, revokedName: displayName, revokedEmail: pickedPlayer });
 
                             // Also remove this league from the invited user's pendingLeagues (if user exists)
                             try {
@@ -1432,7 +1721,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             } catch (e) {
-                                console.warn('Failed to remove pending league from user record:', e);
+                                await serverLogWarn('Failed to remove pending league from user record', { error: e.message });
                             }
 
                             // Refresh the page so UI reflects the revoked invite
@@ -1457,6 +1746,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
+                            await serverLogInfo('Player request declined', { leagueId: League.id, declinedName: displayName, declinedEmail: pickedPlayer });
 
                             // Also remove this league from the requesting user's pendingLeagues (if user exists)
                             try {
@@ -1476,7 +1766,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             } catch (e) {
-                                console.warn('Failed to remove pending league from requester record:', e);
+                                await serverLogWarn('Failed to remove pending league from requester record', { error: e.message });
                             }
 
                             router.reload();
@@ -1492,8 +1782,9 @@ export default function NewLeague( userData ) {
                                     query: deletePlayer,
                                     variables: { input: { id: targetDeleteId } }
                                 });
+                                await serverLogInfo('Player kicked from league', { leagueId: League.id, playerId: targetDeleteId, playerEmail: pickedPlayer, playerName: displayName });
                             } else {
-                                console.warn('Could not resolve player id for kick action:', pickedPlayer);
+                                await serverLogWarn('Could not resolve player id for kick action', { pickedPlayer: pickedPlayer });
                             }
 
                             // Remove this league from the user's `leagues` array
@@ -1514,7 +1805,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             } catch (e) {
-                                console.warn('Failed to remove league from user record:', e);
+                                await serverLogWarn('Failed to remove league from user record', { error: e.message });
                             }
 
                             const currentHistory = League.lgHistory || [];
@@ -1539,6 +1830,7 @@ export default function NewLeague( userData ) {
                                     input: updateInput
                                 }
                             });
+                            await serverLogInfo('League updated after kicking player', { leagueId: League.id, kickedEmail: pickedPlayer, wasAdmin: updatedAdmins.length !== admins.length });
                             router.reload();
                         }
 
@@ -1556,7 +1848,7 @@ export default function NewLeague( userData ) {
                             setPopUpCopySuccess('');
                         }
                     } catch (err) {
-                        console.error('Error performing action:', err);
+                        await serverLogError('Error performing action', { error: err.message });
                         setPopUpError('An error occurred');
                     } finally {
                         setConfirmLoading(false);
@@ -1604,6 +1896,71 @@ export default function NewLeague( userData ) {
                     </Box>
                 )}
             </PopUp>
+            
+            <PopUp
+                open={emailPopupOpen}
+                title="Send Announcement"
+                confirmText={emailSending ? "Sending..." : "Send"}
+                cancelText="Cancel"
+                loading={emailSending}
+                onCancel={() => {
+                    setEmailPopupOpen(false);
+                    setEmailMessage('');
+                    setEmailError('');
+                }}
+                onConfirm={handleEmailAllPlayers}
+            >
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Typography sx={{ color: '#666', fontSize: '0.95rem' }}>
+                        Enter your message to send to all {currentPlayerData().length} player{currentPlayerData().length !== 1 ? 's' : ''} in this league.
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={6}
+                        label="Your message"
+                        value={emailMessage}
+                        onChange={(e) => {
+                            setEmailMessage(e.target.value);
+                            setEmailError('');
+                        }}
+                        placeholder="Type your message here..."
+                        variant="outlined"
+                        error={!!emailError}
+                        helperText={emailError || `${emailMessage.length} characters`}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                '&.Mui-focused fieldset': {
+                                    borderColor: '#FF1493',
+                                },
+                            },
+                            '& .MuiInputLabel-root.Mui-focused': {
+                                color: '#FF1493',
+                            },
+                        }}
+                    />
+                </Box>
+            </PopUp>
+            
+            {emailSuccess && (
+                <Box
+                    sx={{
+                        position: 'fixed',
+                        top: 20,
+                        right: 20,
+                        zIndex: 10000,
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        background: 'linear-gradient(135deg, rgba(80, 200, 120, 0.95) 0%, rgba(60, 179, 113, 0.95) 100%)',
+                        border: '1px solid rgba(80, 200, 120, 0.3)',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    }}
+                >
+                    <Typography sx={{ color: 'white', fontWeight: 600, fontSize: '0.9rem' }}>
+                        ✓ {emailSuccess}
+                    </Typography>
+                </Box>
+            )}
         </PageContainer>
     );
 }

@@ -10,13 +10,36 @@ import { CacheProvider } from '@emotion/react';
 import theme from '../styles/theme'
 import createEmotionCache from '../styles/createEmotionCache';
 import { Amplify } from 'aws-amplify';
-import awsmobile from '@/aws-exports';
+import config from '@/aws-exports';
 import NavBar from '@/files/NavBar';
 import Footer from '@/files/Footer';
 
 // Client-side cache, shared for the whole session of the user in the browser.
 const clientSideEmotionCache = createEmotionCache();
-Amplify.configure(awsmobile);
+
+// Configure Amplify for v6 with multiple auth modes
+Amplify.configure({
+    Auth: {
+        Cognito: {
+            userPoolId: config.aws_user_pools_id,
+            userPoolClientId: config.aws_user_pools_web_client_id,
+            identityPoolId: config.aws_cognito_identity_pool_id,
+            loginWith: {
+                email: true
+            }
+        }
+    },
+    API: {
+        GraphQL: {
+            endpoint: config.aws_appsync_graphqlEndpoint,
+            region: config.aws_appsync_region,
+            defaultAuthMode: 'userPool',
+            apiKey: config.aws_appsync_apiKey
+        }
+    }
+}, {
+    ssr: true
+});
 
 
 export default function MyApp(props) {

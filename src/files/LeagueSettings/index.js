@@ -7,13 +7,18 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Switch from '@mui/material/Switch';
+import TextField from '@mui/material/TextField';
 import PublicIcon from '@mui/icons-material/Public';
 import LockIcon from '@mui/icons-material/Lock';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import EmailIcon from '@mui/icons-material/Email';
 import { generateClient } from 'aws-amplify/api';
+import { fetchAuthSession } from 'aws-amplify/auth';
+import { SESClient, SendTemplatedEmailCommand } from '@aws-sdk/client-ses';
+import { serverLogInfo, serverLogError } from '@/helpers/serverLog';
 import { updatePlayer, updateLeague, deleteLeague, deletePlayer, createPlayer } from '@/graphql/mutations';
 import { playersByLeagueId, listUsers } from '@/graphql/queries';
 import PopUp from '@/files/PopUp';
@@ -44,6 +49,11 @@ export default function LeagueSettings(props) {
     const [privacyAction, setPrivacyAction] = useState(null);
     const [deleteLeagueAction, setDeleteLeagueAction] = useState(false);
     const [deletePlayerAction, setDeletePlayerAction] = useState(false);
+    const [emailSending, setEmailSending] = useState(false);
+    const [emailSuccess, setEmailSuccess] = useState('');
+    const [emailPopupOpen, setEmailPopupOpen] = useState(false);
+    const [emailMessage, setEmailMessage] = useState('');
+    const [emailError, setEmailError] = useState('');
 
     const client = generateClient();
 
@@ -79,6 +89,134 @@ export default function LeagueSettings(props) {
         setConfirmOpen(true);
     };
 
+    const handleEmailAllPlayers = async () => {
+        if (!players || players.length === 0) {
+            setErrorMessage('No players to email.');
+            setErrorPopup(true);
+            return;
+        }
+
+        if (!emailMessage || emailMessage.trim() === '') {
+            setEmailError('Please enter a message to send.');
+            return;
+        }
+
+        setEmailSending(true);
+        setEmailSuccess('');
+        setEmailError('');
+        
+        try {
+            const playerEmails = players
+                .map(p => p.plEmail)
+                .filter(email => email && email.trim() !== '');
+
+            if (playerEmails.length === 0) {
+                setErrorMessage('No valid player emails found.');
+                setErrorPopup(true);
+                setEmailSending(false);
+                return;
+            }
+
+            const leagueName = leagueData?.lgName || 'Your League';
+            
+            // Find sender name from multiple sources
+            let senderName = 'League Admin';
+            const currentUserId = (userData?.id || '').toLowerCase();
+            
+            // Try to find the current user in the players list first (priority 1)
+            const currentPlayer = players.find(p => {
+                const pEmail = (p.plEmail || '').toLowerCase();
+                const pId = (p.id || '').toLowerCase();
+                return pEmail === currentUserId || pId === currentUserId;
+            });
+            
+            if (currentPlayer?.plName && currentPlayer.plName.trim() !== '') {
+                senderName = currentPlayer.plName;
+            } else if (userData?.name && userData.name.trim() !== '') {
+                // Fallback to userData name (priority 2)
+                senderName = userData.name;
+            }
+            
+            const leagueUrl = `${window.location.origin}/League/${leagueData?.id}`;
+            const userMessage = emailMessage.trim();
+
+            await serverLogInfo('Sending announcement email via SES', { playerCount: playerEmails.length, leagueId: leagueData?.id });
+            
+            // Get AWS credentials from Amplify Auth
+            const session = await fetchAuthSession();
+            const credentials = session.credentials;
+
+            // Create SES client with user's credentials
+            const sesClient = new SESClient({
+                region: 'us-west-2',
+                credentials: credentials
+            });
+
+            // Send templated email using SES
+            const command = new SendTemplatedEmailCommand({
+                Source: 'noreply@drag-league.com',
+                Destination: {
+                    ToAddresses: playerEmails,
+                },
+                Template: 'DragLeagueAnnouncement',
+                TemplateData: JSON.stringify({
+                    senderName: senderName,
+                    leagueName: leagueName,
+                    message: userMessage,
+                    leagueUrl: leagueUrl,
+                    supportUrl: `${window.location.origin}/Support`,
+                    faqUrl: `${window.location.origin}/FAQ`
+                }),
+                ReplyToAddresses: ['noreply@drag-league.com']
+            });
+
+            await sesClient.send(command);
+            await serverLogInfo('Email sent successfully via SES template', { leagueId: leagueData?.id, playerCount: playerEmails.length });
+            
+            await serverLogInfo('Announcement email sent from settings', {
+                leagueId: leagueData?.id,
+                leagueName: leagueName,
+                senderName: senderName,
+                recipientCount: playerEmails.length,
+                messageLength: userMessage.length
+            });
+
+            // Add to league history
+            const currentHistory = leagueData?.lgHistory || [];
+            const historyEntry = `${new Date().toISOString()}. [ANNOUNCEMENT] ${senderName} sent an announcement to all players: "${userMessage.length > 100 ? userMessage.substring(0, 100) + '...' : userMessage}"`;
+            
+            await client.graphql({
+                query: updateLeague,
+                variables: {
+                    input: {
+                        id: leagueData.id,
+                        lgHistory: [...currentHistory, historyEntry]
+                    }
+                }
+            });
+            await serverLogInfo('League history updated with announcement from settings', { leagueId: leagueData.id, leagueName: leagueData.lgName });
+
+            setEmailSuccess(`Email sent successfully to ${playerEmails.length} player${playerEmails.length > 1 ? 's' : ''}!`);
+            setEmailPopupOpen(false);
+            setEmailMessage('');
+            
+            // Refresh page to show updated history
+            setTimeout(() => window.location.reload(), 1000);
+        } catch (error) {
+            await serverLogError('Failed to send announcement from settings', {
+                leagueId: leagueData?.id,
+                leagueName: leagueData?.lgName,
+                error: error.message,
+                errorName: error.name,
+                recipientCount: playerEmails?.length || 0
+            });
+            setErrorMessage('Failed to send email to players. Please try again.');
+            setErrorPopup(true);
+        } finally {
+            setEmailSending(false);
+        }
+    };
+
     const handleRequestJoin = async () => {
         if (!userData?.id) return;
         try {
@@ -89,9 +227,10 @@ export default function LeagueSettings(props) {
                 query: updateLeague,
                 variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending } }
             });
+            await serverLogInfo('User requested to join league from settings', { leagueId: leagueData.id, userId: userData.id });
             window.location.reload();
         } catch (err) {
-            console.error('Request join failed', err);
+            await serverLogError('Request join failed', { error: err.message });
             setErrorMessage('Failed to request to join.');
             setErrorPopup(true);
         } finally {
@@ -110,11 +249,13 @@ export default function LeagueSettings(props) {
             const accepterName = userData?.name || 'A user';
             const historyEntry = new Date().toISOString() + '. ' + accepterName + ' accepted invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
+            await serverLogInfo('Invite accepted from settings', { leagueId: leagueData.id, userId: userData.id, userName: accepterName });
             // create player record
             await client.graphql({ query: createPlayer, variables: { input: { leagueId: leagueData.id, plEmail: userData.id, plName: userData.name || '', plStatus: 'Member' } } });
+            await serverLogInfo('Player created from accepted invite in settings', { leagueId: leagueData.id, playerEmail: userData.id, playerName: userData.name });
             window.location.reload();
         } catch (err) {
-            console.error('Accept invite failed', err);
+            await serverLogError('Accept invite failed', { error: err.message });
             setErrorMessage('Failed to accept invite.');
             setErrorPopup(true);
         } finally {
@@ -131,9 +272,10 @@ export default function LeagueSettings(props) {
             const declinerName = userData?.name || 'A user';
             const historyEntry = new Date().toISOString() + '. ' + declinerName + ' declined invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
+            await serverLogInfo('Invite declined from settings', { leagueId: leagueData.id, userId: userData.id, userName: declinerName });
             window.location.reload();
         } catch (err) {
-            console.error('Decline invite failed', err);
+            await serverLogError('Decline invite failed', { error: err.message });
             setErrorMessage('Failed to decline invite.');
             setErrorPopup(true);
         } finally {
@@ -158,6 +300,7 @@ export default function LeagueSettings(props) {
                     }
                 }
             });
+            await serverLogInfo('Player promoted to admin from settings', { leagueId: leagueData.id, playerId: selectedPlayer.id, playerName: selectedPlayer.plName });
 
             // Add player email to league's lgAdmin array
             const updatedAdmins = [...admins];
@@ -179,13 +322,14 @@ export default function LeagueSettings(props) {
                     }
                 }
             });
+            await serverLogInfo('League updated with new admin from settings', { leagueId: leagueData.id, newAdminId: selectedPlayer.id });
 
 
             setConfirmOpen(false);
             // Refresh the page to show updated data
             window.location.reload();
         } catch (error) {
-            console.error('Error promoting player:', error);
+            await serverLogError('Error promoting player', { error: error.message });
         } finally {
             setConfirmLoading(false);
         }
@@ -225,13 +369,14 @@ export default function LeagueSettings(props) {
                     }
                 }
             });
+            await serverLogInfo('League privacy settings updated', { leagueId: leagueData.id, field: privacyAction.field, value: privacyAction.value });
 
             setConfirmOpen(false);
             setPrivacyAction(null);
             // Refresh the page to show updated data
             window.location.reload();
         } catch (error) {
-            console.error('Error updating privacy setting:', error);
+            await serverLogError('Error updating privacy setting', { error: error.message });
         } finally {
             setConfirmLoading(false);
         }
@@ -262,6 +407,7 @@ export default function LeagueSettings(props) {
                     variables: { input: { id: player.id } }
                 });
             }
+            await serverLogInfo('All players deleted from league in settings', { leagueId: leagueData.id, playerCount: playersToDelete.length });
 
             // Step 3: Get all users to remove league references
             const allUsersResult = await client.graphql({
@@ -314,13 +460,14 @@ export default function LeagueSettings(props) {
                 query: deleteLeague,
                 variables: { input: { id: leagueData.id } }
             });
+            await serverLogInfo('League deleted from settings', { leagueId: leagueData.id, leagueName: leagueData.lgName });
 
             setConfirmOpen(false);
             setDeleteLeagueAction(false);
             // Redirect to player page
             router.push('/Player');
         } catch (error) {
-            console.error('Error deleting league:', error);
+            await serverLogError('Error deleting league', { error: error.message });
             setErrorMessage('Failed to delete league. Please try again.');
             setErrorPopup(true);
         } finally {
@@ -339,10 +486,11 @@ export default function LeagueSettings(props) {
                     query: deletePlayer,
                     variables: { input: { id: selectedPlayer.id } }
                 });
+                await serverLogInfo('Player deleted from settings', { leagueId: leagueData.id, playerId: selectedPlayer.id, playerName: selectedPlayer.plName });
                 // reload to refresh players list
                 window.location.reload();
             } catch (err) {
-                console.error('Error deleting player:', err);
+                await serverLogError('Error deleting player', { error: err.message });
                 setErrorMessage('Failed to remove player.');
                 setErrorPopup(true);
             } finally {
@@ -516,6 +664,70 @@ export default function LeagueSettings(props) {
             <SettingSection>
                 <SectionTitle>Admin Tools</SectionTitle>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {/* Email All Players */}
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '16px',
+                            borderRadius: '8px',
+                            background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
+                            border: '1px solid rgba(255, 20, 147, 0.2)',
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <EmailIcon sx={{ color: '#FF1493' }} />
+                            <Box>
+                                <Typography sx={{ fontWeight: 600, color: '#333' }}>
+                                    Send Announcement
+                                </Typography>
+                                <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
+                                    Send a notification email to all league members
+                                </Typography>
+                            </Box>
+                        </Box>
+                        <Button
+                            variant="contained"
+                            onClick={() => setEmailPopupOpen(true)}
+                            disabled={emailSending}
+                            sx={{
+                                background: 'linear-gradient(135deg, #FF1493 0%, #C71585 100%)',
+                                color: 'white',
+                                fontWeight: 600,
+                                textTransform: 'none',
+                                px: { xs: 2, sm: 3 },
+                                py: { xs: 1, sm: 1.25 },
+                                fontSize: { xs: '0.775rem', sm: '1rem' },
+                                '&:hover': {
+                                    background: 'linear-gradient(135deg, #E6127A 0%, #B01070 100%)',
+                                },
+                                '&:disabled': {
+                                    background: '#ccc',
+                                    color: '#666',
+                                },
+                            }}
+                        >
+                            Send Announcement
+                        </Button>
+                    </Box>
+                    
+                    {emailSuccess && (
+                        <Box
+                            sx={{
+                                padding: '12px 16px',
+                                borderRadius: '8px',
+                                background: 'linear-gradient(135deg, rgba(80, 200, 120, 0.1) 0%, rgba(60, 179, 113, 0.1) 100%)',
+                                border: '1px solid rgba(80, 200, 120, 0.3)',
+                            }}
+                        >
+                            <Typography sx={{ color: '#50C878', fontWeight: 600, fontSize: '0.9rem' }}>
+                                ✓ {emailSuccess}
+                            </Typography>
+                        </Box>
+                    )}
+                    
+                    {/* Admin Edit Page */}
                     <Box
                         sx={{
                             display: 'flex',
@@ -618,6 +830,52 @@ export default function LeagueSettings(props) {
             >
                 {popUpDescription}
             </PopUp>
+            
+            <PopUp
+                open={emailPopupOpen}
+                title="Send Announcement"
+                confirmText={emailSending ? "Sending..." : "Send"}
+                cancelText="Cancel"
+                loading={emailSending}
+                onCancel={() => {
+                    setEmailPopupOpen(false);
+                    setEmailMessage('');
+                    setEmailError('');
+                }}
+                onConfirm={handleEmailAllPlayers}
+            >
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Typography sx={{ color: '#666', fontSize: '0.95rem' }}>
+                        Enter your message to send to all {players.length} player{players.length !== 1 ? 's' : ''} in this league.
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={6}
+                        label="Your message"
+                        value={emailMessage}
+                        onChange={(e) => {
+                            setEmailMessage(e.target.value);
+                            setEmailError('');
+                        }}
+                        placeholder="Type your message here..."
+                        variant="outlined"
+                        error={!!emailError}
+                        helperText={emailError || `${emailMessage.length} characters`}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                '&.Mui-focused fieldset': {
+                                    borderColor: '#FF1493',
+                                },
+                            },
+                            '& .MuiInputLabel-root.Mui-focused': {
+                                color: '#FF1493',
+                            },
+                        }}
+                    />
+                </Box>
+            </PopUp>
+            
             <ErrorPopup open={errorPopup} onClose={() => setErrorPopup(false)} message={errorMessage} />
         </Root>
     );

@@ -10,7 +10,10 @@ type Users @model @auth(rules: [{ allow: private, provider: userPools, operation
   pendingLeagues: [String]
 }
 
-type League @model @auth(rules: [{ allow: private, provider: userPools, operations: [create, update, delete, read] }]) {
+type League @model @auth(rules: [
+  { allow: public, provider: apiKey, operations: [read] },
+  { allow: private, provider: userPools, operations: [create, update, delete, read] }
+]) {
   id: ID!
   lgName: String!
   lgDescription: String
@@ -35,7 +38,10 @@ type League @model @auth(rules: [{ allow: private, provider: userPools, operatio
   lgPlayers: [Player] @hasMany(indexName: "byLeague", fields: ["id"])
 }
 
-type Player @model @auth(rules: [{ allow: private, provider: userPools, operations: [create, update, delete, read] }]) {
+type Player @model @auth(rules: [
+  { allow: public, provider: apiKey, operations: [read] },
+  { allow: private, provider: userPools, operations: [create, update, delete, read] }
+]) {
   leagueId: ID! @index(name: "byLeague", sortKeyFields: [])
   league: League @belongsTo(fields: ["leagueId"])
   plEmail: String!

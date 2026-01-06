@@ -55,14 +55,19 @@ export default function History({ leagueData }) {
                             // If splitting didn't produce an action, fall back to the whole entry
                             if (!actionText || actionText.trim() === '') actionText = entry;
 
-                            // Check if this is an admin edit
+                            // Check if this is an admin edit or announcement
                             const isAdminEdit = actionText.startsWith('[ADMIN EDIT]');
-                            const displayText = isAdminEdit ? actionText.replace('[ADMIN EDIT] ', '') : actionText;
+                            const isAnnouncement = actionText.startsWith('[ANNOUNCEMENT]');
+                            const displayText = isAdminEdit 
+                                ? actionText.replace('[ADMIN EDIT] ', '') 
+                                : isAnnouncement 
+                                    ? actionText.replace('[ANNOUNCEMENT] ', '') 
+                                    : actionText;
 
                             return (
-                                <HistoryItem key={index} isAdminEdit={isAdminEdit}>
-                                    <HistoryDate isAdminEdit={isAdminEdit}>{formatDate(dateStr)}</HistoryDate>
-                                    <HistoryText isAdminEdit={isAdminEdit}>
+                                <HistoryItem key={index} isAdminEdit={isAdminEdit} isAnnouncement={isAnnouncement}>
+                                    <HistoryDate isAdminEdit={isAdminEdit} isAnnouncement={isAnnouncement}>{formatDate(dateStr)}</HistoryDate>
+                                    <HistoryText isAdminEdit={isAdminEdit} isAnnouncement={isAnnouncement}>
                                         {isAdminEdit && (
                                             <Box component="span" sx={{ 
                                                 display: 'inline-block',
@@ -76,6 +81,21 @@ export default function History({ leagueData }) {
                                                 verticalAlign: 'middle'
                                             }}>
                                                 ADMIN EDIT
+                                            </Box>
+                                        )}
+                                        {isAnnouncement && (
+                                            <Box component="span" sx={{ 
+                                                display: 'inline-block',
+                                                background: 'linear-gradient(135deg, #4A90E2 0%, #7B68EE 100%)',
+                                                color: 'white',
+                                                padding: '2px 8px',
+                                                borderRadius: '4px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 700,
+                                                marginRight: '8px',
+                                                verticalAlign: 'middle'
+                                            }}>
+                                                ANNOUNCEMENT
                                             </Box>
                                         )}
                                         {displayText}

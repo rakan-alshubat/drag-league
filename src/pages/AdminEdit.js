@@ -61,7 +61,7 @@ export default function AdminEdit() {
 
             setLoading(false);
         } catch (error) {
-            console.error('Error fetching data:', error);
+            await serverLogError('Error fetching data', { error: error.message });
             setLoading(false);
         }
     };
