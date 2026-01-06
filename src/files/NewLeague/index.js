@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { generateClient } from 'aws-amplify/api'
+import { fetchAuthSession } from 'aws-amplify/auth';
+import { SESClient, SendTemplatedEmailCommand } from '@aws-sdk/client-ses';
 import { createPlayer, updateLeague, deleteLeague, createUsers, updateUsers, deletePlayer, updatePlayer } from '@/graphql/mutations';
 import { getUsers, playersByLeagueId, listUsers } from '@/graphql/queries';
 import { sendEmailAPI } from "@/helpers/sendEmail";
@@ -404,48 +406,38 @@ export default function NewLeague( userData ) {
             const leagueUrl = `${window.location.origin}/League/${League?.id}`;
             const userMessage = emailMessage.trim();
 
-            console.log('Sending email to:', playerEmails.length, 'players');
+            console.log('Sending email via SES to:', playerEmails.length, 'players');
             
-            const response = await fetch('/api/sendEmail', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    to: playerEmails,
-                    subject: `Message from ${senderName} - ${leagueName}`,
-                    html: `
-                        <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif">
-                            <div style="background:#FF1493;padding:20px;text-align:center">
-                                <h1 style="color:#fff;margin:0">🏁 Message from ${senderName}</h1>
-                            </div>
-                            <div style="padding:30px;background:#fff">
-                                <p><strong>${senderName}</strong> sent a message to <strong>${leagueName}</strong> players:</p>
-                                <div style="margin:20px 0;padding:15px;background:#fff5f8;border-left:4px solid #FF1493">
-                                    <p style="margin:0;white-space:pre-wrap">${userMessage.replace(/\n/g, '<br>')}</p>
-                                </div>
-                                <div style="text-align:center;margin:20px 0">
-                                    <a href="${leagueUrl}" style="background:#FF1493;color:#fff;padding:12px 30px;text-decoration:none;border-radius:5px;display:inline-block">View League</a>
-                                </div>
-                                <p style="font-size:12px;color:#666">Link: <a href="${leagueUrl}" style="color:#FF1493">${leagueUrl}</a></p>
-                            </div>
-                            <div style="padding:20px;background:#f9f9f9;font-size:11px;color:#999;text-align:center">
-                                <p>Drag League • <a href="${window.location.origin}/Support" style="color:#FF1493">Support</a> | <a href="${window.location.origin}/FAQ" style="color:#FF1493">FAQ</a></p>
-                            </div>
-                        </div>
-                    `
-                })
+            // Get AWS credentials from Amplify Auth
+            const session = await fetchAuthSession();
+            const credentials = session.credentials;
+
+            // Create SES client with user's credentials
+            const sesClient = new SESClient({
+                region: 'us-west-2',
+                credentials: credentials
             });
 
-            console.log('Response status:', response.status);
-            console.log('Response ok:', response.ok);
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Response error:', errorText);
-                throw new Error(`Failed to send email: ${response.status} - ${errorText}`);
-            }
+            // Send templated email using SES
+            const command = new SendTemplatedEmailCommand({
+                Source: 'noreply@drag-league.com',
+                Destination: {
+                    ToAddresses: playerEmails,
+                },
+                Template: 'DragLeagueAnnouncement',
+                TemplateData: JSON.stringify({
+                    senderName: senderName,
+                    leagueName: leagueName,
+                    message: userMessage,
+                    leagueUrl: leagueUrl,
+                    supportUrl: `${window.location.origin}/Support`,
+                    faqUrl: `${window.location.origin}/FAQ`
+                }),
+                ReplyToAddresses: ['noreply@drag-league.com']
+            });
 
-            const result = await response.json();
-            console.log('Email sent successfully:', result);
+            await sesClient.send(command);
+            console.log('Email sent successfully via SES template');
 
             // Add to league history
             const currentHistory = League?.lgHistory || [];
