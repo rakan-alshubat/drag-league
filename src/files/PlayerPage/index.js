@@ -9,6 +9,7 @@ import { getUsers, getLeague, listLeagues } from "@/graphql/queries";
 import { createUsers, updateUsers, deleteUsers } from '@/graphql/mutations';
 import ErrorPopup from "../ErrorPopUp";
 import { onCreateUsers, onUpdateUsers, onDeleteUsers, onUpdateLeague } from '@/graphql/subscriptions';
+import { serverLogInfo, serverLogError } from '@/helpers/serverLog';
 import { Box, Typography, Button, Tabs, Tab, TextField, Stack, List, ListItemButton, ListItemText, CircularProgress, Chip } from '@mui/material';
 import {
     StyledDialog as PopupDialog,
@@ -263,6 +264,14 @@ export default function PlayerPage() {
         async function fetchLeaguesMeta() {
             const results = [];
             const parsed = sortedLeagues(leagues);
+            
+            // Log leagues being loaded
+            await serverLogInfo('Player viewing leagues', {
+                userId: userID,
+                leagueCount: parsed.length,
+                leagueIds: parsed.map(l => l.id)
+            });
+            
             await Promise.all(parsed.map(async (entry) => {
                 try {
                     const r = await client.graphql({ query: getLeague, variables: { id: entry.id } });
@@ -283,6 +292,11 @@ export default function PlayerPage() {
                     }
                 } catch (err) {
                     console.error('Error fetching league meta:', err);
+                    await serverLogError('Failed to fetch league metadata', {
+                        userId: userID,
+                        leagueId: entry.id,
+                        error: err.message
+                    });
                     setErrorMessage('Failed to fetch league meta.');
                     setErrorPopup(true);
                     results.push({ id: entry.id, name: entry.name, date: entry.date, isAdmin: false });
