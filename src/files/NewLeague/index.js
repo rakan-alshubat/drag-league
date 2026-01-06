@@ -579,8 +579,8 @@ export default function NewLeague( userData ) {
                 
                 // Extract the actual message from the announcement
                 // Format: "[ANNOUNCEMENT] Name sent an announcement to all players: "message""
-                const messageMatch = text.match(/:\s*"(.+)"$/);
-                const message = messageMatch ? messageMatch[1] : text.replace('[ANNOUNCEMENT]', '').trim();
+                const messageMatch = text.match(/[""](.+?)[""]$/);
+                const message = messageMatch ? messageMatch[1] : text.replace(/\[ANNOUNCEMENT\].*?:\s*/, '').replace(/^[""]|[""]$/g, '').trim();
                 const senderMatch = text.match(/\[ANNOUNCEMENT\]\s*(.+?)\s+sent an announcement/);
                 const sender = senderMatch ? senderMatch[1] : 'Admin';
                 
