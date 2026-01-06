@@ -770,10 +770,10 @@ export default function NewLeague( userData ) {
             )}
 
             {(League?.lgHistory || []).some(h => String(h).includes('League updated by')) ? (
-                        <Box sx={{ mt: 1 }}>
-                            <Alert severity="warning">League rules were updated by an admin — please review changes and check your submissions to make sure all the info is still there.</Alert>
-                        </Box>
-                    ) : null}
+                <Box sx={{ mt: 1 }}>
+                    <Alert severity="warning">League rules were updated by an admin — please review changes and check your submissions to make sure all the info is still there.</Alert>
+                </Box>
+            ) : null}
 
             {isAdmin && League?.lgFinished === 'not started' && (
                 <>
