@@ -418,32 +418,48 @@ export default function NewLeague( userData ) {
                 credentials: credentials
             });
 
-            // Send templated email using SES
-            const command = new SendTemplatedEmailCommand({
-                Source: 'noreply@drag-league.com',
-                Destination: {
-                    ToAddresses: playerEmails,
-                },
-                Template: 'DragLeagueAnnouncement',
-                TemplateData: JSON.stringify({
-                    senderName: senderName,
-                    leagueName: leagueName,
-                    message: userMessage,
-                    leagueUrl: leagueUrl,
-                    supportUrl: `${window.location.origin}/Support`,
-                    faqUrl: `${window.location.origin}/FAQ`
-                }),
-                ReplyToAddresses: ['noreply@drag-league.com']
-            });
-
-            await sesClient.send(command);
-            await serverLogInfo('Email sent successfully via SES template', { leagueId: League?.id, playerCount: playerEmails.length });
+            // Send individual emails to each player for privacy
+            let successCount = 0;
+            let failCount = 0;
             
-            await serverLogInfo('Announcement email sent', {
+            for (const email of playerEmails) {
+                try {
+                    const command = new SendTemplatedEmailCommand({
+                        Source: 'noreply@drag-league.com',
+                        Destination: {
+                            ToAddresses: [email],
+                        },
+                        Template: 'DragLeagueAnnouncement',
+                        TemplateData: JSON.stringify({
+                            senderName: senderName,
+                            leagueName: leagueName,
+                            message: userMessage,
+                            leagueUrl: leagueUrl,
+                            supportUrl: `${window.location.origin}/Support`,
+                            faqUrl: `${window.location.origin}/FAQ`
+                        }),
+                        ReplyToAddresses: ['noreply@drag-league.com']
+                    });
+
+                    await sesClient.send(command);
+                    successCount++;
+                } catch (emailError) {
+                    failCount++;
+                    await serverLogError('Failed to send email to individual recipient', {
+                        leagueId: League?.id,
+                        recipientEmail: email,
+                        error: emailError.message
+                    });
+                }
+            }
+
+            await serverLogInfo('Announcement email batch completed', {
                 leagueId: League?.id,
                 leagueName: League?.lgName,
                 senderName: senderName,
-                recipientCount: playerEmails.length,
+                totalRecipients: playerEmails.length,
+                successCount: successCount,
+                failCount: failCount,
                 messageLength: userMessage.length
             });
 
@@ -462,7 +478,11 @@ export default function NewLeague( userData ) {
             });
             await serverLogInfo('League history updated with announcement', { leagueId: League.id, leagueName: League.lgName });
 
-            setEmailSuccess(`Email sent successfully to ${playerEmails.length} player${playerEmails.length > 1 ? 's' : ''}!`);
+            const resultMessage = failCount > 0 
+                ? `Email sent to ${successCount} of ${playerEmails.length} players. ${failCount} failed.`
+                : `Email sent successfully to ${successCount} player${successCount > 1 ? 's' : ''}!`;
+            
+            setEmailSuccess(resultMessage);
             setEmailPopupOpen(false);
             setEmailMessage('');
             
@@ -725,15 +745,24 @@ export default function NewLeague( userData ) {
                             background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.8) 0%, rgba(245, 235, 255, 0.8) 100%)',
                             border: '1px solid rgba(255, 20, 147, 0.3)',
                             borderRadius: '12px',
+                            overflowWrap: 'break-word',
+                            wordWrap: 'break-word',
+                            wordBreak: 'break-word',
                             '& .MuiAlert-icon': {
                                 color: '#FF1493'
+                            },
+                            '& .MuiAlert-message': {
+                                overflowWrap: 'break-word',
+                                wordWrap: 'break-word',
+                                wordBreak: 'break-word',
+                                width: '100%'
                             }
                         }}
                     >
-                        <Typography sx={{ fontWeight: 600, color: '#333', mb: 0.5 }}>
+                        <Typography sx={{ fontWeight: 600, color: '#333', mb: 0.5, overflowWrap: 'break-word', wordWrap: 'break-word', wordBreak: 'break-word' }}>
                             📢 Latest Announcement from {recentAnnouncement.sender}
                         </Typography>
-                        <Typography sx={{ color: '#666', fontSize: '0.95rem', fontStyle: 'italic', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        <Typography sx={{ color: '#666', fontSize: '0.95rem', fontStyle: 'italic', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', wordWrap: 'break-word' }}>
                             &ldquo;{recentAnnouncement.message}&rdquo;
                         </Typography>
                     </Alert>
