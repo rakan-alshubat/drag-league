@@ -48,15 +48,21 @@ export default async function handler(req, res) {
         });
     }
 
-    // Initialize SES client with explicit credentials for local dev
+    // Initialize SES client with explicit credentials
     const sesConfig = { region };
     
-    // In local development, use explicit credentials from env vars
+    // Always use explicit credentials (required for Amplify Hosting)
     if (process.env.SES_ACCESS_KEY_ID && process.env.SES_SECRET_ACCESS_KEY) {
         sesConfig.credentials = {
             accessKeyId: process.env.SES_ACCESS_KEY_ID,
             secretAccessKey: process.env.SES_SECRET_ACCESS_KEY,
         };
+        console.log('Using explicit SES credentials');
+    } else {
+        console.error('SES credentials not found in environment variables');
+        return res.status(500).json({ 
+            error: "SES credentials not configured. Please set SES_ACCESS_KEY_ID and SES_SECRET_ACCESS_KEY." 
+        });
     }
     
     const sesClient = new SESClient(sesConfig);
