@@ -2,10 +2,18 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { getCurrentUser } from '@aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
-import { serverLogWarn } from '@/helpers/serverLog';
-import { getUsers } from '@/graphql/queries';
-import { Typography } from '@mui/material';
+import { serverLogWarn, serverLogError } from '@/helpers/serverLog';
+import { getUsers, listLeagues } from '@/graphql/queries';
+import { Typography, TextField, Box, CircularProgress } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import {
+    StyledDialog as PopupDialog,
+    StyledDialogTitle,
+    StyledDialogContent,
+    StyledDialogActions,
+    CancelButton
+} from '@/files/SubmissionsPopUp/SubmissionsPopUp.styles';
+import { SearchResultCard, SearchResultTitle, SearchResultDescription } from '@/files/PlayerPage/PlayerPage.styles';
 import { 
     PageContainer,
     HeroSection,
@@ -33,6 +41,12 @@ export default function HomePage() {
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState('');
     const client = useMemo(() => generateClient(), []);
+    
+    // Search state
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchName, setSearchName] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [searchLoading, setSearchLoading] = useState(false);
 
     useEffect(() => {
         checkAuthStatus();
@@ -41,6 +55,62 @@ export default function HomePage() {
     const handleBuyMeCoffeeClick = () => {
         window.open('https://www.buymeacoffee.com/dragleague', '_blank');
     };
+
+    const closeSearch = () => {
+        setSearchOpen(false);
+        setSearchName('');
+        setSearchResults([]);
+        setSearchLoading(false);
+    };
+
+    // Live search for public leagues when typing in the Search dialog
+    useEffect(() => {
+        if (!searchOpen) return; // only search when dialog is open
+
+        let active = true;
+        if (!searchName || String(searchName).trim().length === 0) {
+            setSearchResults([]);
+            setSearchLoading(false);
+            return;
+        }
+
+        setSearchLoading(true);
+        const timer = setTimeout(async () => {
+            try {
+                console.log('Searching for leagues with name:', searchName);
+                // Fetch public leagues and apply a case-insensitive filter client-side
+                const filter = { lgPublic: { eq: true } };
+                
+                // Use API Key auth mode for unauthenticated users
+                const authMode = isAuthenticated ? undefined : 'apiKey';
+                const res = await client.graphql({ 
+                    query: listLeagues, 
+                    variables: { filter, limit: 100 },
+                    authMode: authMode
+                });
+                
+                console.log('GraphQL response:', res);
+                const items = res?.data?.listLeagues?.items || [];
+                console.log('Total public leagues:', items.length);
+                if (!active) return;
+                const needle = String(searchName || '').toLowerCase();
+                const matched = items.filter(i => (String(i.lgName || i.name || '')).toLowerCase().includes(needle));
+                console.log('Matched leagues:', matched.length, matched);
+                setSearchResults(matched.slice(0, 5));
+            } catch (err) {
+                console.error('League search error:', err);
+                await serverLogError('League search error', { error: err.message, searchName });
+                if (active) setSearchResults([]);
+            } finally {
+                if (active) setSearchLoading(false);
+            }
+        }, 250);
+
+        return () => {
+            active = false;
+            clearTimeout(timer);
+        };
+    }, [searchName, searchOpen, client]);
 
     const checkAuthStatus = async () => {
         try {
@@ -145,6 +215,25 @@ export default function HomePage() {
                         </ButtonGroup>
                     </>
                 )}
+
+                {/* Search Button for all users */}
+                <Box sx={{ mt: 3, position: 'relative', zIndex: 1 }}>
+                    <StyledButton
+                        variant="outlined"
+                        size="large"
+                        onClick={() => setSearchOpen(true)}
+                        sx={{
+                            borderColor: 'white',
+                            color: 'white',
+                            '&:hover': {
+                                borderColor: 'white',
+                                backgroundColor: 'rgba(255,255,255,0.1)',
+                            },
+                        }}
+                    >
+                        🔍 Search Leagues
+                    </StyledButton>
+                </Box>
             </HeroSection>
 
             <InfoSection>
@@ -184,6 +273,77 @@ export default function HomePage() {
                     </FeatureCard>
                 </FeatureGrid>
             </InfoSection>
+
+            {/* Search Dialog */}
+            <PopupDialog 
+                open={searchOpen} 
+                onClose={() => closeSearch()}
+                fullWidth
+                maxWidth="md"
+                PaperProps={{
+                    sx: {
+                        minWidth: { xs: '90vw !important', sm: '500px !important', md: '600px !important' },
+                        width: { xs: '90vw', sm: '80vw', md: '700px' },
+                    }
+                }}
+            >
+                <StyledDialogTitle>Search Leagues</StyledDialogTitle>
+
+                <StyledDialogContent>
+                    <TextField
+                        label="League name"
+                        value={searchName}
+                        onChange={(e) => setSearchName(e.target.value)}
+                        fullWidth
+                        autoFocus
+                        margin="dense"
+                        variant="outlined"
+                    />
+
+                    <Box sx={{ mt: 1, width: '100%' }}>
+                        {searchLoading ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                <CircularProgress size={28} sx={{ color: '#FF1493' }} />
+                            </Box>
+                        ) : (
+                            <Box sx={{ width: '100%' }}>
+                                {searchResults && searchResults.length > 0 ? (
+                                    searchResults.map(r => (
+                                        <SearchResultCard
+                                            key={r.id}
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-label={`Open league ${r.lgName || r.name || 'Untitled'}`}
+                                            onClick={() => { closeSearch(); router.push(`/League/${r.id}`); }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    closeSearch();
+                                                    router.push(`/League/${r.id}`);
+                                                }
+                                            }}
+                                        >
+                                            <SearchResultTitle>{r.lgName || r.name || 'Untitled'}</SearchResultTitle>
+                                            {r.lgDescription && (
+                                                <SearchResultDescription sx={{ color: '#666' }}>
+                                                    {r.lgDescription}
+                                                </SearchResultDescription>
+                                            )}
+                                        </SearchResultCard>
+                                    ))
+                                ) : (
+                                    <Box sx={{ textAlign: 'center', py: 2, color: '#666' }}>No leagues found.</Box>
+                                )}
+                            </Box>
+                        )}
+                    </Box>
+
+                </StyledDialogContent>
+
+                <StyledDialogActions>
+                    <CancelButton onClick={() => closeSearch()}>Cancel</CancelButton>
+                </StyledDialogActions>
+            </PopupDialog>
         </PageContainer>
     );
 }

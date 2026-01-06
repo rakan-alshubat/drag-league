@@ -203,7 +203,7 @@ export const SearchResultCard = styled(Box)(({ theme }) => ({
 export const SearchResultTitle = styled(Typography)(({ theme }) => ({
     fontWeight: 600,
     fontSize: '1.1rem',
-    color: theme.palette.text.primary,
+    color: '#FF1493',
     marginBottom: theme.spacing(0.5),
     [theme.breakpoints.down('sm')]: {
         fontSize: '1rem',

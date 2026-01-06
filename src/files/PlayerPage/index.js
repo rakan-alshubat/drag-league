@@ -531,7 +531,18 @@ export default function PlayerPage() {
                             </Button>
                         </ButtonContainer>
 
-                        <PopupDialog open={searchOpen} onClose={() => closeSearch()}>
+                        <PopupDialog 
+                            open={searchOpen} 
+                            onClose={() => closeSearch()}
+                            fullWidth
+                            maxWidth="md"
+                            PaperProps={{
+                                sx: {
+                                    minWidth: { xs: '90vw !important', sm: '500px !important', md: '600px !important' },
+                                    width: { xs: '90vw', sm: '80vw', md: '700px' },
+                                }
+                            }}
+                        >
                             <StyledDialogTitle>Search Leagues</StyledDialogTitle>
 
                             <StyledDialogContent>
