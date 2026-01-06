@@ -16,7 +16,7 @@ export default async function handler(req, res) {
         fromEmail: process.env.SES_FROM_EMAIL,
         hasFromName: !!process.env.SES_FROM_NAME,
         hasReplyTo: !!process.env.SES_REPLY_TO_EMAIL,
-        region: process.env.AWS_REGION,
+        region: process.env.SES_REGION,
         nodeEnv: process.env.NODE_ENV
     });
 
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     const fromEmail = process.env.SES_FROM_EMAIL || "noreply@drag-league.com";
     const fromName = process.env.SES_FROM_NAME || 'Drag League';
     const replyToEmail = process.env.SES_REPLY_TO_EMAIL || "noreply@drag-league.com";
-    const region = process.env.AWS_REGION || 'us-west-2';
+    const region = process.env.SES_REGION || 'us-west-2';
 
     // Check if from email is configured
     if (!fromEmail) {
@@ -45,10 +45,10 @@ export default async function handler(req, res) {
     const sesConfig = { region };
     
     // In local development, use explicit credentials from env vars
-    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+    if (process.env.SES_ACCESS_KEY_ID && process.env.SES_SECRET_ACCESS_KEY) {
         sesConfig.credentials = {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            accessKeyId: process.env.SES_ACCESS_KEY_ID,
+            secretAccessKey: process.env.SES_SECRET_ACCESS_KEY,
         };
     }
     
