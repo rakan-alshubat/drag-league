@@ -25,17 +25,17 @@ export default async function handler(req, res) {
         
         // Log to CloudWatch (via console)
         switch (level.toLowerCase()) {
-            case 'error':
-                console.error(logMessage, data || '');
-                break;
-            case 'warn':
-                console.warn(logMessage, data || '');
-                break;
-            case 'debug':
-                console.debug(logMessage, data || '');
-                break;
-            default:
-                console.log(logMessage, data || '');
+        case 'error':
+            console.error(logMessage, data || '');
+            break;
+        case 'warn':
+            console.warn(logMessage, data || '');
+            break;
+        case 'debug':
+            console.debug(logMessage, data || '');
+            break;
+        default:
+            console.log(logMessage, data || '');
         }
         
         return res.status(200).json({ success: true, logged: true });
