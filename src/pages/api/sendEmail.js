@@ -1,25 +1,10 @@
-import sgMail from '@sendgrid/mail';
+import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
 export default async function handler(req, res) {
-    // Set CORS headers - allow requests from the same origin
-    const origin = req.headers.origin;
-    const allowedOrigins = [
-        process.env.NEXT_PUBLIC_SITE_URL,
-        'http://localhost:3000',
-        'https://localhost:3000'
-    ].filter(Boolean);
-    
-    // If origin is allowed or if it's a same-origin request (no origin header), allow it
-    if (!origin || allowedOrigins.includes(origin) || origin.includes('amplifyapp.com')) {
-        res.setHeader('Access-Control-Allow-Origin', origin || '*');
-    }
-    
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-
     // Handle preflight OPTIONS request
     if (req.method === 'OPTIONS') {
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
         return res.status(200).end();
     }
 
@@ -32,80 +17,85 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Missing required fields: to, subject, html/text" });
     }
 
-    // Get secrets from Amplify environment variables
-    const secretAPIKey = process.env.SENDGRID_API_KEY;
-    const secretReplyToEmail = process.env.SENDGRID_REPLY_TO_EMAIL;
-    const secretFromName = process.env.SENDGRID_FROM_NAME;
-    const secretFromEmail = process.env.SENDGRID_FROM_EMAIL;
 
-    // Check if SendGrid API key is configured
-    if (!secretAPIKey) {
-        console.error('SendGrid API key not configured');
-        return res.status(500).json({ 
-            error: "SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable." 
-        });
-    }
-
-    sgMail.setApiKey(secretAPIKey);
+    const fromEmail = "noreply@drag-league.com";
+    const fromName = 'Drag League';
+    const replyToEmail = "noreply@drag-league.com";
+    const region = 'us-west-2';
 
     // Check if from email is configured
-    if (!secretFromEmail) {
-        console.error('SendGrid from email not configured');
+    if (!fromEmail) {
+        console.error('SES from email not configured');
         return res.status(500).json({ 
-            error: "Sender email not configured. Please set SENDGRID_FROM_EMAIL environment variable." 
+            error: "Sender email not configured. Please set SES_FROM_EMAIL environment variable." 
         });
     }
+
+    // Initialize SES client - uses AWS credentials from Amplify environment
+    const sesClient = new SESClient({ region });
 
     const toAddresses = Array.isArray(to) ? to : [to];
 
-    // Configure sender with optional custom name
-    const fromEmail = secretFromEmail;
-    const fromName = secretFromName || 'Drag League';
-    
-    const msg = {
-        to: toAddresses,
-        from: {
-            email: fromEmail,
-            name: fromName
+    // Build email parameters
+    const params = {
+        Source: `${fromName} <${fromEmail}>`,
+        Destination: {
+            ToAddresses: toAddresses,
         },
-        subject: subject,
-        replyTo: secretReplyToEmail || undefined,
+        Message: {
+            Subject: {
+                Data: subject,
+                Charset: 'UTF-8',
+            },
+            Body: {},
+        },
     };
 
-    // Only include text/html if they have actual content
+    // Add text and/or html content
     if (text && text.trim()) {
-        msg.text = text;
+        params.Message.Body.Text = {
+            Data: text,
+            Charset: 'UTF-8',
+        };
     }
     if (html && html.trim()) {
-        msg.html = html;
+        params.Message.Body.Html = {
+            Data: html,
+            Charset: 'UTF-8',
+        };
+    }
+
+    // Add reply-to if configured
+    if (replyToEmail) {
+        params.ReplyToAddresses = [replyToEmail];
     }
 
     try {
-        console.log('Sending email with message:', msg);
-        const result = await sgMail.send(msg);
+        console.log('Sending email via SES to:', toAddresses);
+        const command = new SendEmailCommand(params);
+        const result = await sesClient.send(command);
         
         return res.status(200).json({ 
             ok: true, 
-            statusCode: result[0]?.statusCode,
+            messageId: result.MessageId,
             message: 'Email sent successfully' 
         });
     } catch (err) {
-        console.error("SendGrid send error details:", {
+        console.error("SES send error details:", {
             message: err.message,
-            code: err.code,
-            responseBody: JSON.stringify(err.response?.body, null, 2),
-            errors: err.response?.body?.errors
+            code: err.code || err.name,
+            statusCode: err.$metadata?.httpStatusCode,
         });
         
         // Provide helpful error messages
         let errorMessage = err?.message || "Send failed";
         
-        if (err.code === 403) {
-            errorMessage = 'SendGrid API key is invalid or does not have permission to send emails.';
-        } else if (err.code === 401) {
-            errorMessage = 'SendGrid authentication failed. Check your API key.';
-        } else if (err.response?.body?.errors) {
-            errorMessage = err.response.body.errors.map(e => e.message).join(', ');
+        if (err.name === 'MessageRejected') {
+            errorMessage = 'Email was rejected by SES. Check that your from address is verified.';
+        } else if (err.name === 'MailFromDomainNotVerifiedException') {
+            errorMessage = 'The sender email domain is not verified in SES.';
+        } else if (err.name === 'ConfigurationSetDoesNotExistException') {
+            errorMessage = 'SES configuration set not found.';
         }
         
         return res.status(500).json({ 
