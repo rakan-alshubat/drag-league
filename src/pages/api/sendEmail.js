@@ -9,6 +9,16 @@ export default async function handler(req, res) {
     }
 
     console.log('START sendEmail API request');
+    
+    // Log environment variables (redact sensitive parts)
+    console.log('Environment check:', {
+        hasFromEmail: !!process.env.SES_FROM_EMAIL,
+        fromEmail: process.env.SES_FROM_EMAIL,
+        hasFromName: !!process.env.SES_FROM_NAME,
+        hasReplyTo: !!process.env.SES_REPLY_TO_EMAIL,
+        region: process.env.AWS_REGION,
+        nodeEnv: process.env.NODE_ENV
+    });
 
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
