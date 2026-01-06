@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { serverLogWarn } from '@/helpers/serverLog';
 import PlayerRankings from "../PlayerRankings";
 import PlayerSubmissions from "../PlayerSubmissions";
 import LeagueSettings from "../LeagueSettings";
@@ -77,7 +78,7 @@ export default function Leagues({ userData, leagueData, playersData }) {
                 if (parsed > lastDeadline && parsed <= currentDeadline) return true;
             }
         } catch (e) {
-            console.warn('Error checking admin edit history:', e);
+            serverLogWarn('Error checking admin edit history', { error: e.message });
         }
         return false;
     })();
@@ -124,7 +125,7 @@ export default function Leagues({ userData, leagueData, playersData }) {
                 adminEditCount
             };
         } catch (e) {
-            console.warn('Error checking recent updates:', e);
+            serverLogWarn('Error checking recent updates', { error: e.message });
             return { hasUpdates: false, count: 0, types: [] };
         }
     })();

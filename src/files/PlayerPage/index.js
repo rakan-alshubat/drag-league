@@ -91,7 +91,7 @@ export default function PlayerPage() {
                         }
 
                     } catch (error){
-                        console.error('Error with user data:', error);
+                        await serverLogError('Error with user data', { error: error.message });
                         setErrorMessage('Error loading user data.');
                         setErrorPopup(true);
                     } finally {
@@ -119,7 +119,7 @@ export default function PlayerPage() {
                     setPendingLeagues(updated.pendingLeagues || []);
                 }
             },
-            error: err => console.warn('onUpdateUsers sub error', err)
+            error: err => serverLogWarn('onUpdateUsers sub error', { error: err?.message })
         });
         subs.push(subUpdate);
 
@@ -133,7 +133,7 @@ export default function PlayerPage() {
                     setPendingLeagues(created.pendingLeagues || []);
                 }
             },
-            error: err => console.warn('onCreateUsers sub error', err)
+            error: err => serverLogWarn('onCreateUsers sub error', { error: err?.message })
         });
         subs.push(subCreate);
 
@@ -145,7 +145,7 @@ export default function PlayerPage() {
                     router.push('/SignIn');
                 }
             },
-            error: err => console.warn('onDeleteUsers sub error', err)
+            error: err => serverLogWarn('onDeleteUsers sub error', { error: err?.message })
         });
         subs.push(subDelete);
 
@@ -181,7 +181,7 @@ export default function PlayerPage() {
                 const matched = items.filter(i => (String(i.lgName || i.name || '')).toLowerCase().includes(needle));
                 setSearchResults(matched.slice(0, 5));
             } catch (err) {
-                console.error('League search error', err);
+                await serverLogError('League search error', { error: err.message, searchName });
                 if (active) setSearchResults([]);
             } finally {
                 if (active) setSearchLoading(false);
@@ -244,7 +244,7 @@ export default function PlayerPage() {
                         });
                     }
                 } catch (error) {
-                    console.error(`Error fetching league ${leagueId}:`, error);
+                    await serverLogError(`Error fetching league ${leagueId}`, { leagueId: leagueId, error: error.message });
                 }
             }));
 
@@ -291,7 +291,6 @@ export default function PlayerPage() {
                         results.push({ id: entry.id, name: entry.name, date: entry.date, isAdmin: false, finished: false, started: false, rankingDeadline: null });
                     }
                 } catch (err) {
-                    console.error('Error fetching league meta:', err);
                     await serverLogError('Failed to fetch league metadata', {
                         userId: userID,
                         leagueId: entry.id,
@@ -322,10 +321,10 @@ export default function PlayerPage() {
                     // update pending names too in case a pending league changed
                     setPendingLeaguesWithNames(prev => (prev || []).map(p => p.id === updated.id ? { ...p, name: updated.lgName || p.name } : p));
                 } catch (e) {
-                    console.warn('onUpdateLeague subscription handler error', e);
+                    serverLogWarn('onUpdateLeague subscription handler error', { error: e.message });
                 }
             },
-            error: err => console.warn('onUpdateLeague sub error', err)
+            error: err => serverLogWarn('onUpdateLeague sub error', { error: err?.message })
         });
 
         return () => {
@@ -338,7 +337,7 @@ export default function PlayerPage() {
             await signOut()
             router.push('/').then(() => { if (typeof window !== 'undefined') window.location.reload(); });
         } catch (error) {
-            console.error('Could not sign out', error)
+            await serverLogError('Could not sign out', { error: error.message });
             setErrorMessage('Could not sign out.');
             setErrorPopup(true);
         }
@@ -350,9 +349,10 @@ export default function PlayerPage() {
         try {
             const input = { id: userID, name: (nameInput || '').trim() };
             await client.graphql({ query: updateUsers, variables: { input } });
+            await serverLogInfo('User updated name in settings', { userId: userID, newName: nameInput });
             setName(nameInput || '');
         } catch (err) {
-            console.error('Save settings error', err);
+            await serverLogError('Save settings error', { error: err.message });
             setErrorMessage('Failed to save settings.');
             setErrorPopup(true);
         } finally {
@@ -367,9 +367,10 @@ export default function PlayerPage() {
         setDeleting(true);
         try {
             await client.graphql({ query: deleteUsers, variables: { input: { id: userID } } });
+            await serverLogInfo('User account deleted', { userId: userID });
             router.push('/SignIn');
         } catch (err) {
-            console.error('Delete account error', err);
+            await serverLogError('Delete account error', { error: err.message });
             setErrorMessage('Failed to delete account.');
             setErrorPopup(true);
         } finally {

@@ -14,6 +14,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { Typography } from "@mui/material";
 import { generateClient } from 'aws-amplify/api';
 import { updatePlayer, updateLeague } from "@/graphql/mutations";
+import { serverLogInfo, serverLogError } from '@/helpers/serverLog';
 import { getLeague } from "@/graphql/queries";
 import {
     StyledDialog,
@@ -388,6 +389,7 @@ export default function SubmissionsPopup({
                             query: updatePlayer,
                             variables: { input: playerInput }
                         });
+                        await serverLogInfo('Player swap performed', { leagueId: leagueData?.id, playerId: playerData.id, firstSwap: firstSwap, secondSwap: secondSwap });
 
                         // Add history entry for swap
                         if (playerUpdates.plRankings && leagueData?.id) {
@@ -402,6 +404,7 @@ export default function SubmissionsPopup({
                                     }
                                 }
                             });
+                            await serverLogInfo('League history updated with swap', { leagueId: leagueData.id, playerName: playerData.plName, firstSwap: firstSwap, secondSwap: secondSwap });
                         }
                     } else {
                         // Demo mode: mutate local objects and log instead of network calls
@@ -432,7 +435,7 @@ export default function SubmissionsPopup({
                             latestLeague = leagueRes.data.getLeague;
                         }
                     } catch (fetchErr) {
-                        console.warn('Could not fetch latest league before updating submissions:', fetchErr);
+                        await serverLogWarn('Could not fetch latest league before updating submissions', { error: fetchErr.message });
                     }
 
                     const currentSubmissions = latestLeague.lgSubmissions || [];
@@ -679,7 +682,7 @@ export default function SubmissionsPopup({
 
                     await Promise.all(updatePromises);
                 } else {
-                    console.warn('No players array found in leagueData or array is empty');
+                    await serverLogWarn('No players array found in leagueData or array is empty');
                 }
 
                 // If admin selected a lip sync winner but didn't press +, include it now (unless blank)
@@ -748,7 +751,7 @@ export default function SubmissionsPopup({
                 }
 
             } catch (error) {
-                console.error('Error updating league weekly results:', error);
+                await serverLogError('Error updating league weekly results', { error: error.message, leagueId: leagueData?.id });
                 setErrorMessage('Error submitting weekly results');
                 return;
             }

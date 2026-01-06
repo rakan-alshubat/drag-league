@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { serverLogError, serverLogInfo } from '@/helpers/serverLog';
 import {
     Dialog,
     DialogTitle,
@@ -320,7 +321,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             setChanges({});
             if (onUpdate) onUpdate();
         } catch (error) {
-            console.error('Error submitting changes:', error);
+            await serverLogError('Error submitting changes', { error: error.message, leagueId: leagueData?.id });
             setErrorMessage('Error submitting changes. Please try again.');
             setErrorPopup(true);
         }
@@ -474,6 +475,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             query: updateLeague,
             variables: { input: leagueInput }
         });
+        await serverLogInfo('Admin edited league settings', { leagueId: leagueData.id, leagueName: leagueData.lgName, adminName, changeCount: changeDetails.length });
     };
 
     const submitPlayerChanges = async () => {
@@ -568,6 +570,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             query: updatePlayer,
             variables: { input: playerInput }
         });
+        await serverLogInfo('Admin edited player data', { playerId: selectedPlayer.id, playerName: displayPlayerName, leagueId: leagueData.id });
 
         // Name change (add after updates so it's always recorded if present)
         if (changes.plName) {
@@ -586,6 +589,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                 query: updateLeague,
                 variables: { input: leagueInput }
             });
+            await serverLogInfo('Admin edit recorded in league history', { leagueId: leagueData.id, playerName: displayPlayerName, adminName });
         }
     };
 
@@ -1048,7 +1052,6 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                             </Select>
                                         </FormControl>
                                         <FormControl sx={{ minWidth: { xs: '100%', sm: 120 }, width: { xs: '100%', sm: 'auto' } }}>
-                                            {(() => { console.debug('[AdminEdit] swap render', editedLgSwapType, editedLgSwapPoints, typeof editedLgSwapPoints); return null; })()}
                                             <Select
                                                 displayEmpty
                                                 value={editedLgSwapPoints ?? ''}

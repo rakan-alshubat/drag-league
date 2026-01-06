@@ -6,6 +6,7 @@ import { generateClient } from 'aws-amplify/api'
 import { useRouter } from "next/router";
 import { getUsers, getLeague, playersByLeagueId} from "@/graphql/queries";
 import { createPlayer, updateLeague, updateUsers } from "@/graphql/mutations";
+import { serverLogInfo, serverLogError } from '@/helpers/serverLog';
 import LoadingWheel from "@/files/LoadingWheel";
 import ErrorPopup from "@/files/ErrorPopUp";
 import PopUp from "@/files/PopUp";
@@ -93,7 +94,7 @@ export default function League(){
                     }
                 }
             } catch (error) {
-                console.error('Error checking league access:', error);
+                await serverLogError('Error checking league access', { error: error.message, leagueId: id });
                 setErrorMessage('Failed to load league.');
                 setErrorPopup(true);
                 setLoading(false);
@@ -184,10 +185,13 @@ export default function League(){
                     setErrorPopup(true);
                 }
             } catch (error) {
-                console.error('Error fetching authenticated data:', error);
-                if (error.errors) console.error('errors:', error.errors);
-                if (error.graphQLErrors) console.error('graphQLErrors:', error.graphQLErrors);
-                if (error.networkError) console.error('networkError:', error.networkError);
+                await serverLogError('Error fetching authenticated data', { 
+                    error: error.message, 
+                    errors: error.errors, 
+                    graphQLErrors: error.graphQLErrors,
+                    networkError: error.networkError,
+                    leagueId: league?.id
+                });
 
                 setErrorMessage('Failed to load league.');
                 setErrorPopup(true);
@@ -223,7 +227,7 @@ export default function League(){
                     setLeagueNotStarted(true);
                 }
             } catch (error) {
-                console.error('Error fetching public data:', error);
+                await serverLogError('Error fetching public data', { error: error.message, leagueId: league?.id });
                 setErrorMessage('Failed to load league.');
                 setErrorPopup(true);
             } finally {
@@ -256,7 +260,7 @@ export default function League(){
                 // Show the private league message/popup
                 setShowRequestPopup(true);
             } catch (error) {
-                console.error('Error fetching private league data:', error);
+                await serverLogError('Error fetching private league data', { error: error.message, leagueId: league?.id });
                 setErrorMessage('This is a private league. Please sign in to request access.');
                 setErrorPopup(true);
             } finally {
@@ -364,11 +368,12 @@ export default function League(){
                     }
                 }
             });
+            await serverLogInfo('Invitation accepted on league page', { leagueId: leagueData.id, userId: userEmail, userName: userName });
 
             // Reload the page to show the league content
             window.location.reload();
         } catch (error) {
-            console.error('Error accepting invitation:', error);
+            await serverLogError('Error accepting invitation', { error: error.message });
             setErrorMessage('Failed to accept invitation.');
             setErrorPopup(true);
             setLoading(false);
@@ -415,11 +420,12 @@ export default function League(){
                     }
                 }
             });
+            await serverLogInfo('Invitation declined on league page', { leagueId: leagueData.id, userId: userEmail, userName: userName });
 
             // Redirect to player page
             router.push('/Player');
         } catch (error) {
-            console.error('Error declining invitation:', error);
+            await serverLogError('Error declining invitation', { error: error.message });
             setErrorMessage('Failed to decline invitation.');
             setErrorPopup(true);
             setLoading(false);
@@ -444,7 +450,7 @@ export default function League(){
                     setUserData(updated);
                 }
             },
-            error: err => console.warn('user sub error', err)
+            error: err => serverLogWarn('user sub error', { error: err?.message })
         });
         subs.push(subU);
 
@@ -473,7 +479,7 @@ export default function League(){
                 const updated = value?.data?.onUpdateLeague;
                 if (updated && updated.id === id) setLeagueData(updated);
             },
-            error: err => console.warn('league update sub error', err)
+            error: err => serverLogWarn('league update sub error', { error: err?.message })
         });
         subs.push(subLeagueU);
 
@@ -692,6 +698,7 @@ export default function League(){
                                                                 }
                                                             }
                                                         });
+                                                        await serverLogInfo('Join request submitted on league page', { leagueId: leagueData.id, userId: userEmail, userName: userName });
                                                     }
 
                                                     // Update user's pendingLeagues (avoid duplicates)
@@ -709,7 +716,7 @@ export default function League(){
                                                             });
                                                         }
                                                     } catch (e) {
-                                                        console.warn('Failed to update user pendingLeagues:', e);
+                                                        await serverLogWarn('Failed to update user pendingLeagues', { error: e.message });
                                                     }
 
                                                     // Store entered name locally and redirect user back to Player page
@@ -719,7 +726,7 @@ export default function League(){
                                                     setShowRequestPopup(false);
                                                     router.push('/Player');
                                                 } catch (err) {
-                                                    console.error('Failed to submit join request:', err);
+                                                    await serverLogError('Failed to submit join request', { error: err.message });
                                                     setRequestError('Failed to submit request. Try again.');
                                                 } finally {
                                                     setLoading(false);

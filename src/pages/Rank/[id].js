@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@aws-amplify/auth";
 import { generateClient } from 'aws-amplify/api'
 import { useRouter } from "next/router";
+import { serverLogError } from '@/helpers/serverLog';
 import { getUsers, getLeague, playersByLeagueId } from "@/graphql/queries";
 import LoadingWheel from "@/files/LoadingWheel";
 import { useEffect, useState } from "react";
@@ -71,7 +72,7 @@ export default function Rank(){
                             router.push('/SignIn')
                         }
                     } catch (error) {
-                        console.error('Error fetching user data:', error);
+                        await serverLogError('Error fetching user data for rankings', { error: error.message, leagueId: id });
                         setErrorMessage('Failed to load ranking data.');
                         setErrorPopup(true);
                     } finally {

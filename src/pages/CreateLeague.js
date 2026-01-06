@@ -3,6 +3,7 @@ import { NextSeo } from 'next-seo';
 import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
 import { generateClient } from 'aws-amplify/api';
+import { serverLogError } from '@/helpers/serverLog';
 import { getLeague } from "@/graphql/queries";
 import LoadingWheel from "@/files/LoadingWheel";
 
@@ -33,7 +34,7 @@ export default function CreateLeague(){
                         router.push('/Player');
                     }
                 } catch (error) {
-                    console.error('Error fetching league:', error);
+                    await serverLogError('Error fetching league', { error: error.message, leagueId: leagueId });
                     router.push('/Player');
                 } finally {
                     setLoading(false);

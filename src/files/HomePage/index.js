@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { getCurrentUser } from '@aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
+import { serverLogWarn } from '@/helpers/serverLog';
 import { getUsers } from '@/graphql/queries';
 import { Typography } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -56,7 +57,7 @@ export default function HomePage() {
                 }
             } catch (err) {
                 // non-fatal — we still want to show the page even if name lookup fails
-                console.warn('Could not fetch user display name', err);
+                await serverLogWarn('Could not fetch user display name', { error: err.message });
             }
 
         } catch {

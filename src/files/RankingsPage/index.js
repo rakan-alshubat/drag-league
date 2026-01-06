@@ -2,6 +2,7 @@ import { getCurrentUser } from "@aws-amplify/auth";
 import { generateClient } from 'aws-amplify/api'
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { serverLogInfo, serverLogError } from '@/helpers/serverLog';
 import { updatePlayer, updateLeague } from "@/graphql/mutations";
 import { filterPipeCharacter } from "@/helpers/filterPipeChar";
 import LoadingWheel from "@/files/LoadingWheel";
@@ -254,7 +255,7 @@ export default function RankingsPage(props){
 
             // Use the player's actual ID from the database
             if (!Player?.id) {
-                console.error('Player ID is missing:', Player);
+                await serverLogError('Player ID is missing during rankings submission', { player: Player, userId: User?.id });
                 setErrorMessage('Error: Player information is missing. Please try refreshing the page.');
                 setErrorPopup(true);
                 setLoading(false);
@@ -276,6 +277,7 @@ export default function RankingsPage(props){
                 query: updatePlayer,
                 variables: { input }
             });
+            await serverLogInfo('Player rankings submitted', { playerId: Player.id, playerName: displayName.trim(), leagueId: League?.id });
 
             // Add history entry to league
             const currentHistory = League?.lgHistory || [];
@@ -290,12 +292,12 @@ export default function RankingsPage(props){
                     } 
                 }
             });
+            await serverLogInfo('League history updated with rankings submission', { leagueId: League?.id, playerName: displayName.trim() });
 
             setLoading(false);
             router.push('/League/' + League?.id);
         } catch (error) {
-            console.error('Error submitting rankings:', error);
-            console.error('Error details:', error?.errors, error?.message);
+            await serverLogError('Error submitting rankings', { error: error.message, errors: error?.errors, playerId: Player?.id });
             setLoading(false);
             
             // Show user-friendly error message
