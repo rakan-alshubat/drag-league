@@ -1208,7 +1208,7 @@ export default function SubmissionsPopup({
                     )}
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                    <CancelButton onClick={() => safeOnClose()} variant="text" size="small" sx={{ padding: '6px 10px', textTransform: 'none', fontWeight: 600 }}>
+                    <CancelButton onClick={(e) => { e.stopPropagation(); e.preventDefault(); safeOnClose(); }} variant="text" size="small" sx={{ padding: '6px 10px', textTransform: 'none', fontWeight: 600 }}>
                         Cancel
                     </CancelButton>
                     <SubmitButton onClick={handleSubmit} variant="text" size="small" sx={{ padding: '6px 10px', textTransform: 'none', fontWeight: 600, '&.Mui-disabled': { color: 'text.disabled' } }}>

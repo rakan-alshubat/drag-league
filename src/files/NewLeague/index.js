@@ -717,6 +717,35 @@ export default function NewLeague( userData ) {
                 </ActionRow>
             )}
 
+            {recentAnnouncement && (
+                <Box sx={{ mt: 2, mb: 3 }}>
+                    <Alert 
+                        severity="info"
+                        sx={{
+                            background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.8) 0%, rgba(245, 235, 255, 0.8) 100%)',
+                            border: '1px solid rgba(255, 20, 147, 0.3)',
+                            borderRadius: '12px',
+                            '& .MuiAlert-icon': {
+                                color: '#FF1493'
+                            }
+                        }}
+                    >
+                        <Typography sx={{ fontWeight: 600, color: '#333', mb: 0.5 }}>
+                            📢 Latest Announcement from {recentAnnouncement.sender}
+                        </Typography>
+                        <Typography sx={{ color: '#666', fontSize: '0.95rem', fontStyle: 'italic', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            &ldquo;{recentAnnouncement.message}&rdquo;
+                        </Typography>
+                    </Alert>
+                </Box>
+            )}
+
+            {(League?.lgHistory || []).some(h => String(h).includes('League updated by')) ? (
+                        <Box sx={{ mt: 1 }}>
+                            <Alert severity="warning">League rules were updated by an admin — please review changes and check your submissions to make sure all the info is still there.</Alert>
+                        </Box>
+                    ) : null}
+
             {isAdmin && League?.lgFinished === 'not started' && (
                 <>
                     <ActionRow>
@@ -740,34 +769,6 @@ export default function NewLeague( userData ) {
                         </SecondaryButton>
                     </ActionRow>
 
-                    {recentAnnouncement && (
-                        <Box sx={{ mt: 2, mb: 3 }}>
-                            <Alert 
-                                severity="info"
-                                sx={{
-                                    background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.8) 0%, rgba(245, 235, 255, 0.8) 100%)',
-                                    border: '1px solid rgba(255, 20, 147, 0.3)',
-                                    borderRadius: '12px',
-                                    '& .MuiAlert-icon': {
-                                        color: '#FF1493'
-                                    }
-                                }}
-                            >
-                                <Typography sx={{ fontWeight: 600, color: '#333', mb: 0.5 }}>
-                                    📢 Latest Announcement from {recentAnnouncement.sender}
-                                </Typography>
-                                <Typography sx={{ color: '#666', fontSize: '0.95rem', fontStyle: 'italic' }}>
-                                    &ldquo;{recentAnnouncement.message}&rdquo;
-                                </Typography>
-                            </Alert>
-                        </Box>
-                    )}
-
-                    {(League?.lgHistory || []).some(h => String(h).includes('League updated by')) ? (
-                        <Box sx={{ mt: 1 }}>
-                            <Alert severity="warning">League rules were updated by an admin — please review changes and check your submissions to make sure all the info is still there.</Alert>
-                        </Box>
-                    ) : null}
                 </>
             )}
 

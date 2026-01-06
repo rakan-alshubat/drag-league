@@ -59,7 +59,7 @@ export default function PopUp({
                 {cancelText ? (
                     <CancelButton
                         type="button"
-                        onClick={onCancel}
+                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); onCancel(); }}
                         variant="outlined"
                         disabled={loading}
                     >

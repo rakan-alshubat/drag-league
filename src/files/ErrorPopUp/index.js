@@ -23,7 +23,7 @@ export default function ErrorPopup({ open, onClose, message }) {
                 </Message>
 
                 {typeof onClose === 'function' && (
-                    <CloseButton variant="contained" color="primary" onClick={onClose}>
+                    <CloseButton variant="contained" color="primary" onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClose(); }}>
                         Close
                     </CloseButton>
                 )}
