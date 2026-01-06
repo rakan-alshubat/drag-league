@@ -18,10 +18,10 @@ export default async function handler(req, res) {
     }
 
 
-    const fromEmail = "noreply@drag-league.com";
-    const fromName = 'Drag League';
-    const replyToEmail = "noreply@drag-league.com";
-    const region = 'us-west-2';
+    const fromEmail = process.env.SES_FROM_EMAIL || "noreply@drag-league.com";
+    const fromName = process.env.SES_FROM_NAME || 'Drag League';
+    const replyToEmail = process.env.SES_REPLY_TO_EMAIL || "noreply@drag-league.com";
+    const region = process.env.AWS_REGION || 'us-west-2';
 
     // Check if from email is configured
     if (!fromEmail) {
@@ -31,8 +31,18 @@ export default async function handler(req, res) {
         });
     }
 
-    // Initialize SES client - uses AWS credentials from Amplify environment
-    const sesClient = new SESClient({ region });
+    // Initialize SES client with explicit credentials for local dev
+    const sesConfig = { region };
+    
+    // In local development, use explicit credentials from env vars
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+        sesConfig.credentials = {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        };
+    }
+    
+    const sesClient = new SESClient(sesConfig);
 
     const toAddresses = Array.isArray(to) ? to : [to];
 
