@@ -152,26 +152,42 @@ export default function LeagueSettings(props) {
                 credentials: credentials
             });
 
-            // Send templated email using SES
-            const command = new SendTemplatedEmailCommand({
-                Source: 'noreply@drag-league.com',
-                Destination: {
-                    ToAddresses: playerEmails,
-                },
-                Template: 'DragLeagueAnnouncement',
-                TemplateData: JSON.stringify({
-                    senderName: senderName,
-                    leagueName: leagueName,
-                    message: userMessage,
-                    leagueUrl: leagueUrl,
-                    supportUrl: `${window.location.origin}/Support`,
-                    faqUrl: `${window.location.origin}/FAQ`
-                }),
-                ReplyToAddresses: ['noreply@drag-league.com']
-            });
+            // Send individual emails to each player for privacy
+            let successCount = 0;
+            let failCount = 0;
+            
+            for (const email of playerEmails) {
+                try {
+                    const command = new SendTemplatedEmailCommand({
+                        Source: '"Drag League" <noreply@drag-league.com>',
+                        Destination: {
+                            ToAddresses: [email],
+                        },
+                        Template: 'DragLeagueAnnouncement',
+                        TemplateData: JSON.stringify({
+                            senderName: senderName,
+                            leagueName: leagueName,
+                            message: userMessage,
+                            leagueUrl: leagueUrl,
+                            supportUrl: `${window.location.origin}/Support`,
+                            faqUrl: `${window.location.origin}/FAQ`
+                        }),
+                        ReplyToAddresses: ['noreply@drag-league.com']
+                    });
 
-            await sesClient.send(command);
-            await serverLogInfo('Email sent successfully via SES template', { leagueId: leagueData?.id, playerCount: playerEmails.length });
+                    await sesClient.send(command);
+                    successCount++;
+                } catch (emailError) {
+                    await serverLogError('Failed to send email to individual player', {
+                        leagueId: leagueData?.id,
+                        recipientEmail: email,
+                        error: emailError.message
+                    });
+                    failCount++;
+                }
+            }
+            
+            await serverLogInfo('Email sent successfully via SES template', { leagueId: leagueData?.id, successCount, failCount });
             
             await serverLogInfo('Announcement email sent from settings', {
                 leagueId: leagueData?.id,
@@ -196,7 +212,7 @@ export default function LeagueSettings(props) {
             });
             await serverLogInfo('League history updated with announcement from settings', { leagueId: leagueData.id, leagueName: leagueData.lgName });
 
-            setEmailSuccess(`Email sent successfully to ${playerEmails.length} player${playerEmails.length > 1 ? 's' : ''}!`);
+            setEmailSuccess(`Email sent successfully to ${successCount} player${successCount !== 1 ? 's' : ''}!${failCount > 0 ? ` (${failCount} failed)` : ''}`);
             setEmailPopupOpen(false);
             setEmailMessage('');
             

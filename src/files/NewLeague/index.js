@@ -425,7 +425,7 @@ export default function NewLeague( userData ) {
             for (const email of playerEmails) {
                 try {
                     const command = new SendTemplatedEmailCommand({
-                        Source: 'noreply@drag-league.com',
+                        Source: '"Drag League" <noreply@drag-league.com>',
                         Destination: {
                             ToAddresses: [email],
                         },
@@ -1487,7 +1487,7 @@ export default function NewLeague( userData ) {
 
                                     // Send templated email
                                     const command = new SendTemplatedEmailCommand({
-                                        Source: 'noreply@drag-league.com',
+                                        Source: '"Drag League" <noreply@drag-league.com>',
                                         Destination: {
                                             ToAddresses: [inviteEmail],
                                         },
@@ -1598,20 +1598,30 @@ export default function NewLeague( userData ) {
                                     credentials: credentials
                                 });
 
+                                // Get all players to find admin names
+                                const playersResult = await client.graphql({ query: playersByLeagueId, variables: { leagueId: League.id, limit: 1000 } });
+                                const players = playersResult?.data?.playersByLeagueId?.items || [];
+
                                 // Send email to each admin
                                 for (const adminEmail of adminEmails) {
                                     try {
-                                        // Get admin name if available
+                                        // Get admin's player name in the league if available
                                         let adminName = 'Admin';
-                                        try {
-                                            const adminRes = await client.graphql({ query: getUsers, variables: { id: adminEmail.toLowerCase() } });
-                                            adminName = adminRes?.data?.getUsers?.name || adminEmail.split('@')[0];
-                                        } catch (e) {
-                                            adminName = adminEmail.split('@')[0];
+                                        const adminPlayer = players.find(p => (p.plEmail || '').toLowerCase() === adminEmail.toLowerCase());
+                                        if (adminPlayer && adminPlayer.plName) {
+                                            adminName = adminPlayer.plName;
+                                        } else {
+                                            // Fallback to user name
+                                            try {
+                                                const adminRes = await client.graphql({ query: getUsers, variables: { id: adminEmail.toLowerCase() } });
+                                                adminName = adminRes?.data?.getUsers?.name;
+                                            } catch (e) {
+                                                adminName = 'Admin';
+                                            }
                                         }
 
                                         const command = new SendTemplatedEmailCommand({
-                                            Source: 'noreply@drag-league.com',
+                                            Source: '"Drag League" <noreply@drag-league.com>',
                                             Destination: {
                                                 ToAddresses: [adminEmail],
                                             },
