@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from "next/router";
 import { getCurrentUser, signOut } from "aws-amplify/auth";
 import LoadingWheel from "@/files/LoadingWheel";
-import Countdown from '@/files/Countdown';
 import parseToArray from '@/helpers/parseToArray';
 import { generateClient } from 'aws-amplify/api'
 import { getUsers, getLeague, listLeagues } from "@/graphql/queries";

@@ -5,7 +5,7 @@ import { generateClient } from 'aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import awsExports from '@/aws-exports';
 import AdminEditPage from '@/files/AdminEditPage';
-import { getLeague, getPlayer, listPlayers } from '@/graphql/queries';
+import { getLeague, getPlayer, playersByLeagueId } from '@/graphql/queries';
 
 Amplify.configure(awsExports);
 const client = generateClient();
@@ -44,15 +44,11 @@ export default function AdminEdit() {
 
             // Fetch all players in this league
             const playersResult = await client.graphql({
-                query: listPlayers,
-                variables: {
-                    filter: {
-                        leagueId: { eq: leagueId }
-                    }
-                }
+                query: playersByLeagueId,
+                variables: { leagueId: leagueId }
             });
 
-            const players = playersResult.data.listPlayers.items;
+            const players = playersResult.data.playersByLeagueId.items;
             setAllPlayers(players);
 
             // Find current player
