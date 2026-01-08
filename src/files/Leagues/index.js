@@ -363,7 +363,7 @@ export default function Leagues({ userData, leagueData, playersData }) {
                                             borderRadius: 2,
                                             textTransform: 'none',
                                             fontWeight: 700,
-                                            minHeight: {xs: '58px'},
+                                            minHeight: {xs: '58px', sm: '39px'},
                                             boxShadow: 'none',
                                             minWidth: 160,
                                             backgroundColor: 'primary.main',
