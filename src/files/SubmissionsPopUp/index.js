@@ -252,7 +252,7 @@ export default function SubmissionsPopup({
             const isLastChance = episodesLeft === 0;
             return { 
                 allowed: true, 
-                message: `You can swap until there are ${swapValue} queens remaining. You can only do this once so use it wisely! You will see a reminder when its your last chance to swap. (${episodesLeft} Queen${episodesLeft === 1 ? '' : 's'} left)`,
+                message: `You can swap until there are ${swapValue} queens remaining. You can only do this once so use it wisely! You will see a reminder when its your last chance to swap. (${episodesLeft} Queen${episodesLeft === 1 ? '' : 's'} until swap expires)`,
                 remaining: episodesLeft,
                 isLastChance
             };
@@ -1162,11 +1162,6 @@ export default function SubmissionsPopup({
                     </Box>
                 )}
             </StyledDialogContent>
-            {errorMessage && (
-                <Box sx={{ mt: 2 }}>
-                    <Alert severity={errorMessage.startsWith('Warning:') ? 'warning' : 'error'}>{errorMessage}</Alert>
-                </Box>
-            )}
             <StyledDialogActions>
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                     {(version === "Weekly Results" || version === "Submissions") && (
@@ -1201,7 +1196,7 @@ export default function SubmissionsPopup({
                                     label="Show Eliminated Queens"
                                 />
                                 <Typography variant="caption" sx={{ color: 'text.secondary', ml: 5 }}>
-                                    If the eleminated queens are back to compete for whatever reason.
+                                    If the eliminated queens are back to compete for whatever reason.
                                 </Typography>
                             </Box>
                         </>
