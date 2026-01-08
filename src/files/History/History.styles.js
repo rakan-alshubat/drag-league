@@ -70,4 +70,6 @@ export const HistoryText = styled(Typography)(({ isAdminEdit }) => ({
     fontSize: '1rem',
     color: '#333',
     lineHeight: 1.5,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
 }));
