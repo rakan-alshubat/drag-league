@@ -709,6 +709,8 @@ export default function NewLeague( userData ) {
                     <Countdown
                         deadline={League.lgRankingDeadline}
                         label="Ranking Submission Deadline"
+                        leagueName={League?.lgName || 'Drag League'}
+                        leagueUrl={typeof window !== 'undefined' ? window.location.href : ''}
                     />
                 </InfoBanner>
             )}
