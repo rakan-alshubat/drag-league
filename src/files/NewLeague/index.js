@@ -135,7 +135,7 @@ export default function NewLeague( userData ) {
                             try {
                                 await client.graphql({ query: deletePlayer, variables: { input: { id: p.id } } });
                             } catch (e) {
-                                await serverLogWarn('Failed to delete player during auto-start cleanup', { playerId: p.id, error: e.message });
+                                serverLogWarn('Failed to delete player during auto-start cleanup', { playerId: p.id, error: e.message });
                             }
 
                             // remove league from user's leagues array if present
@@ -155,7 +155,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             } catch (e) {
-                                await serverLogWarn('Failed to update user record during auto-start cleanup', { playerId: p.id, error: e.message });
+                                serverLogWarn('Failed to update user record during auto-start cleanup', { playerId: p.id, error: e.message });
                             }
                         }
 
@@ -179,11 +179,11 @@ export default function NewLeague( userData ) {
                                         }
                                     }
                                 } catch (e) {
-                                    await serverLogWarn('Failed to remove pending league from user during auto-start cleanup', { rawData: raw, error: e.message });
+                                    serverLogWarn('Failed to remove pending league from user during auto-start cleanup', { rawData: raw, error: e.message });
                                 }
                             }
                         } catch (e) {
-                            await serverLogWarn('Failed to process pending users during auto-start cleanup', { error: e.message });
+                            serverLogWarn('Failed to process pending users during auto-start cleanup', { error: e.message });
                         }
 
                         const result = await client.graphql({
@@ -197,13 +197,13 @@ export default function NewLeague( userData ) {
                                 }
                             }
                         });
-                        await serverLogInfo('League auto-started', { leagueId: League.id, leagueName: League.lgName });
+                        serverLogInfo('League auto-started', { leagueId: League.id, leagueName: League.lgName });
                         setDeadlineHandled(true);
                         // Non-admin viewers should refresh to pick up league state changes
                         try { router.reload(); } catch (e) { /* ignore */ }
                         return;
                     } catch (err) {
-                        await serverLogError('Error auto-starting league (cleanup)', { error: err.message });
+                        serverLogError('Error auto-starting league (cleanup)', { error: err.message });
                     }
                 })();
             }
@@ -406,7 +406,7 @@ export default function NewLeague( userData ) {
             const leagueUrl = `${window.location.origin}/League/${League?.id}`;
             const userMessage = emailMessage.trim();
 
-            await serverLogInfo('Sending announcement email via SES', { playerCount: playerEmails.length, leagueId: League?.id });
+            serverLogInfo('Sending announcement email via SES', { playerCount: playerEmails.length, leagueId: League?.id });
             
             // Get AWS credentials from Amplify Auth
             const session = await fetchAuthSession();
@@ -445,7 +445,7 @@ export default function NewLeague( userData ) {
                     successCount++;
                 } catch (emailError) {
                     failCount++;
-                    await serverLogError('Failed to send email to individual recipient', {
+                    serverLogError('Failed to send email to individual recipient', {
                         leagueId: League?.id,
                         recipientEmail: email,
                         error: emailError.message
@@ -453,7 +453,7 @@ export default function NewLeague( userData ) {
                 }
             }
 
-            await serverLogInfo('Announcement email batch completed', {
+            serverLogInfo('Announcement email batch completed', {
                 leagueId: League?.id,
                 leagueName: League?.lgName,
                 senderName: senderName,
@@ -476,7 +476,7 @@ export default function NewLeague( userData ) {
                     }
                 }
             });
-            await serverLogInfo('League history updated with announcement', { leagueId: League.id, leagueName: League.lgName });
+            serverLogInfo('League history updated with announcement', { leagueId: League.id, leagueName: League.lgName });
 
             const resultMessage = failCount > 0 
                 ? `Email sent to ${successCount} of ${playerEmails.length} players. ${failCount} failed.`
@@ -489,7 +489,7 @@ export default function NewLeague( userData ) {
             // Refresh page to show updated history
             setTimeout(() => window.location.reload(), 1000);
         } catch (error) {
-            await serverLogError('Failed to send announcement email', {
+            serverLogError('Failed to send announcement email', {
                 leagueId: League?.id,
                 leagueName: League?.lgName,
                 error: error.message,
@@ -645,27 +645,27 @@ export default function NewLeague( userData ) {
 
                 if (!userObj) {
                     await client.graphql({ query: createUsers, variables: { input: { id: normalized, leagues: [leagueEntry], pendingLeagues: [] } } });
-                    await serverLogInfo('User created when accepting invite', { userId: normalized, leagueId: League.id });
+                    serverLogInfo('User created when accepting invite', { userId: normalized, leagueId: League.id });
                 } else {
                     const existingLeagues = Array.isArray(userObj.leagues) ? userObj.leagues.slice() : [];
                     const existingPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
                     if (!existingLeagues.some(l => String(l||'').split('|')[1] === League.id)) existingLeagues.push(leagueEntry);
                     const filteredPending = existingPending.filter(pid => String(pid) !== String(League.id));
                     await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, leagues: existingLeagues, pendingLeagues: filteredPending } } });
-                    await serverLogInfo('User updated when accepting invite', { userId: userObj.id, leagueId: League.id });
+                    serverLogInfo('User updated when accepting invite', { userId: userObj.id, leagueId: League.id });
                 }
             } catch (e) {
-                await serverLogWarn('Failed to update user record after accepting invite', { error: e.message });
+                serverLogWarn('Failed to update user record after accepting invite', { error: e.message });
             }
 
             const currentHistory = League.lgHistory || [];
             const accepterName = pendingName || User?.name || 'A user';
             const historyEntry = new Date().toISOString() + '. ' + accepterName + ' accepted invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
-            await serverLogInfo('Invite accepted, league updated', { leagueId: League.id, userId: userEmail, userName: accepterName });
+            serverLogInfo('Invite accepted, league updated', { leagueId: League.id, userId: userEmail, userName: accepterName });
             router.reload();
         } catch (err) {
-            await serverLogError('Accept invite failed', { error: err.message });
+            serverLogError('Accept invite failed', { error: err.message });
             setPopUpError('Failed to accept invite.');
         } finally {
             setConfirmLoading(false);
@@ -684,10 +684,10 @@ export default function NewLeague( userData ) {
             const declinerName = User?.name || 'A user';
             const historyEntry = new Date().toISOString() + '. ' + declinerName + ' declined invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
-            await serverLogInfo('Invite declined, league updated', { leagueId: League.id, userId: userEmail, userName: declinerName });
+            serverLogInfo('Invite declined, league updated', { leagueId: League.id, userId: userEmail, userName: declinerName });
             router.reload();
         } catch (err) {
-            await serverLogError('Decline invite failed', { error: err.message });
+            serverLogError('Decline invite failed', { error: err.message });
             setPopUpError('Failed to decline invite.');
         } finally {
             setConfirmLoading(false);
@@ -1246,7 +1246,7 @@ export default function NewLeague( userData ) {
                                     try {
                                         await client.graphql({ query: deletePlayer, variables: { input: { id: p.id } } });
                                     } catch (e) {
-                                        await serverLogWarn('Failed to delete unsubmitted player(s)', { error: e.message });
+                                        serverLogWarn('Failed to delete unsubmitted player(s)', { error: e.message });
                                     }
 
                                     if (targetEmail && adminEmailsManual.includes(targetEmail)) {
@@ -1270,11 +1270,11 @@ export default function NewLeague( userData ) {
                                             }
                                         }
                                     } catch (e) {
-                                        await serverLogWarn('Failed to update user after deleting unsubmitted player', { playerId: p.id, error: e.message });
+                                        serverLogWarn('Failed to update user after deleting unsubmitted player', { playerId: p.id, error: e.message });
                                     }
                                 }
                             } catch (e) {
-                                await serverLogWarn('Error during start-league cleanup', { error: e.message });
+                                serverLogWarn('Error during start-league cleanup', { error: e.message });
                             }
 
                             // remove pending league references from users (so invited/requested users no longer see it)
@@ -1297,11 +1297,11 @@ export default function NewLeague( userData ) {
                                             }
                                         }
                                     } catch (e) {
-                                        await serverLogWarn('Failed to remove pending league from user during manual-start cleanup', { rawData: raw, error: e.message });
+                                        serverLogWarn('Failed to remove pending league from user during manual-start cleanup', { rawData: raw, error: e.message });
                                     }
                                 }
                             } catch (e) {
-                                await serverLogWarn('Failed to process pending users during manual-start cleanup', { error: e.message });
+                                serverLogWarn('Failed to process pending users during manual-start cleanup', { error: e.message });
                             }
 
                             const startResult = await client.graphql({
@@ -1315,7 +1315,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
-                            await serverLogInfo('League manually started', { leagueId: League.id, leagueName: League.lgName });
+                            serverLogInfo('League manually started', { leagueId: League.id, leagueName: League.lgName });
                             window.location.reload();
                         } else if(popUpTitle === 'Delete League?'){
 
@@ -1333,7 +1333,7 @@ export default function NewLeague( userData ) {
                                     variables: { input: { id: player.id } }
                                 });
                             }
-                            await serverLogInfo('All players deleted from league', { leagueId: League.id, playerCount: players.length });
+                            serverLogInfo('All players deleted from league', { leagueId: League.id, playerCount: players.length });
 
                             // Step 3: Get all users to remove league references
                             const allUsersResult = await client.graphql({
@@ -1385,7 +1385,7 @@ export default function NewLeague( userData ) {
                                 query: deleteLeague,
                                 variables: { input: { id: League.id } }
                             });
-                            await serverLogInfo('League deleted', { leagueId: League.id, leagueName: League.lgName });
+                            serverLogInfo('League deleted', { leagueId: League.id, leagueName: League.lgName });
 
                             // Close popup and redirect
                             setConfirmOpen(false);
@@ -1445,7 +1445,7 @@ export default function NewLeague( userData ) {
                                         }
                                     }
                                 });
-                                await serverLogInfo('Player invited to league', { leagueId: League.id, inviteeName: inviteName, inviteeEmail: inviteEmail });
+                                serverLogInfo('Player invited to league', { leagueId: League.id, inviteeName: inviteName, inviteeEmail: inviteEmail });
 
                                 const results = await client.graphql({
                                     query: getUsers,
@@ -1460,7 +1460,7 @@ export default function NewLeague( userData ) {
                                         query: createUsers,
                                         variables: { input: newUser }
                                     });
-                                    await serverLogInfo('User created for invite', { userId: inviteEmail });
+                                    serverLogInfo('User created for invite', { userId: inviteEmail });
                                 }else{
                                     const existingPending = results.data.getUsers.pendingLeagues || [];
                                     if (!existingPending.includes(League.id)) {
@@ -1468,7 +1468,7 @@ export default function NewLeague( userData ) {
                                             query: updateUsers,
                                             variables: { input: { id: inviteEmail, pendingLeagues: [...existingPending, League.id] } }
                                         });
-                                        await serverLogInfo('User pendingLeagues updated for invite', { userId: inviteEmail, leagueId: League.id });
+                                        serverLogInfo('User pendingLeagues updated for invite', { userId: inviteEmail, leagueId: League.id });
                                     }
                                 }
 
@@ -1504,7 +1504,7 @@ export default function NewLeague( userData ) {
 
                                     await sesClient.send(command);
                                     
-                                    await serverLogInfo('Invite email sent', {
+                                    serverLogInfo('Invite email sent', {
                                         leagueId: League?.id,
                                         leagueName: League?.lgName,
                                         inviterName: inviterName,
@@ -1512,7 +1512,7 @@ export default function NewLeague( userData ) {
                                         inviteeName: inviteName
                                     });
                                 } catch (emailError) {
-                                    await serverLogError('Failed to send invite email', {
+                                    serverLogError('Failed to send invite email', {
                                         leagueId: League?.id,
                                         leagueName: League?.lgName,
                                         inviteeEmail: inviteEmail,
@@ -1581,7 +1581,7 @@ export default function NewLeague( userData ) {
                             const historyEntryReq = new Date().toISOString() + '. ' + requestName + ' requested to join';
 
                             await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistoryReq, historyEntryReq] } } });
-                            await serverLogInfo('User requested to join league', { leagueId: League.id, requestName: requestName, requestEmail: requestEmail });
+                            serverLogInfo('User requested to join league', { leagueId: League.id, requestName: requestName, requestEmail: requestEmail });
 
                             // Send email notification to all admins
                             try {
@@ -1639,14 +1639,14 @@ export default function NewLeague( userData ) {
                                         });
 
                                         await sesClient.send(command);
-                                        await serverLogInfo('Join request notification email sent', {
+                                        serverLogInfo('Join request notification email sent', {
                                             leagueId: League.id,
                                             adminEmail: adminEmail,
                                             requesterName: requestName,
                                             requesterEmail: requestEmail
                                         });
                                     } catch (emailError) {
-                                        await serverLogError('Failed to send join request email to admin', {
+                                        serverLogError('Failed to send join request email to admin', {
                                             leagueId: League.id,
                                             adminEmail: adminEmail,
                                             error: emailError.message
@@ -1654,7 +1654,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             } catch (emailError) {
-                                await serverLogError('Failed to send join request emails', {
+                                serverLogError('Failed to send join request emails', {
                                     leagueId: League.id,
                                     error: emailError.message
                                 });
@@ -1666,16 +1666,16 @@ export default function NewLeague( userData ) {
                                 const userObj = userRes?.data?.getUsers;
                                 if (!userObj) {
                                     await client.graphql({ query: createUsers, variables: { input: { id: requestEmail, leagues: [], pendingLeagues: [League.id] } } });
-                                    await serverLogInfo('User created for join request', { userId: requestEmail, leagueId: League.id });
+                                    serverLogInfo('User created for join request', { userId: requestEmail, leagueId: League.id });
                                 } else {
                                     const existingPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
                                     if (!existingPending.includes(League.id)) {
                                         await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, pendingLeagues: [...existingPending, League.id] } } });
-                                        await serverLogInfo('User pendingLeagues updated for join request', { userId: userObj.id, leagueId: League.id });
+                                        serverLogInfo('User pendingLeagues updated for join request', { userId: userObj.id, leagueId: League.id });
                                     }
                                 }
                             } catch (e) {
-                                await serverLogWarn('Failed to update user pending leagues for request', { error: e.message });
+                                serverLogWarn('Failed to update user pending leagues for request', { error: e.message });
                             }
 
                             setPopUpNameInput('');
@@ -1699,7 +1699,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
-                            await serverLogInfo('Player promoted to admin', { leagueId: League.id, promotedEmail: pickedPlayer, promotedName: displayName });
+                            serverLogInfo('Player promoted to admin', { leagueId: League.id, promotedEmail: pickedPlayer, promotedName: displayName });
 
 
                             // Also update the player's plStatus so UI reflects admin role
@@ -1720,10 +1720,10 @@ export default function NewLeague( userData ) {
                                             }
                                         }
                                     });
-                                    await serverLogInfo('Player status updated to Admin', { playerId: targetPlayerId, leagueId: League.id });
+                                    serverLogInfo('Player status updated to Admin', { playerId: targetPlayerId, leagueId: League.id });
                                 }
                             } catch (errUpdatePlayer) {
-                                await serverLogWarn('Failed to update player status', { error: errUpdatePlayer.message });
+                                serverLogWarn('Failed to update player status', { error: errUpdatePlayer.message });
                             }
 
                             router.reload();
@@ -1739,7 +1739,7 @@ export default function NewLeague( userData ) {
                                 query: createPlayer,
                                 variables: { input: { leagueId: League.id, plEmail: normalizedEmail, plName: displayName, plStatus: 'Player' } }
                             });
-                            await serverLogInfo('Player created from accepted request', { leagueId: League.id, playerEmail: normalizedEmail, playerName: displayName });
+                            serverLogInfo('Player created from accepted request', { leagueId: League.id, playerEmail: normalizedEmail, playerName: displayName });
 
                             // Update the requesting user's record: add this league to `leagues` and remove from `pendingLeagues`
                             try {
@@ -1750,7 +1750,7 @@ export default function NewLeague( userData ) {
                                 if (!userObj) {
                                     // create a minimal user record with this league
                                     await client.graphql({ query: createUsers, variables: { input: { id: pickedPlayer, leagues: [leagueEntry], pendingLeagues: [] } } });
-                                    await serverLogInfo('User created when accepting request', { userId: pickedPlayer, leagueId: League.id });
+                                    serverLogInfo('User created when accepting request', { userId: pickedPlayer, leagueId: League.id });
                                 } else {
                                     const existingLeagues = Array.isArray(userObj.leagues) ? userObj.leagues.slice() : [];
                                     const existingPending = Array.isArray(userObj.pendingLeagues) ? userObj.pendingLeagues.slice() : [];
@@ -1766,10 +1766,10 @@ export default function NewLeague( userData ) {
                                     const filteredPending = existingPending.filter(pid => String(pid) !== String(League.id));
 
                                     await client.graphql({ query: updateUsers, variables: { input: { id: userObj.id, leagues: existingLeagues, pendingLeagues: filteredPending } } });
-                                    await serverLogInfo('User updated when accepting request', { userId: userObj.id, leagueId: League.id });
+                                    serverLogInfo('User updated when accepting request', { userId: userObj.id, leagueId: League.id });
                                 }
                             } catch (e) {
-                                await serverLogWarn('Failed to update user record after accepting request', { error: e.message });
+                                serverLogWarn('Failed to update user record after accepting request', { error: e.message });
                             }
 
                             const currentHistory = League.lgHistory || [];
@@ -1785,7 +1785,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
-                            await serverLogInfo('League updated after accepting player request', { leagueId: League.id, playerEmail: pickedPlayer });
+                            serverLogInfo('League updated after accepting player request', { leagueId: League.id, playerEmail: pickedPlayer });
                             router.reload();
                         } else if(popUpTitle === 'Revoke invite?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
@@ -1811,7 +1811,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
-                            await serverLogInfo('Invite revoked', { leagueId: League.id, revokedName: displayName, revokedEmail: pickedPlayer });
+                            serverLogInfo('Invite revoked', { leagueId: League.id, revokedName: displayName, revokedEmail: pickedPlayer });
 
                             // Also remove this league from the invited user's pendingLeagues (if user exists)
                             try {
@@ -1829,7 +1829,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             } catch (e) {
-                                await serverLogWarn('Failed to remove pending league from user record', { error: e.message });
+                                serverLogWarn('Failed to remove pending league from user record', { error: e.message });
                             }
 
                             // Refresh the page so UI reflects the revoked invite
@@ -1854,7 +1854,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             });
-                            await serverLogInfo('Player request declined', { leagueId: League.id, declinedName: displayName, declinedEmail: pickedPlayer });
+                            serverLogInfo('Player request declined', { leagueId: League.id, declinedName: displayName, declinedEmail: pickedPlayer });
 
                             // Also remove this league from the requesting user's pendingLeagues (if user exists)
                             try {
@@ -1874,7 +1874,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             } catch (e) {
-                                await serverLogWarn('Failed to remove pending league from requester record', { error: e.message });
+                                serverLogWarn('Failed to remove pending league from requester record', { error: e.message });
                             }
 
                             router.reload();
@@ -1890,9 +1890,9 @@ export default function NewLeague( userData ) {
                                     query: deletePlayer,
                                     variables: { input: { id: targetDeleteId } }
                                 });
-                                await serverLogInfo('Player kicked from league', { leagueId: League.id, playerId: targetDeleteId, playerEmail: pickedPlayer, playerName: displayName });
+                                serverLogInfo('Player kicked from league', { leagueId: League.id, playerId: targetDeleteId, playerEmail: pickedPlayer, playerName: displayName });
                             } else {
-                                await serverLogWarn('Could not resolve player id for kick action', { pickedPlayer: pickedPlayer });
+                                serverLogWarn('Could not resolve player id for kick action', { pickedPlayer: pickedPlayer });
                             }
 
                             // Remove this league from the user's `leagues` array
@@ -1913,7 +1913,7 @@ export default function NewLeague( userData ) {
                                     }
                                 }
                             } catch (e) {
-                                await serverLogWarn('Failed to remove league from user record', { error: e.message });
+                                serverLogWarn('Failed to remove league from user record', { error: e.message });
                             }
 
                             const currentHistory = League.lgHistory || [];
@@ -1938,7 +1938,7 @@ export default function NewLeague( userData ) {
                                     input: updateInput
                                 }
                             });
-                            await serverLogInfo('League updated after kicking player', { leagueId: League.id, kickedEmail: pickedPlayer, wasAdmin: updatedAdmins.length !== admins.length });
+                            serverLogInfo('League updated after kicking player', { leagueId: League.id, kickedEmail: pickedPlayer, wasAdmin: updatedAdmins.length !== admins.length });
                             router.reload();
                         }
 
@@ -1956,7 +1956,7 @@ export default function NewLeague( userData ) {
                             setPopUpCopySuccess('');
                         }
                     } catch (err) {
-                        await serverLogError('Error performing action', { error: err.message });
+                        serverLogError('Error performing action', { error: err.message });
                         setPopUpError('An error occurred');
                     } finally {
                         setConfirmLoading(false);

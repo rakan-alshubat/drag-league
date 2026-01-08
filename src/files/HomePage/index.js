@@ -99,7 +99,7 @@ export default function HomePage() {
                 setSearchResults(matched.slice(0, 5));
             } catch (err) {
                 console.error('League search error:', err);
-                await serverLogError('League search error', { error: err.message, searchName });
+                serverLogError('League search error', { error: err.message, searchName });
                 if (active) setSearchResults([]);
             } finally {
                 if (active) setSearchLoading(false);
@@ -127,7 +127,7 @@ export default function HomePage() {
                 }
             } catch (err) {
                 // non-fatal — we still want to show the page even if name lookup fails
-                await serverLogWarn('Could not fetch user display name', { error: err.message });
+                serverLogWarn('Could not fetch user display name', { error: err.message });
             }
 
         } catch {

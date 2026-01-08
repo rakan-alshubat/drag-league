@@ -34,7 +34,7 @@ export default function CreateLeague(){
                         router.push('/Player');
                     }
                 } catch (error) {
-                    await serverLogError('Error fetching league', { error: error.message, leagueId: leagueId });
+                    serverLogError('Error fetching league', { error: error.message, leagueId: leagueId });
                     router.push('/Player');
                 } finally {
                     setLoading(false);

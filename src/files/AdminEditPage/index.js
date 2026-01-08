@@ -321,7 +321,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             setChanges({});
             if (onUpdate) onUpdate();
         } catch (error) {
-            await serverLogError('Error submitting changes', { error: error.message, leagueId: leagueData?.id });
+            serverLogError('Error submitting changes', { error: error.message, leagueId: leagueData?.id });
             setErrorMessage('Error submitting changes. Please try again.');
             setErrorPopup(true);
         }
@@ -475,7 +475,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             query: updateLeague,
             variables: { input: leagueInput }
         });
-        await serverLogInfo('Admin edited league settings', { leagueId: leagueData.id, leagueName: leagueData.lgName, adminName, changeCount: changeDetails.length });
+        serverLogInfo('Admin edited league settings', { leagueId: leagueData.id, leagueName: leagueData.lgName, adminName, changeCount: changeDetails.length });
     };
 
     const submitPlayerChanges = async () => {
@@ -570,7 +570,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             query: updatePlayer,
             variables: { input: playerInput }
         });
-        await serverLogInfo('Admin edited player data', { playerId: selectedPlayer.id, playerName: displayPlayerName, leagueId: leagueData.id });
+        serverLogInfo('Admin edited player data', { playerId: selectedPlayer.id, playerName: displayPlayerName, leagueId: leagueData.id });
 
         // Name change (add after updates so it's always recorded if present)
         if (changes.plName) {
@@ -589,7 +589,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                 query: updateLeague,
                 variables: { input: leagueInput }
             });
-            await serverLogInfo('Admin edit recorded in league history', { leagueId: leagueData.id, playerName: displayPlayerName, adminName });
+            serverLogInfo('Admin edit recorded in league history', { leagueId: leagueData.id, playerName: displayPlayerName, adminName });
         }
     };
 
@@ -1072,7 +1072,15 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                     <EntryLabel>Deadline:</EntryLabel>
                                     <TextField
                                         type="datetime-local"
-                                        value={editedLgDeadline ? editedLgDeadline.slice(0, 16) : ''}
+                                        value={editedLgDeadline ? (() => {
+                                            const date = new Date(editedLgDeadline);
+                                            const year = date.getFullYear();
+                                            const month = String(date.getMonth() + 1).padStart(2, '0');
+                                            const day = String(date.getDate()).padStart(2, '0');
+                                            const hours = String(date.getHours()).padStart(2, '0');
+                                            const minutes = String(date.getMinutes()).padStart(2, '0');
+                                            return `${year}-${month}-${day}T${hours}:${minutes}`;
+                                        })() : ''}
                                         onChange={(e) => setEditedLgDeadline(e.target.value ? new Date(e.target.value).toISOString() : '')}
                                     />
                                 </EntryRow>

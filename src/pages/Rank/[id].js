@@ -72,7 +72,7 @@ export default function Rank(){
                             router.push('/SignIn')
                         }
                     } catch (error) {
-                        await serverLogError('Error fetching user data for rankings', { error: error.message, leagueId: id });
+                        serverLogError('Error fetching user data for rankings', { error: error.message, leagueId: id });
                         setErrorMessage('Failed to load ranking data.');
                         setErrorPopup(true);
                     } finally {

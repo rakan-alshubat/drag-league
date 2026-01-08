@@ -54,7 +54,7 @@ export default function NavBar() {
             // navigate to home then reload to clear client state
             router.push('/').then(() => { if (typeof window !== 'undefined') window.location.reload(); });
         } catch (error) {
-            await serverLogError('Error signing out', { error: error.message });
+            serverLogError('Error signing out', { error: error.message });
             setErrorMessage('Error signing out.');
             setErrorPopup(true);
         }

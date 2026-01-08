@@ -111,7 +111,7 @@ export default function CreationPage({ editMode = false, leagueData = null }){
                         setAdminEmail(results.data.getUsers.id || '');
                         setLeaguesList(results.data.getUsers.leagues || []);
                     } catch (error) {
-                        await serverLogError('Error fetching user data', { error: error.message });
+                        serverLogError('Error fetching user data', { error: error.message });
                     } finally {
                         setLoading(false);
                     }
@@ -332,11 +332,11 @@ export default function CreationPage({ editMode = false, leagueData = null }){
             try {
                 const updateInput = { id: leagueData.id, ...input };
                 await client.graphql({ query: updateLeague, variables: { input: updateInput } });
-                await serverLogInfo('League updated in edit mode', { leagueId: leagueData.id, leagueName: leagueName });
+                serverLogInfo('League updated in edit mode', { leagueId: leagueData.id, leagueName: leagueName });
                 router.push('/League/' + leagueData.id);
                 return;
             } catch (err) {
-                await serverLogError('Failed to update league', { leagueId: leagueData.id, error: err.message });
+                serverLogError('Failed to update league', { leagueId: leagueData.id, error: err.message });
                 setErrorMessage('Failed to update league.');
                 setErrorPopup(true);
                 return;
@@ -354,7 +354,7 @@ export default function CreationPage({ editMode = false, leagueData = null }){
             });
             createdLeagueId = newLeague?.data?.createLeague?.id;
             if (!createdLeagueId) throw new Error('League created but missing id');
-            await serverLogInfo('League created', { leagueId: createdLeagueId, leagueName: leagueName, adminEmail: adminEmail });
+            serverLogInfo('League created', { leagueId: createdLeagueId, leagueName: leagueName, adminEmail: adminEmail });
 
             const newLeagueEntry = `${newLeague.data.createLeague.createdAt}|${createdLeagueId}|${leagueName}`;
             const updatedLeaguesList = [...prevLeaguesList, newLeagueEntry];
@@ -366,9 +366,9 @@ export default function CreationPage({ editMode = false, leagueData = null }){
                     query: updateUsers,
                     variables: { input: { id: adminEmail, leagues: updatedLeaguesList } }
                 });
-                await serverLogInfo('User updated with new league', { userId: adminEmail, leagueId: createdLeagueId });
+                serverLogInfo('User updated with new league', { userId: adminEmail, leagueId: createdLeagueId });
             } catch (err) {
-                try { await client.graphql({ query: deleteLeague, variables: { input: { id: createdLeagueId } } }); } catch (delErr) { await serverLogError('Rollback delete failed', { error: delErr.message }); }
+                try { await client.graphql({ query: deleteLeague, variables: { input: { id: createdLeagueId } } }); } catch (delErr) { serverLogError('Rollback delete failed', { error: delErr.message }); }
                 throw err;
             }
 
@@ -378,16 +378,16 @@ export default function CreationPage({ editMode = false, leagueData = null }){
                     query: createPlayer,
                     variables: { input: { leagueId: createdLeagueId, plEmail: adminEmail, plName: displayName, plStatus: 'Admin' } }
                 });
-                await serverLogInfo('Admin player created', { leagueId: createdLeagueId, playerEmail: adminEmail, playerName: displayName });
+                serverLogInfo('Admin player created', { leagueId: createdLeagueId, playerEmail: adminEmail, playerName: displayName });
             } catch (err) {
-                try { await client.graphql({ query: updateUsers, variables: { input: { id: adminEmail, leagues: prevLeaguesList } } }); } catch (revertErr) { await serverLogError('Rollback user revert failed', { error: revertErr.message }); }
-                try { await client.graphql({ query: deleteLeague, variables: { input: { id: createdLeagueId } } }); } catch (delErr) { await serverLogError('Rollback delete failed', { error: delErr.message }); }
+                try { await client.graphql({ query: updateUsers, variables: { input: { id: adminEmail, leagues: prevLeaguesList } } }); } catch (revertErr) { serverLogError('Rollback user revert failed', { error: revertErr.message }); }
+                try { await client.graphql({ query: deleteLeague, variables: { input: { id: createdLeagueId } } }); } catch (delErr) { serverLogError('Rollback delete failed', { error: delErr.message }); }
                 throw err;
             }
 
             router.push('/League/' + createdLeagueId);
         } catch (error) {
-            await serverLogError('Failed to create league', { adminEmail: adminEmail, error: error.message });
+            serverLogError('Failed to create league', { adminEmail: adminEmail, error: error.message });
             setErrorMessage('Failed to create league.');
             setErrorPopup(true);
         }

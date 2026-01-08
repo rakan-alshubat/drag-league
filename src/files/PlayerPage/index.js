@@ -90,7 +90,7 @@ export default function PlayerPage() {
                         }
 
                     } catch (error){
-                        await serverLogError('Error with user data', { error: error.message });
+                        serverLogError('Error with user data', { error: error.message });
                         setErrorMessage('Error loading user data.');
                         setErrorPopup(true);
                     } finally {
@@ -180,7 +180,7 @@ export default function PlayerPage() {
                 const matched = items.filter(i => (String(i.lgName || i.name || '')).toLowerCase().includes(needle));
                 setSearchResults(matched.slice(0, 5));
             } catch (err) {
-                await serverLogError('League search error', { error: err.message, searchName });
+                serverLogError('League search error', { error: err.message, searchName });
                 if (active) setSearchResults([]);
             } finally {
                 if (active) setSearchLoading(false);
@@ -243,7 +243,7 @@ export default function PlayerPage() {
                         });
                     }
                 } catch (error) {
-                    await serverLogError(`Error fetching league ${leagueId}`, { leagueId: leagueId, error: error.message });
+                    serverLogError(`Error fetching league ${leagueId}`, { leagueId: leagueId, error: error.message });
                 }
             }));
 
@@ -265,7 +265,7 @@ export default function PlayerPage() {
             const parsed = sortedLeagues(leagues);
             
             // Log leagues being loaded
-            await serverLogInfo('Player viewing leagues', {
+            serverLogInfo('Player viewing leagues', {
                 userId: userID,
                 leagueCount: parsed.length,
                 leagueIds: parsed.map(l => l.id)
@@ -290,7 +290,7 @@ export default function PlayerPage() {
                         results.push({ id: entry.id, name: entry.name, date: entry.date, isAdmin: false, finished: false, started: false, rankingDeadline: null });
                     }
                 } catch (err) {
-                    await serverLogError('Failed to fetch league metadata', {
+                    serverLogError('Failed to fetch league metadata', {
                         userId: userID,
                         leagueId: entry.id,
                         error: err.message
@@ -336,7 +336,7 @@ export default function PlayerPage() {
             await signOut()
             router.push('/').then(() => { if (typeof window !== 'undefined') window.location.reload(); });
         } catch (error) {
-            await serverLogError('Could not sign out', { error: error.message });
+            serverLogError('Could not sign out', { error: error.message });
             setErrorMessage('Could not sign out.');
             setErrorPopup(true);
         }
@@ -348,10 +348,10 @@ export default function PlayerPage() {
         try {
             const input = { id: userID, name: (nameInput || '').trim() };
             await client.graphql({ query: updateUsers, variables: { input } });
-            await serverLogInfo('User updated name in settings', { userId: userID, newName: nameInput });
+            serverLogInfo('User updated name in settings', { userId: userID, newName: nameInput });
             setName(nameInput || '');
         } catch (err) {
-            await serverLogError('Save settings error', { error: err.message });
+            serverLogError('Save settings error', { error: err.message });
             setErrorMessage('Failed to save settings.');
             setErrorPopup(true);
         } finally {
@@ -366,10 +366,10 @@ export default function PlayerPage() {
         setDeleting(true);
         try {
             await client.graphql({ query: deleteUsers, variables: { input: { id: userID } } });
-            await serverLogInfo('User account deleted', { userId: userID });
+            serverLogInfo('User account deleted', { userId: userID });
             router.push('/SignIn');
         } catch (err) {
-            await serverLogError('Delete account error', { error: err.message });
+            serverLogError('Delete account error', { error: err.message });
             setErrorMessage('Failed to delete account.');
             setErrorPopup(true);
         } finally {

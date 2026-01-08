@@ -95,7 +95,7 @@ export default function League(){
                     }
                 }
             } catch (error) {
-                await serverLogError('Error checking league access', { error: error.message, leagueId: id });
+                serverLogError('Error checking league access', { error: error.message, leagueId: id });
                 setErrorMessage('Failed to load league.');
                 setErrorPopup(true);
                 setLoading(false);
@@ -186,7 +186,7 @@ export default function League(){
                     setErrorPopup(true);
                 }
             } catch (error) {
-                await serverLogError('Error fetching authenticated data', { 
+                serverLogError('Error fetching authenticated data', { 
                     error: error.message, 
                     errors: error.errors, 
                     graphQLErrors: error.graphQLErrors,
@@ -228,7 +228,7 @@ export default function League(){
                     setLeagueNotStarted(true);
                 }
             } catch (error) {
-                await serverLogError('Error fetching public data', { error: error.message, leagueId: league?.id });
+                serverLogError('Error fetching public data', { error: error.message, leagueId: league?.id });
                 setErrorMessage('Failed to load league.');
                 setErrorPopup(true);
             } finally {
@@ -261,7 +261,7 @@ export default function League(){
                 // Show the private league message/popup
                 setShowRequestPopup(true);
             } catch (error) {
-                await serverLogError('Error fetching private league data', { error: error.message, leagueId: league?.id });
+                serverLogError('Error fetching private league data', { error: error.message, leagueId: league?.id });
                 setErrorMessage('This is a private league. Please sign in to request access.');
                 setErrorPopup(true);
             } finally {
@@ -369,12 +369,12 @@ export default function League(){
                     }
                 }
             });
-            await serverLogInfo('Invitation accepted on league page', { leagueId: leagueData.id, userId: userEmail, userName: userName });
+            serverLogInfo('Invitation accepted on league page', { leagueId: leagueData.id, userId: userEmail, userName: userName });
 
             // Reload the page to show the league content
             window.location.reload();
         } catch (error) {
-            await serverLogError('Error accepting invitation', { error: error.message });
+            serverLogError('Error accepting invitation', { error: error.message });
             setErrorMessage('Failed to accept invitation.');
             setErrorPopup(true);
             setLoading(false);
@@ -421,12 +421,12 @@ export default function League(){
                     }
                 }
             });
-            await serverLogInfo('Invitation declined on league page', { leagueId: leagueData.id, userId: userEmail, userName: userName });
+            serverLogInfo('Invitation declined on league page', { leagueId: leagueData.id, userId: userEmail, userName: userName });
 
             // Redirect to player page
             router.push('/Player');
         } catch (error) {
-            await serverLogError('Error declining invitation', { error: error.message });
+            serverLogError('Error declining invitation', { error: error.message });
             setErrorMessage('Failed to decline invitation.');
             setErrorPopup(true);
             setLoading(false);
@@ -699,7 +699,7 @@ export default function League(){
                                                                 }
                                                             }
                                                         });
-                                                        await serverLogInfo('Join request submitted on league page', { leagueId: leagueData.id, userId: userEmail, userName: userName });
+                                                        serverLogInfo('Join request submitted on league page', { leagueId: leagueData.id, userId: userEmail, userName: userName });
 
                                                         // Send email notification to all admins
                                                         try {
@@ -757,14 +757,14 @@ export default function League(){
                                                                     });
 
                                                                     await sesClient.send(command);
-                                                                    await serverLogInfo('Join request notification email sent', {
+                                                                    serverLogInfo('Join request notification email sent', {
                                                                         leagueId: leagueData.id,
                                                                         adminEmail: adminEmail,
                                                                         requesterName: userName,
                                                                         requesterEmail: userEmail
                                                                     });
                                                                 } catch (emailError) {
-                                                                    await serverLogError('Failed to send join request email to admin', {
+                                                                    serverLogError('Failed to send join request email to admin', {
                                                                         leagueId: leagueData.id,
                                                                         adminEmail: adminEmail,
                                                                         error: emailError.message
@@ -772,7 +772,7 @@ export default function League(){
                                                                 }
                                                             }
                                                         } catch (emailError) {
-                                                            await serverLogError('Failed to send join request emails', {
+                                                            serverLogError('Failed to send join request emails', {
                                                                 leagueId: leagueData.id,
                                                                 error: emailError.message
                                                             });
@@ -795,7 +795,7 @@ export default function League(){
                                                             });
                                                         }
                                                     } catch (e) {
-                                                        await serverLogWarn('Failed to update user pendingLeagues', { error: e.message });
+                                                        serverLogWarn('Failed to update user pendingLeagues', { error: e.message });
                                                     }
 
                                                     // Store entered name locally and redirect user back to Player page
@@ -805,7 +805,7 @@ export default function League(){
                                                     setShowRequestPopup(false);
                                                     router.push('/Player');
                                                 } catch (err) {
-                                                    await serverLogError('Failed to submit join request', { error: err.message });
+                                                    serverLogError('Failed to submit join request', { error: err.message });
                                                     setRequestError('Failed to submit request. Try again.');
                                                 } finally {
                                                     setLoading(false);

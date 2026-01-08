@@ -4,6 +4,7 @@ import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import awsExports from '@/aws-exports';
+import { serverLogError } from '@/helpers/serverLog';
 import AdminEditPage from '@/files/AdminEditPage';
 import { getLeague, getPlayer, playersByLeagueId } from '@/graphql/queries';
 
@@ -24,6 +25,8 @@ export default function AdminEdit() {
             fetchData();
         }
     }, [leagueId]);
+
+    serverLogError("is this thing on?", { test: "yes it is" });
 
     const fetchData = async () => {
         try {
@@ -57,7 +60,7 @@ export default function AdminEdit() {
 
             setLoading(false);
         } catch (error) {
-            await serverLogError('Error fetching data', { error: error.message });
+            serverLogError('Error fetching data', { error: error.message });
             setLoading(false);
         }
     };

@@ -117,6 +117,8 @@ export default function DemoLeague() {
                             deadline={League.lgDeadline}
                             label="Weekly Picks Deadline"
                             compact={true}
+                            leagueName={League?.lgName || 'Demo League'}
+                            leagueUrl={typeof window !== 'undefined' ? window.location.href : ''}
                         />
                     )}
                     {!isFinished && (

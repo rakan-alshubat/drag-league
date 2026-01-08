@@ -313,6 +313,8 @@ export default function Leagues({ userData, leagueData, playersData }) {
                             deadline={League.lgDeadline}
                             label="Weekly Picks Deadline"
                             compact={true}
+                            leagueName={League?.lgName || 'Drag League'}
+                            leagueUrl={typeof window !== 'undefined' ? window.location.href : ''}
                         />
                     )}
                     {!isFinished && (

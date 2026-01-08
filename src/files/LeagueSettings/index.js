@@ -140,7 +140,7 @@ export default function LeagueSettings(props) {
             const leagueUrl = `${window.location.origin}/League/${leagueData?.id}`;
             const userMessage = emailMessage.trim();
 
-            await serverLogInfo('Sending announcement email via SES', { playerCount: playerEmails.length, leagueId: leagueData?.id });
+            serverLogInfo('Sending announcement email via SES', { playerCount: playerEmails.length, leagueId: leagueData?.id });
             
             // Get AWS credentials from Amplify Auth
             const session = await fetchAuthSession();
@@ -178,7 +178,7 @@ export default function LeagueSettings(props) {
                     await sesClient.send(command);
                     successCount++;
                 } catch (emailError) {
-                    await serverLogError('Failed to send email to individual player', {
+                    serverLogError('Failed to send email to individual player', {
                         leagueId: leagueData?.id,
                         recipientEmail: email,
                         error: emailError.message
@@ -187,9 +187,9 @@ export default function LeagueSettings(props) {
                 }
             }
             
-            await serverLogInfo('Email sent successfully via SES template', { leagueId: leagueData?.id, successCount, failCount });
+            serverLogInfo('Email sent successfully via SES template', { leagueId: leagueData?.id, successCount, failCount });
             
-            await serverLogInfo('Announcement email sent from settings', {
+            serverLogInfo('Announcement email sent from settings', {
                 leagueId: leagueData?.id,
                 leagueName: leagueName,
                 senderName: senderName,
@@ -210,7 +210,7 @@ export default function LeagueSettings(props) {
                     }
                 }
             });
-            await serverLogInfo('League history updated with announcement from settings', { leagueId: leagueData.id, leagueName: leagueData.lgName });
+            serverLogInfo('League history updated with announcement from settings', { leagueId: leagueData.id, leagueName: leagueData.lgName });
 
             setEmailSuccess(`Email sent successfully to ${successCount} player${successCount !== 1 ? 's' : ''}!${failCount > 0 ? ` (${failCount} failed)` : ''}`);
             setEmailPopupOpen(false);
@@ -219,7 +219,7 @@ export default function LeagueSettings(props) {
             // Refresh page to show updated history
             setTimeout(() => window.location.reload(), 1000);
         } catch (error) {
-            await serverLogError('Failed to send announcement from settings', {
+            serverLogError('Failed to send announcement from settings', {
                 leagueId: leagueData?.id,
                 leagueName: leagueData?.lgName,
                 error: error.message,
@@ -243,10 +243,10 @@ export default function LeagueSettings(props) {
                 query: updateLeague,
                 variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending } }
             });
-            await serverLogInfo('User requested to join league from settings', { leagueId: leagueData.id, userId: userData.id });
+            serverLogInfo('User requested to join league from settings', { leagueId: leagueData.id, userId: userData.id });
             window.location.reload();
         } catch (err) {
-            await serverLogError('Request join failed', { error: err.message });
+            serverLogError('Request join failed', { error: err.message });
             setErrorMessage('Failed to request to join.');
             setErrorPopup(true);
         } finally {
@@ -265,13 +265,13 @@ export default function LeagueSettings(props) {
             const accepterName = userData?.name || 'A user';
             const historyEntry = new Date().toISOString() + '. ' + accepterName + ' accepted invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
-            await serverLogInfo('Invite accepted from settings', { leagueId: leagueData.id, userId: userData.id, userName: accepterName });
+            serverLogInfo('Invite accepted from settings', { leagueId: leagueData.id, userId: userData.id, userName: accepterName });
             // create player record
             await client.graphql({ query: createPlayer, variables: { input: { leagueId: leagueData.id, plEmail: userData.id, plName: userData.name || '', plStatus: 'Member' } } });
-            await serverLogInfo('Player created from accepted invite in settings', { leagueId: leagueData.id, playerEmail: userData.id, playerName: userData.name });
+            serverLogInfo('Player created from accepted invite in settings', { leagueId: leagueData.id, playerEmail: userData.id, playerName: userData.name });
             window.location.reload();
         } catch (err) {
-            await serverLogError('Accept invite failed', { error: err.message });
+            serverLogError('Accept invite failed', { error: err.message });
             setErrorMessage('Failed to accept invite.');
             setErrorPopup(true);
         } finally {
@@ -288,10 +288,10 @@ export default function LeagueSettings(props) {
             const declinerName = userData?.name || 'A user';
             const historyEntry = new Date().toISOString() + '. ' + declinerName + ' declined invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
-            await serverLogInfo('Invite declined from settings', { leagueId: leagueData.id, userId: userData.id, userName: declinerName });
+            serverLogInfo('Invite declined from settings', { leagueId: leagueData.id, userId: userData.id, userName: declinerName });
             window.location.reload();
         } catch (err) {
-            await serverLogError('Decline invite failed', { error: err.message });
+            serverLogError('Decline invite failed', { error: err.message });
             setErrorMessage('Failed to decline invite.');
             setErrorPopup(true);
         } finally {
@@ -316,7 +316,7 @@ export default function LeagueSettings(props) {
                     }
                 }
             });
-            await serverLogInfo('Player promoted to admin from settings', { leagueId: leagueData.id, playerId: selectedPlayer.id, playerName: selectedPlayer.plName });
+            serverLogInfo('Player promoted to admin from settings', { leagueId: leagueData.id, playerId: selectedPlayer.id, playerName: selectedPlayer.plName });
 
             // Add player email to league's lgAdmin array
             const updatedAdmins = [...admins];
@@ -338,14 +338,14 @@ export default function LeagueSettings(props) {
                     }
                 }
             });
-            await serverLogInfo('League updated with new admin from settings', { leagueId: leagueData.id, newAdminId: selectedPlayer.id });
+            serverLogInfo('League updated with new admin from settings', { leagueId: leagueData.id, newAdminId: selectedPlayer.id });
 
 
             setConfirmOpen(false);
             // Refresh the page to show updated data
             window.location.reload();
         } catch (error) {
-            await serverLogError('Error promoting player', { error: error.message });
+            serverLogError('Error promoting player', { error: error.message });
         } finally {
             setConfirmLoading(false);
         }
@@ -385,14 +385,14 @@ export default function LeagueSettings(props) {
                     }
                 }
             });
-            await serverLogInfo('League privacy settings updated', { leagueId: leagueData.id, field: privacyAction.field, value: privacyAction.value });
+            serverLogInfo('League privacy settings updated', { leagueId: leagueData.id, field: privacyAction.field, value: privacyAction.value });
 
             setConfirmOpen(false);
             setPrivacyAction(null);
             // Refresh the page to show updated data
             window.location.reload();
         } catch (error) {
-            await serverLogError('Error updating privacy setting', { error: error.message });
+            serverLogError('Error updating privacy setting', { error: error.message });
         } finally {
             setConfirmLoading(false);
         }
@@ -423,7 +423,7 @@ export default function LeagueSettings(props) {
                     variables: { input: { id: player.id } }
                 });
             }
-            await serverLogInfo('All players deleted from league in settings', { leagueId: leagueData.id, playerCount: playersToDelete.length });
+            serverLogInfo('All players deleted from league in settings', { leagueId: leagueData.id, playerCount: playersToDelete.length });
 
             // Step 3: Get all users to remove league references
             const allUsersResult = await client.graphql({
@@ -476,14 +476,14 @@ export default function LeagueSettings(props) {
                 query: deleteLeague,
                 variables: { input: { id: leagueData.id } }
             });
-            await serverLogInfo('League deleted from settings', { leagueId: leagueData.id, leagueName: leagueData.lgName });
+            serverLogInfo('League deleted from settings', { leagueId: leagueData.id, leagueName: leagueData.lgName });
 
             setConfirmOpen(false);
             setDeleteLeagueAction(false);
             // Redirect to player page
             router.push('/Player');
         } catch (error) {
-            await serverLogError('Error deleting league', { error: error.message });
+            serverLogError('Error deleting league', { error: error.message });
             setErrorMessage('Failed to delete league. Please try again.');
             setErrorPopup(true);
         } finally {
@@ -502,11 +502,11 @@ export default function LeagueSettings(props) {
                     query: deletePlayer,
                     variables: { input: { id: selectedPlayer.id } }
                 });
-                await serverLogInfo('Player deleted from settings', { leagueId: leagueData.id, playerId: selectedPlayer.id, playerName: selectedPlayer.plName });
+                serverLogInfo('Player deleted from settings', { leagueId: leagueData.id, playerId: selectedPlayer.id, playerName: selectedPlayer.plName });
                 // reload to refresh players list
                 window.location.reload();
             } catch (err) {
-                await serverLogError('Error deleting player', { error: err.message });
+                serverLogError('Error deleting player', { error: err.message });
                 setErrorMessage('Failed to remove player.');
                 setErrorPopup(true);
             } finally {
