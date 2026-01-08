@@ -1,5 +1,5 @@
-import React from 'react';
-import { Typography, Box } from '@mui/material';
+import React, { useState } from 'react';
+import { Typography, Box, Button } from '@mui/material';
 import {
     Root,
     Title,
@@ -31,22 +31,34 @@ export default function History({ leagueData }) {
     const League = leagueData?.leagueData || leagueData;
     const history = League?.lgHistory || [];
     
+    // State to track how many entries to show
+    const [visibleCount, setVisibleCount] = useState(30);
+    
     // Reverse the history array to show latest entries first
     const reversedHistory = [...history].reverse();
+    
+    // Filter out non-string or empty entries
+    const validHistory = reversedHistory.filter(e => typeof e === 'string' && e.trim() !== '');
+    
+    // Get the entries to display
+    const displayedHistory = validHistory.slice(0, visibleCount);
+    const hasMore = validHistory.length > visibleCount;
+    
+    const handleSeeMore = () => {
+        setVisibleCount(prev => prev + 30);
+    };
 
     return (
         <Root>
             <Title variant="h5">{League?.lgName} - History</Title>
             <HistoryList>
-                {reversedHistory.length === 0 ? (
+                {validHistory.length === 0 ? (
                     <Box sx={{ textAlign: 'center', mt: 4, color: '#666' }}>
                         <Typography variant="body1">No history available yet</Typography>
                     </Box>
                 ) : (
-                    // Filter out non-string or empty entries to avoid rendering blanks
-                    reversedHistory
-                        .filter(e => typeof e === 'string' && e.trim() !== '')
-                        .map((entry, index) => {
+                    <>
+                        {displayedHistory.map((entry, index) => {
                             // Support entries that may not include the expected ". " separator.
                             const parts = entry.includes('. ') ? entry.split('. ') : [ '', entry ];
                             const dateStr = parts[0];
@@ -102,7 +114,30 @@ export default function History({ leagueData }) {
                                     </HistoryText>
                                 </HistoryItem>
                             );
-                        })
+                        })}
+                        {hasMore && (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 2 }}>
+                                <Button
+                                    onClick={handleSeeMore}
+                                    variant="outlined"
+                                    sx={{
+                                        borderColor: '#FF1493',
+                                        color: '#FF1493',
+                                        fontWeight: 600,
+                                        padding: '8px 24px',
+                                        borderRadius: '8px',
+                                        textTransform: 'none',
+                                        '&:hover': {
+                                            borderColor: '#9B30FF',
+                                            backgroundColor: 'rgba(255, 20, 147, 0.05)',
+                                        }
+                                    }}
+                                >
+                                    See More ({validHistory.length - visibleCount} remaining)
+                                </Button>
+                            </Box>
+                        )}
+                    </>
                 )}
             </HistoryList>
         </Root>
