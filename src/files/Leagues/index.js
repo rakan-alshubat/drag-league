@@ -363,6 +363,7 @@ export default function Leagues({ userData, leagueData, playersData }) {
                                             borderRadius: 2,
                                             textTransform: 'none',
                                             fontWeight: 700,
+                                            minHeight: {xs: '58px'},
                                             boxShadow: 'none',
                                             minWidth: 160,
                                             backgroundColor: 'primary.main',
@@ -370,7 +371,7 @@ export default function Leagues({ userData, leagueData, playersData }) {
                                             '&:hover': { boxShadow: 'none', transform: 'translateY(-1px)' }
                                         }}
                                     >
-                                        Submit weekly results
+                                        Submit Weekly Results
                                     </Button>
                                 )}
                             </div>
