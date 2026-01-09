@@ -1019,7 +1019,19 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                     const deadlineISO = selectedDate.toISOString();
                                     const currentHistory = leagueData?.lgHistory || [];
                                     const adminName = currentPlayer?.plName || userData?.name || 'Admin';
-                                    const historyEntry = `${new Date().toISOString()}. ${adminName} reopened the league with new ranking deadline: ${deadlineISO}`;
+                                    
+                                    // Format deadline for readable history entry
+                                    const formattedDeadline = selectedDate.toLocaleDateString('en-US', { 
+                                        month: 'long', 
+                                        day: 'numeric', 
+                                        year: 'numeric' 
+                                    }) + ' at ' + selectedDate.toLocaleTimeString('en-US', { 
+                                        hour: 'numeric', 
+                                        minute: '2-digit',
+                                        hour12: true 
+                                    });
+                                    
+                                    const historyEntry = `${new Date().toISOString()}. [ADMIN EDIT] ${adminName} reopened the league with new ranking deadline: ${formattedDeadline}`;
                                     
                                     await client.graphql({
                                         query: updateLeague,

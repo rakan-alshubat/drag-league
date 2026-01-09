@@ -777,6 +777,46 @@ export default function NewLeague( userData ) {
                 </Box>
             ) : null}
 
+            {(() => {
+                const history = League?.lgHistory || [];
+                const reopenEntry = history.slice().reverse().find(h => String(h).includes('[ADMIN EDIT]') && String(h).includes('reopened the league'));
+                if (!reopenEntry) return null;
+                
+                try {
+                    const parts = reopenEntry.split('. ');
+                    const text = parts.slice(1).join('. ') || '';
+                    const adminMatch = text.match(/\[ADMIN EDIT\]\s*(.+?)\s+reopened the league/);
+                    const adminName = adminMatch ? adminMatch[1] : 'An admin';
+                    const deadlineMatch = text.match(/new ranking deadline:\s*(.+)$/i);
+                    const deadline = deadlineMatch ? deadlineMatch[1] : '';
+                    
+                    return (
+                        <Box sx={{ mt: 1, mb: 2 }}>
+                            <Alert 
+                                severity="info"
+                                sx={{
+                                    background: 'linear-gradient(135deg, rgba(255, 243, 205, 0.9) 0%, rgba(255, 236, 229, 0.9) 100%)',
+                                    border: '1px solid rgba(255, 152, 0, 0.3)',
+                                    borderRadius: '8px',
+                                    '& .MuiAlert-icon': {
+                                        color: '#FF8C00'
+                                    }
+                                }}
+                            >
+                                <Typography sx={{ fontWeight: 600, color: '#8a5800' }}>
+                                    🔄 League Reopened
+                                </Typography>
+                                <Typography sx={{ color: '#6b4a00', fontSize: '0.9rem' }}>
+                                    {adminName} has reopened this league. {deadline && `New ranking deadline: ${deadline}`}
+                                </Typography>
+                            </Alert>
+                        </Box>
+                    );
+                } catch (e) {
+                    return null;
+                }
+            })()}
+
             {isAdmin && League?.lgFinished === 'not started' && (
                 <>
                     <ActionRow>
@@ -1232,7 +1272,26 @@ export default function NewLeague( userData ) {
 
                         if(popUpTitle === 'Start League?'){
                             const currentHistory = League.lgHistory || [];
-                            const adminName = (User && User.name) ? User.name : 'an admin';
+                            
+                            // Get admin name from Player data or User data
+                            let adminName = 'an admin';
+                            const currentUserId = (User?.id || '').toLowerCase().trim();
+                            
+                            if (currentUserId && Array.isArray(Player)) {
+                                const currentPlayer = Player.find(p => {
+                                    const pEmail = (p.plEmail || p.id || '').toLowerCase().trim();
+                                    return pEmail === currentUserId;
+                                });
+                                
+                                if (currentPlayer?.plName && currentPlayer.plName.trim() !== '') {
+                                    adminName = currentPlayer.plName;
+                                } else if (User?.name && User.name.trim() !== '') {
+                                    adminName = User.name;
+                                }
+                            } else if (User?.name && User.name.trim() !== '') {
+                                adminName = User.name;
+                            }
+                            
                             const historyEntry = new Date().toISOString() + '. League manually started by ' + adminName;
 
                             try {
