@@ -69,6 +69,7 @@ export default function League(){
                     setErrorMessage('League not found.');
                     setErrorPopup(true);
                     setLoading(false);
+                    router.replace('/404');
                     return;
                 }
 

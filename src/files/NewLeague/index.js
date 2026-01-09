@@ -883,17 +883,17 @@ export default function NewLeague( userData ) {
                 
                 {currentPlayerData().length > 0 ? (
                     <TableContainer>
-                        <TableHeaderRowCurrent isAdmin={isAdmin}>
+                        <TableHeaderRowCurrent isAdmin={true}>
                             <TableHeaderCell>
                                 <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Players</Box>
                                 <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Name</Box>
                             </TableHeaderCell>
                             <TableHeaderCell>Role</TableHeaderCell>
                             <TableHeaderCell>Rankings</TableHeaderCell>
-                            {isAdmin && <TableHeaderCell>Actions</TableHeaderCell>}
+                            <TableHeaderCell>Actions</TableHeaderCell>
                         </TableHeaderRowCurrent>
                         {currentPlayerData().reverse().map((player, idx) => (
-                            <TableRowCurrent key={idx} isAdmin={isAdmin}>
+                            <TableRowCurrent key={idx} isAdmin={true}>
                                 <TableCell sx={{ justifyContent: { xs: 'flex-start', sm: 'center' } }}>
                                     <Typography variant="body1" fontWeight={600}>
                                         {player.name}
@@ -1008,30 +1008,53 @@ export default function NewLeague( userData ) {
                                         </Box>
                                     )}
                                 </TableCell>
-                                {isAdmin && (
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                                            {player.role.toLowerCase() === 'player' && (
-                                                <Tooltip title="Promote to Admin">
-                                                    <IconButton
-                                                        size="small"
-                                                        sx={{
-                                                            color: '#FF1493',
-                                                            '&:hover': { backgroundColor: 'rgba(255, 20, 147, 0.1)' }
-                                                        }}
-                                                        onClick={() => handlePromoteRequest(player)}
-                                                    >
-                                                        <PersonAddAltSharpIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-                                            {(() => {
-                                                const loggedIn = userEmail ? String(userEmail).toLowerCase().trim() : '';
-                                                const playerEmail = player.email ? String(player.email).toLowerCase().trim() : '';
-                                                // don't show remove button for the admin's own player row
-                                                if (playerEmail === loggedIn) return null;
+                                <TableCell>
+                                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                                        {(() => {
+                                            const loggedIn = userEmail ? String(userEmail).toLowerCase().trim() : '';
+                                            const playerEmail = player.email ? String(player.email).toLowerCase().trim() : '';
+                                            const isCurrentUser = playerEmail === loggedIn;
+                                            
+                                            // Admin actions
+                                            if (isAdmin) {
                                                 return (
-                                                    <Tooltip title="Remove player">
+                                                    <>
+                                                        {player.role.toLowerCase() === 'player' && (
+                                                            <Tooltip title="Promote to Admin">
+                                                                <IconButton
+                                                                    size="small"
+                                                                    sx={{
+                                                                        color: '#FF1493',
+                                                                        '&:hover': { backgroundColor: 'rgba(255, 20, 147, 0.1)' }
+                                                                    }}
+                                                                    onClick={() => handlePromoteRequest(player)}
+                                                                >
+                                                                    <PersonAddAltSharpIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        )}
+                                                        {!isCurrentUser && (
+                                                            <Tooltip title="Remove player">
+                                                                <IconButton
+                                                                    size="small"
+                                                                    sx={{
+                                                                        color: '#f44336',
+                                                                        '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.08)' }
+                                                                    }}
+                                                                    onClick={() => handleRemovePlayer(player)}
+                                                                >
+                                                                    <CloseIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        )}
+                                                    </>
+                                                );
+                                            }
+                                            
+                                            // Non-admin can remove themselves
+                                            if (isCurrentUser) {
+                                                return (
+                                                    <Tooltip title="Leave League">
                                                         <IconButton
                                                             size="small"
                                                             sx={{
@@ -1044,10 +1067,12 @@ export default function NewLeague( userData ) {
                                                         </IconButton>
                                                     </Tooltip>
                                                 );
-                                            })()}
-                                        </Box>
-                                    </TableCell>
-                                )}
+                                            }
+                                            
+                                            return null;
+                                        })()}
+                                    </Box>
+                                </TableCell>
                             </TableRowCurrent>
                         ))}
                     </TableContainer>

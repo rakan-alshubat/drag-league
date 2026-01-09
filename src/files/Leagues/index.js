@@ -556,16 +556,7 @@ export default function Leagues({ userData, leagueData, playersData }) {
                 </Panel>
 
                 <Panel role="tabpanel" hidden={tabIndex !== 4} aria-hidden={tabIndex !== 4}>
-                    {tabIndex === 4 && (
-                        isAdmin
-                            ? <LeagueSettings userData={User} leagueData={League} playersData={AllPlayers} />
-                            : (
-                                <EmptyState>
-                                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>Admins only</Typography>
-                                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>League settings are only visible to admins. Contact an admin to manage this league.</Typography>
-                                </EmptyState>
-                            )
-                    )}
+                    {tabIndex === 4 && <LeagueSettings userData={User} leagueData={League} playersData={AllPlayers} />}
                 </Panel>
             </MainContent>
 

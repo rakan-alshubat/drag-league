@@ -13,14 +13,13 @@ import LockIcon from '@mui/icons-material/Lock';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EmailIcon from '@mui/icons-material/Email';
 import { generateClient } from 'aws-amplify/api';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { SESClient, SendTemplatedEmailCommand } from '@aws-sdk/client-ses';
 import { serverLogInfo, serverLogError } from '@/helpers/serverLog';
-import { updatePlayer, updateLeague, deleteLeague, deletePlayer, createPlayer } from '@/graphql/mutations';
-import { playersByLeagueId, listUsers } from '@/graphql/queries';
+import { updatePlayer, updateLeague, deleteLeague, deletePlayer, createPlayer, updateUsers } from '@/graphql/mutations';
+import { playersByLeagueId, listUsers, getUsers } from '@/graphql/queries';
 import PopUp from '@/files/PopUp';
 import ErrorPopup from '@/files/ErrorPopUp';
 import {
@@ -29,10 +28,6 @@ import {
     SettingSection,
     SectionTitle,
     List,
-    StyledAccordion,
-    StyledSummary,
-    SummaryText,
-    StyledDetails,
 } from './LeagueSettings.styles';
 
 export default function LeagueSettings(props) {
@@ -71,6 +66,9 @@ export default function LeagueSettings(props) {
     });
     const currentUserIsPending = (pending || []).map(s=>String(s||'').toLowerCase()).includes(currentUserId);
     
+    // Check if current user is an admin
+    const currentUserIsAdmin = (admins || []).map(a => String(a || '').toLowerCase()).includes(currentUserId);
+    
     // Privacy states
     const isPublic = leagueData?.lgPublic ?? true;
 
@@ -82,6 +80,17 @@ export default function LeagueSettings(props) {
     };
 
     const handleKickPlayer = (player) => {
+        // Check if player is the only admin
+        const playerEmail = (player.plEmail || player.id || '').toLowerCase().trim();
+        const isPlayerAdmin = (admins || []).map(a => String(a || '').toLowerCase()).includes(playerEmail);
+        const adminCount = (admins || []).length;
+        
+        if (isPlayerAdmin && adminCount === 1) {
+            setErrorMessage('Cannot remove the last admin. Please promote another player to admin before leaving.');
+            setErrorPopup(true);
+            return;
+        }
+        
         setSelectedPlayer(player);
         setDeletePlayerAction(true);
         setPopUpTitle('Kick Player');
@@ -319,9 +328,10 @@ export default function LeagueSettings(props) {
             serverLogInfo('Player promoted to admin from settings', { leagueId: leagueData.id, playerId: selectedPlayer.id, playerName: selectedPlayer.plName });
 
             // Add player email to league's lgAdmin array
+            const playerEmail = (selectedPlayer.plEmail || selectedPlayer.id || '').toLowerCase();
             const updatedAdmins = [...admins];
-            if (!updatedAdmins.includes(selectedPlayer.id.toLowerCase())) {
-                updatedAdmins.push(selectedPlayer.id.toLowerCase());
+            if (!updatedAdmins.includes(playerEmail)) {
+                updatedAdmins.push(playerEmail);
             }
 
             const currentHistory = leagueData.lgHistory || [];
@@ -498,11 +508,67 @@ export default function LeagueSettings(props) {
             // delete selected player
             try {
                 setConfirmLoading(true);
+                
+                // Get player's email for user record update
+                const playerEmail = (selectedPlayer.plEmail || selectedPlayer.id || '').toLowerCase().trim();
+                const playerName = selectedPlayer.plName || 'A player';
+                const isCurrentUserLeaving = playerEmail === currentUserId;
+                
+                // Delete player record
                 await client.graphql({
                     query: deletePlayer,
                     variables: { input: { id: selectedPlayer.id } }
                 });
-                serverLogInfo('Player deleted from settings', { leagueId: leagueData.id, playerId: selectedPlayer.id, playerName: selectedPlayer.plName });
+                
+                // Remove league from user's leagues array
+                if (playerEmail) {
+                    try {
+                        const userRes = await client.graphql({ query: getUsers, variables: { id: playerEmail } });
+                        const userObj = userRes?.data?.getUsers;
+                        if (userObj) {
+                            const userLeagues = Array.isArray(userObj.leagues) ? userObj.leagues.slice() : [];
+                            const filteredLeagues = userLeagues.filter(entry => {
+                                const parts = String(entry || '').split('|').map(s => s.trim());
+                                return parts[1] !== leagueData.id;
+                            });
+                            if (filteredLeagues.length !== userLeagues.length) {
+                                await client.graphql({ 
+                                    query: updateUsers, 
+                                    variables: { input: { id: userObj.id, leagues: filteredLeagues } } 
+                                });
+                                serverLogInfo('User leagues array updated after kick', { userId: userObj.id, leagueId: leagueData.id });
+                            }
+                        }
+                    } catch (e) {
+                        serverLogError('Failed to update user record after kicking player', { playerId: selectedPlayer.id, error: e.message });
+                    }
+                }
+                
+// Add to league history and remove from admin list if needed
+            const currentHistory = leagueData?.lgHistory || [];
+            const historyEntry = isCurrentUserLeaving 
+                ? `${new Date().toISOString()}. ${playerName} left the league`
+                : `${new Date().toISOString()}. ${playerName} was removed from the league by an admin`;
+            
+            // Check if player is an admin and remove from lgAdmin array
+            const currentAdmins = leagueData?.lgAdmin || [];
+            const isPlayerAdmin = currentAdmins.map(a => String(a || '').toLowerCase()).includes(playerEmail);
+            const updatedAdmins = isPlayerAdmin 
+                ? currentAdmins.filter(a => String(a || '').toLowerCase() !== playerEmail)
+                : currentAdmins;
+            
+            await client.graphql({
+                query: updateLeague,
+                variables: {
+                    input: {
+                        id: leagueData.id,
+                        lgHistory: [...currentHistory, historyEntry],
+                        lgAdmin: updatedAdmins
+                        }
+                    }
+                });
+                
+                serverLogInfo('Player deleted from settings', { leagueId: leagueData.id, playerId: selectedPlayer.id, playerName: selectedPlayer.plName, action: isCurrentUserLeaving ? 'left' : 'removed' });
                 // reload to refresh players list
                 window.location.reload();
             } catch (err) {
@@ -567,7 +633,7 @@ export default function LeagueSettings(props) {
                                             )}
                                         </Box>
                                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                            {!isAdmin && !isCurrentUser && (
+                                            {currentUserIsAdmin && !isAdmin && !isCurrentUser && (
                                                 <Tooltip title="Promote to Admin">
                                                     <IconButton
                                                         size="small"
@@ -584,7 +650,7 @@ export default function LeagueSettings(props) {
                                                 </Tooltip>
                                             )}
 
-                                            {!isCurrentUser && (
+                                            {currentUserIsAdmin && !isCurrentUser && (
                                                 <Tooltip title="Kick player">
                                                     <IconButton
                                                         size="small"
@@ -613,7 +679,8 @@ export default function LeagueSettings(props) {
                 </List>
             </SettingSection>
             
-            {/* Privacy Section */}
+            {/* Privacy Section - Admin Only */}
+            {currentUserIsAdmin && (
             <SettingSection>
                 <SectionTitle>Privacy Settings</SectionTitle>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -675,8 +742,69 @@ export default function LeagueSettings(props) {
                     </Box>
                 </Box>
             </SettingSection>
+            )}
+
+            {/* Player Actions Section - Available to all players */}
+            {currentUserIsMember && (
+                <SettingSection>
+                    <SectionTitle>My Actions</SectionTitle>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '16px',
+                                borderRadius: '8px',
+                                background: 'linear-gradient(135deg, rgba(255, 68, 68, 0.05) 0%, rgba(204, 0, 0, 0.05) 100%)',
+                                border: '1px solid rgba(255, 68, 68, 0.2)',
+                            }}
+                        >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                <DeleteForeverIcon sx={{ color: '#ff4444' }} />
+                                <Box>
+                                    <Typography sx={{ fontWeight: 600, color: '#ff4444' }}>
+                                        Leave League
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
+                                        Remove yourself from this league. Your data will be deleted.
+                                    </Typography>
+                                </Box>
+                            </Box>
+                            <Button
+                                variant="contained"
+                                onClick={() => {
+                                    const currentPlayer = players.find(p => {
+                                        const pid = (p.id || '').toLowerCase();
+                                        const pEmail = (p.plEmail || '').toLowerCase();
+                                        return pid === currentUserId || pEmail === currentUserId;
+                                    });
+                                    if (currentPlayer) {
+                                        handleKickPlayer(currentPlayer);
+                                    }
+                                }}
+                                sx={{
+                                    background: 'linear-gradient(135deg, #ff4444 0%, #cc0000 100%)',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    px: { xs: 2, sm: 3 },
+                                    py: { xs: 1, sm: 1.25 },
+                                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                                    '&:hover': {
+                                        background: 'linear-gradient(135deg, #e63939 0%, #b30000 100%)',
+                                    },
+                                }}
+                            >
+                                Leave League
+                            </Button>
+                        </Box>
+                    </Box>
+                </SettingSection>
+            )}
 
             {/* Admin Tools Section */}
+            {currentUserIsAdmin && (
             <SettingSection>
                 <SectionTitle>Admin Tools</SectionTitle>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -784,7 +912,10 @@ export default function LeagueSettings(props) {
                     </Box>
                 </Box>
             </SettingSection>
+            )}
 
+            {/* Danger Zone - Admin Only */}
+            {currentUserIsAdmin && (
             <SettingSection>
                 <SectionTitle sx={{ color: '#ff4444' }}>Danger Zone</SectionTitle>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -828,6 +959,7 @@ export default function LeagueSettings(props) {
                     </Box>
                 </Box>
             </SettingSection>
+            )}
 
 
             <PopUp
