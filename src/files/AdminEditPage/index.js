@@ -260,15 +260,13 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
             };
         }
 
-        // Check winners (normalize to number of challenge weeks)
-        const numWeeks = Array.isArray(leagueData?.lgChallengeWinners) ? leagueData.lgChallengeWinners.length : 0;
+        // Check winners - don't normalize, compare actual arrays
         const originalWinnersRaw = selectedPlayer.plWinners || [];
-        const normalizedOriginalWinners = (originalWinnersRaw && originalWinnersRaw.length) ? originalWinnersRaw.slice() : Array.from({ length: numWeeks }, () => '');
-        const normalizedEditedWinners = (editedWinners && editedWinners.length) ? editedWinners.slice() : Array.from({ length: numWeeks }, () => '');
-        if (JSON.stringify(normalizedOriginalWinners) !== JSON.stringify(normalizedEditedWinners)) {
+        const editedWinnersRaw = editedWinners || [];
+        if (JSON.stringify(originalWinnersRaw) !== JSON.stringify(editedWinnersRaw)) {
             changes.winners = {
-                original: normalizedOriginalWinners,
-                new: normalizedEditedWinners,
+                original: originalWinnersRaw,
+                new: editedWinnersRaw,
             };
         }
 
@@ -836,17 +834,21 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                             {changes.winners && (
                                 <SummarySection>
                                     <SummaryTitle>Weekly Winners Changes:</SummaryTitle>
-                                    {changes.winners.original.map((orig, idx) => {
-                                        const newVal = changes.winners.new[idx];
-                                        if (orig !== newVal) {
-                                            return (
-                                                <SummaryItem key={idx}>
-                                                    Week {idx + 1}: <ChangeIndicator>{orig || '(no submission)'}</ChangeIndicator> → <ChangeIndicator>{newVal || '(no submission)'}</ChangeIndicator>
-                                                </SummaryItem>
-                                            );
-                                        }
-                                        return null;
-                                    })}
+                                    {(() => {
+                                        const maxLen = Math.max(changes.winners.original.length, changes.winners.new.length);
+                                        return Array.from({ length: maxLen }, (_, idx) => {
+                                            const orig = changes.winners.original[idx];
+                                            const newVal = changes.winners.new[idx];
+                                            if (orig !== newVal) {
+                                                return (
+                                                    <SummaryItem key={idx}>
+                                                        Week {idx + 1}: <ChangeIndicator>{orig || '(no submission)'}</ChangeIndicator> → <ChangeIndicator>{newVal !== undefined ? (newVal || '(no submission)') : '(removed)'}</ChangeIndicator>
+                                                    </SummaryItem>
+                                                );
+                                            }
+                                            return null;
+                                        });
+                                    })()}
                                 </SummarySection>
                             )}
                             {changes.bonuses && (
@@ -1610,13 +1612,54 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                             </Section>
 
                             <Section>
-                                <SectionTitle>Weekly Winners Predictions</SectionTitle>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                    <SectionTitle>Weekly Winners Predictions</SectionTitle>
+                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => {
+                                                const base = editedWinners && editedWinners.length ? editedWinners.slice() : [];
+                                                base.push('');
+                                                setEditedWinners(base);
+                                            }}
+                                            sx={{
+                                                color: '#4caf50',
+                                                '&:hover': { backgroundColor: 'rgba(76, 175, 80, 0.1)' }
+                                            }}
+                                        >
+                                            <AddIcon />
+                                        </IconButton>
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => {
+                                                const base = editedWinners && editedWinners.length ? editedWinners.slice() : [];
+                                                if (base.length > 0) {
+                                                    base.pop();
+                                                    setEditedWinners(base);
+                                                }
+                                            }}
+                                            sx={{
+                                                color: '#f44336',
+                                                '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
+                                            }}
+                                            disabled={!editedWinners || editedWinners.length === 0}
+                                        >
+                                            <RemoveIcon />
+                                        </IconButton>
+                                    </Box>
+                                </Box>
                                 <Typography variant="body2" sx={{ mb: 2, color: '#666', fontSize: '0.9rem' }}>
-                                Edit the player&apos;s weekly challenge winner predictions.
+                                Edit the player&apos;s weekly challenge winner predictions. Use the + button to add weeks and - to remove the most recent week.
                                 </Typography>
                                 {(() => {
-                                    const numWeeks = Array.isArray(leagueData?.lgChallengeWinners) ? leagueData.lgChallengeWinners.length : 0;
-                                    const displayWinners = (editedWinners && editedWinners.length) ? editedWinners : Array.from({ length: numWeeks }, () => '');
+                                    const displayWinners = editedWinners || [];
+                                    if (displayWinners.length === 0) {
+                                        return (
+                                            <Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic', textAlign: 'center', py: 2 }}>
+                                                No weekly predictions. Click + to add weeks.
+                                            </Typography>
+                                        );
+                                    }
                                     return [...displayWinners].reverse().map((entry, reversedIndex) => {
                                         const index = displayWinners.length - 1 - reversedIndex;
                                         return (
