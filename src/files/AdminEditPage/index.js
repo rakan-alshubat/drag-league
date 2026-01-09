@@ -15,6 +15,7 @@ import {
     TextField,
     Typography,
     Box,
+    Button,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -81,6 +82,10 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
     const [showSummary, setShowSummary] = useState(false);
     const [changes, setChanges] = useState({});
     const [submitting, setSubmitting] = useState(false);
+    const [customPopupOpen, setCustomPopupOpen] = useState(false);
+    const [reopenDeadline, setReopenDeadline] = useState('');
+    const [reopenError, setReopenError] = useState('');
+    const [reopenSubmitting, setReopenSubmitting] = useState(false);
 
     // League editing state
     const [editedEliminatedPlayers, setEditedEliminatedPlayers] = useState([]);
@@ -914,11 +919,161 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                 </ChoiceDescription>
                             </ChoiceCard>
                         </ChoiceContainer>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                            <Button
+                                variant="contained"
+                                onClick={() => setCustomPopupOpen(true)}
+                                sx={{
+                                    background: 'linear-gradient(135deg, #FF1493 0%, #FF69B4 100%)',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    px: 3,
+                                    py: 1,
+                                    '&:hover': {
+                                        background: 'linear-gradient(135deg, #E0127D 0%, #FF5CAD 100%)',
+                                    }
+                                }}
+                            >
+                                Reopen League
+                            </Button>
+                        </Box>
                         <AdminWarningBanner />
                     </ContentWrapper>
                 </Container>
                 <ErrorPopup open={errorPopup} onClose={() => setErrorPopup(false)} message={errorMessage} />
                 {renderSummaryDialog()}
+                <Dialog 
+                    open={customPopupOpen} 
+                    onClose={() => {
+                        setCustomPopupOpen(false);
+                        setReopenDeadline('');
+                        setReopenError('');
+                    }}
+                    maxWidth="sm"
+                    fullWidth
+                >
+                    <DialogTitle sx={{ background: 'linear-gradient(135deg, #FF1493 0%, #FF69B4 100%)', color: 'white', fontWeight: 600 }}>
+                        Reopen League
+                    </DialogTitle>
+                    <DialogContent sx={{ mt: 2 }}>
+                        <Typography variant="body1" sx={{ mb: 2 }}>
+                            Are you sure you want to reopen {leagueData?.lgName}? This will allow you to invite more players, or edit league entries. This also lets exisiting players edit their rankings and might also lead to unexpected results. <b>Use with caution</b>
+                        </Typography>
+                        <TextField
+                            fullWidth
+                            label="New Ranking Deadline"
+                            type="datetime-local"
+                            value={reopenDeadline}
+                            onChange={(e) => {
+                                setReopenDeadline(e.target.value);
+                                setReopenError('');
+                            }}
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            error={!!reopenError}
+                            helperText={reopenError || 'Select a future date and time for the new ranking deadline'}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    '&.Mui-focused fieldset': {
+                                        borderColor: '#FF1493',
+                                    },
+                                },
+                                '& .MuiInputLabel-root.Mui-focused': {
+                                    color: '#FF1493',
+                                },
+                            }}
+                        />
+                    </DialogContent>
+                    <DialogActions>
+                        <Button 
+                            onClick={() => {
+                                setCustomPopupOpen(false);
+                                setReopenDeadline('');
+                                setReopenError('');
+                            }} 
+                            sx={{ color: '#666' }}
+                            disabled={reopenSubmitting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={async () => {
+                                if (!reopenDeadline || reopenDeadline.trim() === '') {
+                                    setReopenError('Please select a deadline');
+                                    return;
+                                }
+                                
+                                const selectedDate = new Date(reopenDeadline);
+                                const now = new Date();
+                                
+                                if (selectedDate <= now) {
+                                    setReopenError('Deadline must be in the future');
+                                    return;
+                                }
+                                
+                                setReopenSubmitting(true);
+                                setReopenError('');
+                                
+                                try {
+                                    const deadlineISO = selectedDate.toISOString();
+                                    const currentHistory = leagueData?.lgHistory || [];
+                                    const adminName = currentPlayer?.plName || userData?.name || 'Admin';
+                                    const historyEntry = `${new Date().toISOString()}. ${adminName} reopened the league with new ranking deadline: ${deadlineISO}`;
+                                    
+                                    await client.graphql({
+                                        query: updateLeague,
+                                        variables: {
+                                            input: {
+                                                id: leagueData.id,
+                                                lgFinished: 'not started',
+                                                lgRankingDeadline: deadlineISO,
+                                                lgHistory: [...currentHistory, historyEntry]
+                                            }
+                                        }
+                                    });
+                                    
+                                    serverLogInfo('League reopened', {
+                                        leagueId: leagueData.id,
+                                        leagueName: leagueData.lgName,
+                                        adminName: adminName,
+                                        newDeadline: deadlineISO
+                                    });
+                                    
+                                    setCustomPopupOpen(false);
+                                    setReopenDeadline('');
+                                    setReopenError('');
+                                    
+                                    // Redirect to league page
+                                    router.push(`/League/${leagueData.id}`);
+                                } catch (error) {
+                                    serverLogError('Failed to reopen league', {
+                                        leagueId: leagueData.id,
+                                        error: error.message
+                                    });
+                                    setReopenError('Failed to reopen league. Please try again.');
+                                } finally {
+                                    setReopenSubmitting(false);
+                                }
+                            }}
+                            variant="contained"
+                            disabled={reopenSubmitting}
+                            sx={{
+                                background: 'linear-gradient(135deg, #FF1493 0%, #FF69B4 100%)',
+                                color: 'white',
+                                '&:hover': {
+                                    background: 'linear-gradient(135deg, #E0127D 0%, #FF5CAD 100%)',
+                                },
+                                '&:disabled': {
+                                    background: '#ccc',
+                                    color: '#666',
+                                }
+                            }}
+                        >
+                            {reopenSubmitting ? 'Reopening...' : 'Reopen League'}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </>
         );
     }
@@ -1069,7 +1224,7 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                     </Box>
                                 </EntryRow>
                                 <EntryRow>
-                                    <EntryLabel>Deadline:</EntryLabel>
+                                    <EntryLabel>Weekly Deadline:</EntryLabel>
                                     <TextField
                                         type="datetime-local"
                                         value={editedLgDeadline ? (() => {
@@ -1394,17 +1549,17 @@ export default function AdminEditPage({ leagueData, allPlayers, currentPlayer, u
                                 <TextField fullWidth value={editedPlName} onChange={(e) => setEditedPlName(e.target.value)} />
                             </EntryRow>
                             <Section>
-                                <SectionTitle>Elimination Order Rankings (First Eliminated to Winner)</SectionTitle>
+                                <SectionTitle>Rankings (1st Place to Last Place)</SectionTitle>
                                 <Typography variant="body2" sx={{ mb: 2, color: '#666', fontSize: '0.9rem' }}>
-                                Edit the player&apos;s predicted elimination order from first eliminated to winner.
+                                Edit the player&apos;s predicted rankings from winner to first eliminated.
                                 </Typography>
                                 {(() => {
                                     const playerValidation = validatePlayer();
                                     const displayRankings = (editedRankings && editedRankings.length) ? editedRankings : Array.from({ length: totalQueens }, () => '');
-                                    return [...displayRankings].reverse().map((queen, reversedIndex) => {
-                                        const index = displayRankings.length - 1 - reversedIndex;
-                                        // Calculate placement from total queens
-                                        const placement = totalQueens - index;
+                                    return displayRankings.map((queen, index) => {
+                                        // Calculate placement: index 0 = last place (first eliminated), index totalQueens-1 = 1st place (winner)
+                                        // So we need to reverse: placement = index + 1
+                                        const placement = index + 1;
                                         const isEmpty = !queen || queen.trim() === '';
                                         return (
                                             <EntryRow key={index} sx={isEmpty ? { borderColor: 'error.main', background: 'rgba(255, 0, 0, 0.03)' } : {}}>
