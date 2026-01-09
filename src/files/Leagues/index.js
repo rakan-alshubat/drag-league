@@ -411,7 +411,7 @@ export default function Leagues({ userData, leagueData, playersData }) {
                                 {playersWithMissingPicks.length} player{playersWithMissingPicks.length > 1 ? 's have' : ' has'} incomplete weekly predictions
                             </Typography>
                             <Typography variant="body2">
-                                {playerNames}{playersWithMissingPicks.length > 5 ? ', ...' : ''} {playersWithMissingPicks.length > 1 ? 'have' : 'has'} fewer weekly picks than the league has challenge weeks ({challengeWeeksCount} week{challengeWeeksCount > 1 ? 's' : ''}). You can add missing weeks in the Admin Edit page.
+                                {playerNames}{playersWithMissingPicks.length > 5 ? ', ...' : ''} {playersWithMissingPicks.length > 1 ? 'have' : 'has'} fewer weekly picks than the league has challenge weeks ({challengeWeeksCount} week{challengeWeeksCount > 1 ? 's' : ''}). You can add missing or blank entries in the Admin Edit page in the settings.
                             </Typography>
                         </Alert>
                     </Box>
