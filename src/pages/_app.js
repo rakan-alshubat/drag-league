@@ -71,6 +71,30 @@ export default function MyApp(props) {
         };
     }, []);
 
+    // Register service worker for PWA functionality and debugging
+    React.useEffect(() => {
+        if (typeof window === 'undefined') return;
+        if ('serviceWorker' in navigator) {
+            console.log('Attempting to register service worker: /sw.js');
+            navigator.serviceWorker.register('/sw.js')
+                .then((reg) => {
+                    console.log('Service worker registered:', reg);
+                    if (reg.waiting) console.log('SW waiting');
+                    if (reg.installing) console.log('SW installing');
+                    if (reg.active) console.log('SW active');
+                })
+                .catch((err) => {
+                    console.warn('Service worker registration failed:', err);
+                });
+
+            navigator.serviceWorker.ready
+                .then(() => console.log('Service worker ready'))
+                .catch(() => {});
+        } else {
+            console.log('Service workers not supported in this browser');
+        }
+    }, []);
+
     const handleInstallClick = () => {
         if (installPrompt) {
             installPrompt.prompt();
