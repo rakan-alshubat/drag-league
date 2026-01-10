@@ -1,0 +1,33 @@
+{
+  "name": "Drag League",
+  "short_name": "Drag League",
+  "description": "Fantasy Drag Race League - compete with friends and track your favorite Queens",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#FF1493",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["entertainment", "sports"],
+  "shortcuts": [
+    {
+      "name": "My Leagues",
+      "short_name": "Leagues",
+      "description": "View your leagues",
+      "url": "/Player",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}
