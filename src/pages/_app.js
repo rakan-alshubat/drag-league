@@ -6,6 +6,9 @@ import SEO from '../../next-seo.config';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import { CacheProvider } from '@emotion/react';
 import theme from '../styles/theme'
 import createEmotionCache from '../styles/createEmotionCache';
@@ -44,10 +47,47 @@ Amplify.configure({
 
 export default function MyApp(props) {
     const { Component, emotionCache = clientSideEmotionCache, pageProps } = props;
+    const [installPrompt, setInstallPrompt] = React.useState(null);
+    const [showInstallPrompt, setShowInstallPrompt] = React.useState(false);
+
+    React.useEffect(() => {
+        // PWA Install Prompt
+        const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+            setShowInstallPrompt(true);
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        // Hide install prompt if app is already installed
+        window.addEventListener('appinstalled', () => {
+            setShowInstallPrompt(false);
+            setInstallPrompt(null);
+        });
+
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        };
+    }, []);
+
+    const handleInstallClick = () => {
+        if (installPrompt) {
+            installPrompt.prompt();
+            installPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                }
+                setInstallPrompt(null);
+                setShowInstallPrompt(false);
+            });
+        }
+    };
+
     return (
         <CacheProvider value={emotionCache}>
             <Head>
-                <meta name="viewport" content="initial-scale=1, width=device-width" />
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />
                 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
                 <link rel="icon" href="/favicon-32.png" sizes="32x32" />
                 <link rel="alternate icon" href="/favicon.ico" />
@@ -63,6 +103,43 @@ export default function MyApp(props) {
                     </Box>
                     <Footer />
                 </Box>
+
+                <Snackbar
+                    open={showInstallPrompt}
+                    onClose={() => setShowInstallPrompt(false)}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                    sx={{ bottom: { xs: 40, sm: 24 } }}
+                >
+                    <Alert
+                        severity="info"
+                        sx={{
+                            background: 'linear-gradient(135deg, #FF1493 0%, #C71585 100%)',
+                            color: 'white',
+                            fontWeight: 600,
+                            '& .MuiAlert-icon': { color: 'white' },
+                            boxShadow: '0 8px 24px rgba(255, 20, 147, 0.3)',
+                        }}
+                        action={
+                            <Button
+                                color="inherit"
+                                size="small"
+                                onClick={handleInstallClick}
+                                sx={{
+                                    background: 'rgba(255, 255, 255, 0.2)',
+                                    fontWeight: 700,
+                                    '&:hover': {
+                                        background: 'rgba(255, 255, 255, 0.3)',
+                                    },
+                                }}
+                            >
+                                Install
+                            </Button>
+                        }
+                        onClose={() => setShowInstallPrompt(false)}
+                    >
+                        Install the Drag League web app!
+                    </Alert>
+                </Snackbar>
             </ThemeProvider>
         </CacheProvider>
     );
