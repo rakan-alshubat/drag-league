@@ -544,26 +544,26 @@ export default function LeagueSettings(props) {
                     }
                 }
                 
-// Add to league history and remove from admin list if needed
-            const currentHistory = leagueData?.lgHistory || [];
-            const historyEntry = isCurrentUserLeaving 
-                ? `${new Date().toISOString()}. ${playerName} left the league`
-                : `${new Date().toISOString()}. ${playerName} was removed from the league by an admin`;
+                // Add to league history and remove from admin list if needed
+                const currentHistory = leagueData?.lgHistory || [];
+                const historyEntry = isCurrentUserLeaving 
+                    ? `${new Date().toISOString()}. ${playerName} left the league`
+                    : `${new Date().toISOString()}. ${playerName} was removed from the league by an admin`;
             
-            // Check if player is an admin and remove from lgAdmin array
-            const currentAdmins = leagueData?.lgAdmin || [];
-            const isPlayerAdmin = currentAdmins.map(a => String(a || '').toLowerCase()).includes(playerEmail);
-            const updatedAdmins = isPlayerAdmin 
-                ? currentAdmins.filter(a => String(a || '').toLowerCase() !== playerEmail)
-                : currentAdmins;
+                // Check if player is an admin and remove from lgAdmin array
+                const currentAdmins = leagueData?.lgAdmin || [];
+                const isPlayerAdmin = currentAdmins.map(a => String(a || '').toLowerCase()).includes(playerEmail);
+                const updatedAdmins = isPlayerAdmin 
+                    ? currentAdmins.filter(a => String(a || '').toLowerCase() !== playerEmail)
+                    : currentAdmins;
             
-            await client.graphql({
-                query: updateLeague,
-                variables: {
-                    input: {
-                        id: leagueData.id,
-                        lgHistory: [...currentHistory, historyEntry],
-                        lgAdmin: updatedAdmins
+                await client.graphql({
+                    query: updateLeague,
+                    variables: {
+                        input: {
+                            id: leagueData.id,
+                            lgHistory: [...currentHistory, historyEntry],
+                            lgAdmin: updatedAdmins
                         }
                     }
                 });
@@ -681,67 +681,67 @@ export default function LeagueSettings(props) {
             
             {/* Privacy Section - Admin Only */}
             {currentUserIsAdmin && (
-            <SettingSection>
-                <SectionTitle>Privacy Settings</SectionTitle>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {/* Public/Private Toggle */}
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '16px',
-                            borderRadius: '8px',
-                            background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
-                            border: '1px solid rgba(255, 20, 147, 0.2)',
-                        }}
-                    >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            {isPublic ? <PublicIcon sx={{ color: '#50C878' }} /> : <LockIcon sx={{ color: '#FF1493' }} />}
-                            <Box>
-                                <Typography sx={{ fontWeight: 600, color: '#333' }}>
+                <SettingSection>
+                    <SectionTitle>Privacy Settings</SectionTitle>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {/* Public/Private Toggle */}
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '16px',
+                                borderRadius: '8px',
+                                background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
+                                border: '1px solid rgba(255, 20, 147, 0.2)',
+                            }}
+                        >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                {isPublic ? <PublicIcon sx={{ color: '#50C878' }} /> : <LockIcon sx={{ color: '#FF1493' }} />}
+                                <Box>
+                                    <Typography sx={{ fontWeight: 600, color: '#333' }}>
                                     League Visibility
-                                </Typography>
-                                <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
-                                    {isPublic ? 'Anyone can view this league' : 'Only members can view this league'}
-                                </Typography>
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
+                                        {isPublic ? 'Anyone can view this league' : 'Only members can view this league'}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Chip
+                                    label={isPublic ? 'Public' : 'Private'}
+                                    size="small"
+                                    sx={{
+                                        background: isPublic 
+                                            ? 'linear-gradient(135deg, #50C878 0%, #3CB371 100%)'
+                                            : 'linear-gradient(135deg, #FF1493 0%, #C71585 100%)',
+                                        color: 'white',
+                                        fontWeight: 600,
+                                    }}
+                                />
+                                <Switch
+                                    checked={isPublic}
+                                    onChange={(e) => handlePrivacyToggle(
+                                        'lgPublic',
+                                        e.target.checked,
+                                        e.target.checked ? 'Make League Public?' : 'Make League Private?',
+                                        e.target.checked 
+                                            ? 'Are you sure you want to make this league public? Anyone will be able to view it.'
+                                            : 'Are you sure you want to make this league private? Only members will be able to view it.'
+                                    )}
+                                    sx={{
+                                        '& .MuiSwitch-switchBase.Mui-checked': {
+                                            color: '#50C878',
+                                        },
+                                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                            backgroundColor: '#50C878',
+                                        },
+                                    }}
+                                />
                             </Box>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Chip
-                                label={isPublic ? 'Public' : 'Private'}
-                                size="small"
-                                sx={{
-                                    background: isPublic 
-                                        ? 'linear-gradient(135deg, #50C878 0%, #3CB371 100%)'
-                                        : 'linear-gradient(135deg, #FF1493 0%, #C71585 100%)',
-                                    color: 'white',
-                                    fontWeight: 600,
-                                }}
-                            />
-                            <Switch
-                                checked={isPublic}
-                                onChange={(e) => handlePrivacyToggle(
-                                    'lgPublic',
-                                    e.target.checked,
-                                    e.target.checked ? 'Make League Public?' : 'Make League Private?',
-                                    e.target.checked 
-                                        ? 'Are you sure you want to make this league public? Anyone will be able to view it.'
-                                        : 'Are you sure you want to make this league private? Only members will be able to view it.'
-                                )}
-                                sx={{
-                                    '& .MuiSwitch-switchBase.Mui-checked': {
-                                        color: '#50C878',
-                                    },
-                                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                        backgroundColor: '#50C878',
-                                    },
-                                }}
-                            />
-                        </Box>
                     </Box>
-                </Box>
-            </SettingSection>
+                </SettingSection>
             )}
 
             {/* Player Actions Section - Available to all players */}
@@ -805,160 +805,160 @@ export default function LeagueSettings(props) {
 
             {/* Admin Tools Section */}
             {currentUserIsAdmin && (
-            <SettingSection>
-                <SectionTitle>Admin Tools</SectionTitle>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {/* Email All Players */}
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '16px',
-                            borderRadius: '8px',
-                            background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
-                            border: '1px solid rgba(255, 20, 147, 0.2)',
-                        }}
-                    >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <EmailIcon sx={{ color: '#FF1493' }} />
-                            <Box>
-                                <Typography sx={{ fontWeight: 600, color: '#333' }}>
-                                    Send Announcement
-                                </Typography>
-                                <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
-                                    Send a notification email to all league members
-                                </Typography>
-                            </Box>
-                        </Box>
-                        <Button
-                            variant="contained"
-                            onClick={() => setEmailPopupOpen(true)}
-                            disabled={emailSending}
-                            sx={{
-                                background: 'linear-gradient(135deg, #FF1493 0%, #C71585 100%)',
-                                color: 'white',
-                                fontWeight: 600,
-                                textTransform: 'none',
-                                px: { xs: 2, sm: 3 },
-                                py: { xs: 1, sm: 1.25 },
-                                fontSize: { xs: '0.775rem', sm: '1rem' },
-                                '&:hover': {
-                                    background: 'linear-gradient(135deg, #E6127A 0%, #B01070 100%)',
-                                },
-                                '&:disabled': {
-                                    background: '#ccc',
-                                    color: '#666',
-                                },
-                            }}
-                        >
-                            Send Announcement
-                        </Button>
-                    </Box>
-                    
-                    {emailSuccess && (
+                <SettingSection>
+                    <SectionTitle>Admin Tools</SectionTitle>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {/* Email All Players */}
                         <Box
                             sx={{
-                                padding: '12px 16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '16px',
                                 borderRadius: '8px',
-                                background: 'linear-gradient(135deg, rgba(80, 200, 120, 0.1) 0%, rgba(60, 179, 113, 0.1) 100%)',
-                                border: '1px solid rgba(80, 200, 120, 0.3)',
+                                background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
+                                border: '1px solid rgba(255, 20, 147, 0.2)',
                             }}
                         >
-                            <Typography sx={{ color: '#50C878', fontWeight: 600, fontSize: '0.9rem' }}>
-                                ✓ {emailSuccess}
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                <EmailIcon sx={{ color: '#FF1493' }} />
+                                <Box>
+                                    <Typography sx={{ fontWeight: 600, color: '#333' }}>
+                                    Send Announcement
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
+                                    Send a notification email to all league members
+                                    </Typography>
+                                </Box>
+                            </Box>
+                            <Button
+                                variant="contained"
+                                onClick={() => setEmailPopupOpen(true)}
+                                disabled={emailSending}
+                                sx={{
+                                    background: 'linear-gradient(135deg, #FF1493 0%, #C71585 100%)',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    px: { xs: 2, sm: 3 },
+                                    py: { xs: 1, sm: 1.25 },
+                                    fontSize: { xs: '0.775rem', sm: '1rem' },
+                                    '&:hover': {
+                                        background: 'linear-gradient(135deg, #E6127A 0%, #B01070 100%)',
+                                    },
+                                    '&:disabled': {
+                                        background: '#ccc',
+                                        color: '#666',
+                                    },
+                                }}
+                            >
+                            Send Announcement
+                            </Button>
                         </Box>
-                    )}
                     
-                    {/* Admin Edit Page */}
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '16px',
-                            borderRadius: '8px',
-                            background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
-                            border: '1px solid rgba(255, 20, 147, 0.2)',
-                        }}
-                    >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <EditIcon sx={{ color: '#9B30FF' }} />
-                            <Box>
-                                <Typography sx={{ fontWeight: 600, color: '#333' }}>
-                                    Admin Edit Page
-                                </Typography>
-                                <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
-                                    Access advanced league management and editing tools
+                        {emailSuccess && (
+                            <Box
+                                sx={{
+                                    padding: '12px 16px',
+                                    borderRadius: '8px',
+                                    background: 'linear-gradient(135deg, rgba(80, 200, 120, 0.1) 0%, rgba(60, 179, 113, 0.1) 100%)',
+                                    border: '1px solid rgba(80, 200, 120, 0.3)',
+                                }}
+                            >
+                                <Typography sx={{ color: '#50C878', fontWeight: 600, fontSize: '0.9rem' }}>
+                                ✓ {emailSuccess}
                                 </Typography>
                             </Box>
-                        </Box>
-                        <Button
-                            variant="contained"
-                            onClick={() => router.push(`/AdminEdit?leagueId=${leagueData?.id}`)}
+                        )}
+                    
+                        {/* Admin Edit Page */}
+                        <Box
                             sx={{
-                                background: 'linear-gradient(135deg, #9B30FF 0%, #7A1CAC 100%)',
-                                color: 'white',
-                                fontWeight: 600,
-                                textTransform: 'none',
-                                '&:hover': {
-                                    background: 'linear-gradient(135deg, #8A2BE2 0%, #6A0DAD 100%)',
-                                },
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '16px',
+                                borderRadius: '8px',
+                                background: 'linear-gradient(135deg, rgba(255, 245, 248, 0.6) 0%, rgba(245, 235, 255, 0.6) 100%)',
+                                border: '1px solid rgba(255, 20, 147, 0.2)',
                             }}
                         >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                <EditIcon sx={{ color: '#9B30FF' }} />
+                                <Box>
+                                    <Typography sx={{ fontWeight: 600, color: '#333' }}>
+                                    Admin Edit Page
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
+                                    Access advanced league management and editing tools
+                                    </Typography>
+                                </Box>
+                            </Box>
+                            <Button
+                                variant="contained"
+                                onClick={() => router.push(`/AdminEdit?leagueId=${leagueData?.id}`)}
+                                sx={{
+                                    background: 'linear-gradient(135deg, #9B30FF 0%, #7A1CAC 100%)',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    '&:hover': {
+                                        background: 'linear-gradient(135deg, #8A2BE2 0%, #6A0DAD 100%)',
+                                    },
+                                }}
+                            >
                             Open Admin Edit
-                        </Button>
+                            </Button>
+                        </Box>
                     </Box>
-                </Box>
-            </SettingSection>
+                </SettingSection>
             )}
 
             {/* Danger Zone - Admin Only */}
             {currentUserIsAdmin && (
-            <SettingSection>
-                <SectionTitle sx={{ color: '#ff4444' }}>Danger Zone</SectionTitle>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '16px',
-                            borderRadius: '8px',
-                            background: 'linear-gradient(135deg, rgba(255, 68, 68, 0.05) 0%, rgba(204, 0, 0, 0.05) 100%)',
-                            border: '2px solid rgba(255, 68, 68, 0.3)',
-                        }}
-                    >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <DeleteForeverIcon sx={{ color: '#ff4444', fontSize: 32 }} />
-                            <Box>
-                                <Typography sx={{ fontWeight: 600, color: '#ff4444' }}>
-                                    Delete League
-                                </Typography>
-                                <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
-                                    Permanently delete this league and all player data. This cannot be undone.
-                                </Typography>
-                            </Box>
-                        </Box>
-                        <Button
-                            variant="contained"
-                            onClick={handleDeleteLeague}
+                <SettingSection>
+                    <SectionTitle sx={{ color: '#ff4444' }}>Danger Zone</SectionTitle>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Box
                             sx={{
-                                background: 'linear-gradient(135deg, #ff4444 0%, #cc0000 100%)',
-                                color: 'white',
-                                fontWeight: 600,
-                                textTransform: 'none',
-                                '&:hover': {
-                                    background: 'linear-gradient(135deg, #e63939 0%, #b30000 100%)',
-                                },
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '16px',
+                                borderRadius: '8px',
+                                background: 'linear-gradient(135deg, rgba(255, 68, 68, 0.05) 0%, rgba(204, 0, 0, 0.05) 100%)',
+                                border: '2px solid rgba(255, 68, 68, 0.3)',
                             }}
                         >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                <DeleteForeverIcon sx={{ color: '#ff4444', fontSize: 32 }} />
+                                <Box>
+                                    <Typography sx={{ fontWeight: 600, color: '#ff4444' }}>
+                                    Delete League
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '0.85rem', color: '#666' }}>
+                                    Permanently delete this league and all player data. This cannot be undone.
+                                    </Typography>
+                                </Box>
+                            </Box>
+                            <Button
+                                variant="contained"
+                                onClick={handleDeleteLeague}
+                                sx={{
+                                    background: 'linear-gradient(135deg, #ff4444 0%, #cc0000 100%)',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    '&:hover': {
+                                        background: 'linear-gradient(135deg, #e63939 0%, #b30000 100%)',
+                                    },
+                                }}
+                            >
                             Delete League
-                        </Button>
+                            </Button>
+                        </Box>
                     </Box>
-                </Box>
-            </SettingSection>
+                </SettingSection>
             )}
 
 
