@@ -31,55 +31,55 @@ import {
 } from "./Leagues.styles";
 
 export default function Leagues({ userData, leagueData, playersData }) {
-        const League = leagueData
-        const User = userData
-        const AllPlayers = playersData
+    const League = leagueData
+    const User = userData
+    const AllPlayers = playersData
 
-        const client = generateClient()
-        // --- Comments Section ---
-        // Parse comments from lgComments (array of strings: playerName|date and time|comment)
-        function parseComments(raw) {
-            if (!Array.isArray(raw)) return [];
-            return raw.map(str => {
-                const [playerName, date, ...rest] = str.split('|');
-                return {
-                    playerName: playerName?.trim() || '',
-                    date: date?.trim() || '',
-                    comment: rest.join('|')
-                };
-            }).filter(c => c.comment);
-        }
+    const client = generateClient()
+    // --- Comments Section ---
+    // Parse comments from lgComments (array of strings: playerName|date and time|comment)
+    function parseComments(raw) {
+        if (!Array.isArray(raw)) return [];
+        return raw.map(str => {
+            const [playerName, date, ...rest] = str.split('|');
+            return {
+                playerName: playerName?.trim() || '',
+                date: date?.trim() || '',
+                comment: rest.join('|')
+            };
+        }).filter(c => c.comment);
+    }
 
-        const [comments, setComments] = useState(() => parseComments(League?.lgComments));
-        // Keep comments in sync if leagueData changes
-        useEffect(() => {
-            setComments(parseComments(League?.lgComments));
-        }, [League?.lgComments]);
+    const [comments, setComments] = useState(() => parseComments(League?.lgComments));
+    // Keep comments in sync if leagueData changes
+    useEffect(() => {
+        setComments(parseComments(League?.lgComments));
+    }, [League?.lgComments]);
 
-        // Add new comment (player only)
-        async function handleAddComment(newComment) {
-            if (!isPlayer || !newComment) return;
-            const now = new Date();
-            const dateStr = now.toLocaleString();
-            const playerName = Player?.plName || 'Player';
-            const commentStr = `${playerName}|${dateStr}|${newComment}`;
-            // Prepend new comment to array
-            const newCommentsArr = [commentStr, ...(Array.isArray(League?.lgComments) ? League.lgComments : [])];
-            try {
-                await client.graphql({
-                    query: updateLeague,
-                    variables: {
-                        input: {
-                            id: leagueData.id,
-                            lgComments: newCommentsArr
-                        }
+    // Add new comment (player only)
+    async function handleAddComment(newComment) {
+        if (!isPlayer || !newComment) return;
+        const now = new Date();
+        const dateStr = now.toLocaleString();
+        const playerName = Player?.plName || 'Player';
+        const commentStr = `${playerName}|${dateStr}|${newComment}`;
+        // Prepend new comment to array
+        const newCommentsArr = [commentStr, ...(Array.isArray(League?.lgComments) ? League.lgComments : [])];
+        try {
+            await client.graphql({
+                query: updateLeague,
+                variables: {
+                    input: {
+                        id: leagueData.id,
+                        lgComments: newCommentsArr
                     }
-                });
-                setComments(parseComments(newCommentsArr));
-            } catch (e) {
-                serverLogWarn('Failed to add comment', { error: e.message });
-            }
+                }
+            });
+            setComments(parseComments(newCommentsArr));
+        } catch (e) {
+            serverLogWarn('Failed to add comment', { error: e.message });
         }
+    }
     const [tabIndex, setTabIndex] = useState(0);
     
     const tabs = ["Player Rankings", "Player Submissions", "Season Info", "History", "League Settings"];
