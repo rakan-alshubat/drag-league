@@ -1,3 +1,5 @@
+import { serverLogError } from "@/helpers/serverLog";
+
 export default async function handler(req, res) {
     // Set CORS headers
     const origin = req.headers.origin;
@@ -26,21 +28,21 @@ export default async function handler(req, res) {
         // Log to CloudWatch (via console)
         switch (level.toLowerCase()) {
         case 'error':
-            console.error(logMessage, data || '');
+            serverLogError(logMessage, data || '');
             break;
         case 'warn':
-            console.warn(logMessage, data || '');
+            serverLogWarn(logMessage, data || '');
             break;
         case 'debug':
-            console.debug(logMessage, data || '');
+            serverLogDebug(logMessage, data || '');
             break;
         default:
-            console.log(logMessage, data || '');
+            serverLogInfo(logMessage, data || '');
         }
         
         return res.status(200).json({ success: true, logged: true });
     } catch (error) {
-        console.error('Logging API error:', error);
+        serverLogError('Logging API error:', error);
         return res.status(500).json({ error: 'Failed to log' });
     }
 }

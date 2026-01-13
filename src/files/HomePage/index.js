@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { getCurrentUser } from '@aws-amplify/auth';
 import { generateClient } from 'aws-amplify/api';
-import { serverLogWarn, serverLogError } from '@/helpers/serverLog';
+import { serverLogWarn, serverLogError, serverLog, serverLogInfo } from '@/helpers/serverLog';
 import { getUsers, listLeagues } from '@/graphql/queries';
 import { Typography, TextField, Box, CircularProgress } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -77,7 +77,7 @@ export default function HomePage() {
         setSearchLoading(true);
         const timer = setTimeout(async () => {
             try {
-                console.log('Searching for leagues with name:', searchName);
+                serverLogInfo('Searching for leagues with name:', searchName);
                 // Fetch public leagues and apply a case-insensitive filter client-side
                 const filter = { lgPublic: { eq: true } };
                 
@@ -89,16 +89,16 @@ export default function HomePage() {
                     authMode: authMode
                 });
                 
-                console.log('GraphQL response:', res);
+                serverLogInfo('GraphQL response:', res);
                 const items = res?.data?.listLeagues?.items || [];
-                console.log('Total public leagues:', items.length);
+                serverLogInfo('Total public leagues:', items.length);
                 if (!active) return;
                 const needle = String(searchName || '').toLowerCase();
                 const matched = items.filter(i => (String(i.lgName || i.name || '')).toLowerCase().includes(needle));
-                console.log('Matched leagues:', matched.length, matched);
+                serverLogInfo('Matched leagues:', matched.length, matched);
                 setSearchResults(matched.slice(0, 5));
             } catch (err) {
-                console.error('League search error:', err);
+                serverLogWarn   ('League search error:', err);
                 serverLogError('League search error', { error: err.message, searchName });
                 if (active) setSearchResults([]);
             } finally {

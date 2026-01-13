@@ -110,7 +110,7 @@ export default function PlayerPage({ darkBg, setDarkBg, installPrompt, onInstall
 
         const subUpdate = client.graphql({ query: onUpdateUsers }).subscribe({
             next: (payload) => {
-                console.log('onUpdateUsers raw payload:', payload);
+
                 const updated = payload?.value?.data?.onUpdateUsers
                     ?? payload?.data?.onUpdateUsers
                     ?? payload?.data

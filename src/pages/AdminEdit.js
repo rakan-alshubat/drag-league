@@ -26,8 +26,6 @@ export default function AdminEdit() {
         }
     }, [leagueId]);
 
-    serverLogError("is this thing on?", { test: "yes it is" });
-
     const fetchData = async () => {
         try {
             setLoading(true);

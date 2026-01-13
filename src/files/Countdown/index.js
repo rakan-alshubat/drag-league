@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { Box, Typography, IconButton, Tooltip } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import EventIcon from '@mui/icons-material/Event';
+import { serverLogWarn } from '@/helpers/serverLog';
 
 /**
  * Countdown component that displays time remaining until a deadline
@@ -146,7 +147,7 @@ export default function Countdown({ deadline, label = "Time Remaining", showDate
             link.click();
             document.body.removeChild(link);
         } catch (error) {
-            console.error('Error creating calendar event:', error);
+            serverLogWarn('Error creating calendar event:', error);
         }
     };
 

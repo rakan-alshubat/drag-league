@@ -21,6 +21,7 @@ import { Amplify } from 'aws-amplify';
 import config from '@/aws-exports';
 import NavBar from '@/files/NavBar';
 import Footer from '@/files/Footer';
+import { serverLogInfo } from '@/helpers/serverLog';
 
 // Client-side cache, shared for the whole session of the user in the browser.
 const clientSideEmotionCache = createEmotionCache();
@@ -132,7 +133,7 @@ export default function MyApp(props) {
                 if (!getDismissed() && getRemindUntil() <= now()) {
                     setInstallPrompt({ iosFallback: true });
                     setShowInstallPrompt(true);
-                    console.log('iOS fallback: showing install snackbar');
+                    serverLogInfo('iOS fallback: showing install snackbar');
                 }
             }
         } catch (err) {
@@ -160,7 +161,7 @@ export default function MyApp(props) {
             installPrompt.prompt();
             installPrompt.userChoice.then((choiceResult) => {
                 if (choiceResult.outcome === 'accepted') {
-                    console.log('User accepted the install prompt');
+                    serverLogInfo('User accepted the install prompt');
                     try { localStorage.setItem(DISMISS_KEY, 'true'); } catch {}
                 }
                 setInstallPrompt(null);
