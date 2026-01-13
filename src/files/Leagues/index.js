@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
+import { generateClient } from 'aws-amplify/api'
+import LeagueComments from "./LeagueComments";
+import { updateLeague } from "../../graphql/mutations";
 import { serverLogWarn } from '@/helpers/serverLog';
 import PlayerRankings from "../PlayerRankings";
 import PlayerSubmissions from "../PlayerSubmissions";
@@ -28,6 +31,55 @@ import {
 } from "./Leagues.styles";
 
 export default function Leagues({ userData, leagueData, playersData }) {
+        const League = leagueData
+        const User = userData
+        const AllPlayers = playersData
+
+        const client = generateClient()
+        // --- Comments Section ---
+        // Parse comments from lgComments (array of strings: playerName|date and time|comment)
+        function parseComments(raw) {
+            if (!Array.isArray(raw)) return [];
+            return raw.map(str => {
+                const [playerName, date, ...rest] = str.split('|');
+                return {
+                    playerName: playerName?.trim() || '',
+                    date: date?.trim() || '',
+                    comment: rest.join('|')
+                };
+            }).filter(c => c.comment);
+        }
+
+        const [comments, setComments] = useState(() => parseComments(League?.lgComments));
+        // Keep comments in sync if leagueData changes
+        useEffect(() => {
+            setComments(parseComments(League?.lgComments));
+        }, [League?.lgComments]);
+
+        // Add new comment (player only)
+        async function handleAddComment(newComment) {
+            if (!isPlayer || !newComment) return;
+            const now = new Date();
+            const dateStr = now.toLocaleString();
+            const playerName = Player?.plName || 'Player';
+            const commentStr = `${playerName}|${dateStr}|${newComment}`;
+            // Prepend new comment to array
+            const newCommentsArr = [commentStr, ...(Array.isArray(League?.lgComments) ? League.lgComments : [])];
+            try {
+                await client.graphql({
+                    query: updateLeague,
+                    variables: {
+                        input: {
+                            id: leagueData.id,
+                            lgComments: newCommentsArr
+                        }
+                    }
+                });
+                setComments(parseComments(newCommentsArr));
+            } catch (e) {
+                serverLogWarn('Failed to add comment', { error: e.message });
+            }
+        }
     const [tabIndex, setTabIndex] = useState(0);
     
     const tabs = ["Player Rankings", "Player Submissions", "Season Info", "History", "League Settings"];
@@ -35,9 +87,6 @@ export default function Leagues({ userData, leagueData, playersData }) {
     const [showSwapPopup, setShowSwapPopup] = useState(false);
     const [swapPopupVersion, setSwapPopupVersion] = useState('');
 
-    const League = leagueData
-    const User = userData
-    const AllPlayers = playersData
 
     // Find current user's player object
     const Player = AllPlayers?.find(p => p.plEmail?.toLowerCase() === User?.id?.toLowerCase()) || null;
@@ -568,7 +617,12 @@ export default function Leagues({ userData, leagueData, playersData }) {
                     )}
                 </Panel>
             </MainContent>
-
+            {/* Comments Section: visible under all tabs */}
+            <LeagueComments
+                comments={comments}
+                onSubmit={handleAddComment}
+                isPlayer={isPlayer}
+            />
             <SubmissionsPopup
                 open={showSwapPopup}
                 onClose={() => setShowSwapPopup(false)}

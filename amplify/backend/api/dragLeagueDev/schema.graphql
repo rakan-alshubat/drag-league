@@ -34,7 +34,8 @@ type League @model @auth(rules: [
   lgSubmissions: [String]
   lgDeadline: String
   lgRankingDeadline: String
-  lgFinished: String 
+  lgFinished: String
+  lgComments: [String] 
   lgPlayers: [Player] @hasMany(indexName: "byLeague", fields: ["id"])
 }
 
