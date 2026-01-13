@@ -39,11 +39,9 @@ export default function LeagueComments({ comments, onSubmit, isPlayer }) {
     const [comment, setComment] = useState("");
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (comment.trim()) {
+        if (comment) {
             onSubmit(comment);
             setComment("");
-            // Reload page after short delay to ensure backend update
-            setTimeout(() => window.location.reload(), 400);
         }
     };
     return (
