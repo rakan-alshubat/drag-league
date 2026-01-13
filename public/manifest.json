@@ -28,7 +28,7 @@
       "short_name": "Leagues",
       "description": "View your leagues",
       "url": "/Player",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }
