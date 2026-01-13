@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "generate-sitemap": "next-sitemap",
-    "generate-icons": "node scripts/generate-icons.js"
+    "generate-icons": "node scripts/generate-icons.js",
+    "copy-icons-root": "node scripts/copy-icons.js"
   },
   "dependencies": {
     "@aws-amplify/api-graphql": "^4.7.21",
