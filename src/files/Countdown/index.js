@@ -152,61 +152,70 @@ export default function Countdown({ deadline, label = "Time Remaining", showDate
     };
 
     if (compact) {
+        const handleKeyDown = (e) => {
+            if (isExpired) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleAddToCalendar();
+            }
+        };
+
         return (
-            <Box
-                sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 1,
-                    padding: '8px 12px',
-                    border: '1px solid',
-                    borderColor: isExpired ? 'error.main' : 'primary.main',
-                    borderRadius: 1.5,
-                    backgroundColor: isExpired ? 'rgba(220,20,60,0.06)' : 'primary.light',
-                    width: 'auto',
-                    maxWidth: '100%',
-                    textAlign: 'center',
-                }}
-            >
-                <AccessTimeIcon fontSize="small" color={isExpired ? 'error' : 'primary'} />
-                <Typography 
-                    variant="body2" 
-                    fontWeight="bold" 
-                    color={isExpired ? 'error.main' : 'primary.dark'}
+            <Tooltip title={isExpired ? '' : 'Add to Calendar'} arrow>
+                <Box
+                    onClick={!isExpired ? handleAddToCalendar : undefined}
+                    onKeyDown={handleKeyDown}
+                    role={!isExpired ? 'button' : undefined}
+                    tabIndex={!isExpired ? 0 : -1}
                     sx={{
-                        fontFamily: 'monospace',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '100%'
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 1,
+                        padding: '8px 12px',
+                        border: '1px solid',
+                        borderColor: isExpired ? 'error.main' : 'primary.main',
+                        borderRadius: 1.5,
+                        backgroundColor: isExpired ? 'rgba(220,20,60,0.06)' : 'primary.light',
+                        width: 'auto',
+                        maxWidth: '100%',
+                        textAlign: 'center',
+                        cursor: isExpired ? 'default' : 'pointer',
+                        '&:focus': { outline: 'none', boxShadow: !isExpired ? '0 0 0 3px rgba(74,144,226,0.16)' : 'none' }
                     }}
                 >
-                    {formatTimeLeft()}
-                </Typography>
-                {!isExpired && (
-                    <Tooltip title="Add to Calendar" arrow>
+                    <AccessTimeIcon fontSize="small" color={isExpired ? 'error' : 'primary'} />
+                    <Typography 
+                        variant="body2" 
+                        fontWeight="bold" 
+                        color={isExpired ? 'error.main' : 'primary.dark'}
+                        sx={{
+                            fontFamily: 'monospace',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '100%'
+                        }}
+                    >
+                        {formatTimeLeft()}
+                    </Typography>
+                    {!isExpired && (
                         <Box
-                            onClick={handleAddToCalendar}
                             sx={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                cursor: 'pointer',
                                 color: 'primary.main',
                                 borderRadius: '4px',
                                 transition: 'all 0.2s',
-                                '&:hover': {
-                                    color: 'primary.dark',
-                                    transform: 'scale(1.1)',
-                                }
+                                ml: 0.5
                             }}
                         >
                             <EventIcon fontSize="small" />
                         </Box>
-                    </Tooltip>
-                )}
-            </Box>
+                    )}
+                </Box>
+            </Tooltip>
         );
     }
 

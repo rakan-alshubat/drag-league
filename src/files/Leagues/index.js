@@ -160,8 +160,8 @@ export default function Leagues({ userData, leagueData, playersData }) {
             const history = League?.lgHistory || [];
             if (!history || history.length === 0) return { hasUpdates: false, count: 0, types: [] };
 
-            // Calculate one week ago from deadline, or from today if no deadline
-            const endDate = League?.lgDeadline ? new Date(League.lgDeadline) : new Date();
+            // Calculate one week ago from now (use current time so "recent" means last 7 days)
+            const endDate = new Date();
             const startDate = new Date(endDate);
             startDate.setDate(startDate.getDate() - 7);
 
