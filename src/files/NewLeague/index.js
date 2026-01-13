@@ -199,8 +199,6 @@ export default function NewLeague( userData ) {
                         });
                         serverLogInfo('League auto-started', { leagueId: League.id, leagueName: League.lgName });
                         setDeadlineHandled(true);
-                        // Non-admin viewers should refresh to pick up league state changes
-                        try { router.reload(); } catch (e) { /* ignore */ }
                         return;
                     } catch (err) {
                         serverLogError('Error auto-starting league (cleanup)', { error: err.message });
@@ -485,9 +483,7 @@ export default function NewLeague( userData ) {
             setEmailSuccess(resultMessage);
             setEmailPopupOpen(false);
             setEmailMessage('');
-            
-            // Refresh page to show updated history
-            setTimeout(() => window.location.reload(), 1000);
+
         } catch (error) {
             serverLogError('Failed to send announcement email', {
                 leagueId: League?.id,
@@ -663,7 +659,6 @@ export default function NewLeague( userData ) {
             const historyEntry = new Date().toISOString() + '. ' + accepterName + ' accepted invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
             serverLogInfo('Invite accepted, league updated', { leagueId: League.id, userId: userEmail, userName: accepterName });
-            router.reload();
         } catch (err) {
             serverLogError('Accept invite failed', { error: err.message });
             setPopUpError('Failed to accept invite.');
@@ -685,7 +680,6 @@ export default function NewLeague( userData ) {
             const historyEntry = new Date().toISOString() + '. ' + declinerName + ' declined invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: League.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
             serverLogInfo('Invite declined, league updated', { leagueId: League.id, userId: userEmail, userName: declinerName });
-            router.reload();
         } catch (err) {
             serverLogError('Decline invite failed', { error: err.message });
             setPopUpError('Failed to decline invite.');
@@ -900,7 +894,7 @@ export default function NewLeague( userData ) {
                                     </Typography>
                                 </TableCell>
                                 <TableCell>
-                                    {player.role.toLowerCase() === 'requested' ? (
+                                    {(String(player.role || player.plStatus || '')).toLowerCase() === 'requested' ? (
                                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                                             <StatusChip
                                                 label="Requesting to join"
@@ -936,7 +930,7 @@ export default function NewLeague( userData ) {
                                                 </>
                                             )}
                                         </Box>
-                                    ) : player.role.toLowerCase() === 'player' ? (
+                                    ) : (String(player.role || player.plStatus || '')).toLowerCase() === 'player' ? (
                                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                                             <StatusChip
                                                 label="Player"
@@ -953,7 +947,7 @@ export default function NewLeague( userData ) {
                                     )}
                                 </TableCell>
                                 <TableCell>
-                                    {player.submitted.toLowerCase() === 'pending' ? (
+                                    {(String(player.submitted || '')).toLowerCase() === 'pending' ? (
                                         (() => {
                                             const loggedIn = userEmail ? String(userEmail).toLowerCase().trim() : '';
                                             const playerEmail = player.email || '';
@@ -1019,7 +1013,7 @@ export default function NewLeague( userData ) {
                                             if (isAdmin) {
                                                 return (
                                                     <>
-                                                        {player.role.toLowerCase() === 'player' && (
+                                                        {(String(player.role || player.plStatus || '')).toLowerCase() === 'player' && (
                                                             <Tooltip title="Promote to Admin">
                                                                 <IconButton
                                                                     size="small"
@@ -1289,7 +1283,6 @@ export default function NewLeague( userData ) {
                             setInviteProcessed(false);
                             setPopUpDescription('');
                             setPopUpCopySuccess('');
-                            try { router.reload(); } catch (e) { try { window.location.reload(); } catch (_) {} }
                             return;
                         }
                         setConfirmLoading(true);
@@ -1402,7 +1395,6 @@ export default function NewLeague( userData ) {
                                 }
                             });
                             serverLogInfo('League manually started', { leagueId: League.id, leagueName: League.lgName });
-                            window.location.reload();
                         } else if(popUpTitle === 'Delete League?'){
 
                             // Step 1: Get all players in the league
@@ -1766,7 +1758,6 @@ export default function NewLeague( userData ) {
 
                             setPopUpNameInput('');
                             setPopUpEmailInput('');
-                            try { router.reload(); } catch (e) { try { window.location.reload(); } catch(_) {} }
 
                         } else if(popUpTitle === 'Promote to Admin'){
                             const updatedAdmins = League.lgAdmin || [];
@@ -1796,23 +1787,56 @@ export default function NewLeague( userData ) {
                                     const found = Player.find(p => (String(p.plEmail || p.id || '').toLowerCase()) === String(pickedPlayer || '').toLowerCase());
                                     if (found && found.id) targetPlayerId = found.id;
                                 }
-                                if (targetPlayerId) {
-                                    await client.graphql({
-                                        query: updatePlayer,
-                                        variables: {
-                                            input: {
-                                                id: targetPlayerId,
-                                                plStatus: 'Admin'
+                                    if (targetPlayerId) {
+                                        // If targetPlayerId looks like an email (no UUID id), try to resolve to real player id
+                                        let resolvedId = targetPlayerId;
+                                        try {
+                                            const looksLikeEmail = String(targetPlayerId || '').includes('@');
+                                            if (looksLikeEmail) {
+                                                const playersRes = await client.graphql({ query: playersByLeagueId, variables: { leagueId: League.id, limit: 1000 } });
+                                                const items = playersRes?.data?.playersByLeagueId?.items || playersRes?.data?.playersByLeagueId || [];
+                                                const found = Array.isArray(items) ? items.find(p => String(p.plEmail || p.id || '').toLowerCase() === String(targetPlayerId || '').toLowerCase()) : null;
+                                                if (found && found.id) resolvedId = found.id;
                                             }
+                                        } catch (e) {
+                                            // ignore lookup errors and proceed with whatever id we have
                                         }
-                                    });
-                                    serverLogInfo('Player status updated to Admin', { playerId: targetPlayerId, leagueId: League.id });
-                                }
+
+                                        try {
+                                            await client.graphql({
+                                                query: updatePlayer,
+                                                variables: {
+                                                    input: {
+                                                        id: resolvedId,
+                                                        plStatus: 'Admin'
+                                                    }
+                                                }
+                                            });
+                                            serverLogInfo('Player status updated to Admin', { playerId: resolvedId, leagueId: League.id });
+                                        } catch (errUpdatePlayer) {
+                                            serverLogWarn('Failed to update player status', { error: errUpdatePlayer.message });
+                                        }
+
+                                        // Also update parent/local players list immediately if setter is provided
+                                        try {
+                                            if (typeof userData.setPlayersData === 'function') {
+                                                userData.setPlayersData(prev => {
+                                                    const list = Array.isArray(prev) ? prev.slice() : [];
+                                                    const idx = list.findIndex(p => (p.id === resolvedId) || ((p.plEmail || '').toLowerCase() === String(pickedPlayer || '').toLowerCase()));
+                                                    if (idx >= 0) {
+                                                        const updated = { ...(list[idx] || {}), plStatus: 'Admin' };
+                                                        list[idx] = updated;
+                                                    }
+                                                    return list;
+                                                });
+                                            }
+                                        } catch (e) {}
+                                    }
                             } catch (errUpdatePlayer) {
                                 serverLogWarn('Failed to update player status', { error: errUpdatePlayer.message });
                             }
 
-                            router.reload();
+
                         } else if(popUpTitle === 'Accept player?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
                                 const pl = p.split('|').map(s => s.trim()).filter(Boolean)
@@ -1872,7 +1896,7 @@ export default function NewLeague( userData ) {
                                 }
                             });
                             serverLogInfo('League updated after accepting player request', { leagueId: League.id, playerEmail: pickedPlayer });
-                            router.reload();
+
                         } else if(popUpTitle === 'Revoke invite?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
                                 const pl = String(p || '').split('|').map(s => s.trim()).filter(Boolean);
@@ -1919,7 +1943,7 @@ export default function NewLeague( userData ) {
                             }
 
                             // Refresh the page so UI reflects the revoked invite
-                            router.reload();
+
                         }else if(popUpTitle === 'Decline player?'){
                             const updatedPending = (League.lgPendingPlayers || []).filter(p => {
                                 const pl = p.split('|').map(s => s.trim()).filter(Boolean)
@@ -1963,7 +1987,6 @@ export default function NewLeague( userData ) {
                                 serverLogWarn('Failed to remove pending league from requester record', { error: e.message });
                             }
 
-                            router.reload();
                         } else if(popUpTitle === 'Kick player?'){
                             // Resolve player id (pickedPlayer may be an email)
                             let targetDeleteId = pickedPlayer;
@@ -2025,7 +2048,20 @@ export default function NewLeague( userData ) {
                                 }
                             });
                             serverLogInfo('League updated after kicking player', { leagueId: League.id, kickedEmail: pickedPlayer, wasAdmin: updatedAdmins.length !== admins.length });
-                            router.reload();
+
+                            // If the removed player is the current user, redirect them back to their Player page
+                            try {
+                                const normalizedPicked = pickedPlayer ? String(pickedPlayer).toLowerCase().trim() : '';
+                                const normalizedCurrent = String(userEmail || '').toLowerCase().trim();
+                                if (normalizedPicked && normalizedCurrent && normalizedPicked === normalizedCurrent) {
+                                    setConfirmOpen(false);
+                                    router.push('/Player');
+                                    return;
+                                }
+                            } catch (e) {
+                                // ignore routing errors
+                            }
+
                         }
 
                         if (popUpTitle !== 'Invite Player') {

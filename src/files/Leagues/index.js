@@ -33,7 +33,29 @@ import {
 export default function Leagues({ userData, leagueData, playersData }) {
     const League = leagueData
     const User = userData
-    const AllPlayers = playersData
+
+    // Build the displayed players list by merging `playersData` (live subscription state)
+    // with any players embedded on the `League` object. Prefer `playersData` when it
+    // has entries, but fall back to `League`'s players when `playersData` is empty.
+    const leaguePlayersFromLeague = Array.isArray(League?.lgPlayers)
+        ? League.lgPlayers
+        : (Array.isArray(League?.playersByLeagueId?.items) ? League.playersByLeagueId.items : (Array.isArray(League?.playersByLeagueId) ? League.playersByLeagueId : []));
+
+    // Always merge both sources so the UI doesn't flash empty when one source is temporarily empty.
+    // Entries from `playersData` override the ones embedded on `League` when IDs collide.
+    let AllPlayers = [];
+    try {
+        const map = new Map();
+        for (const p of leaguePlayersFromLeague || []) {
+            if (p && p.id) map.set(String(p.id), p);
+        }
+        for (const p of (Array.isArray(playersData) ? playersData : []) ) {
+            if (p && p.id) map.set(String(p.id), p);
+        }
+        AllPlayers = Array.from(map.values());
+    } catch (e) {
+        AllPlayers = leaguePlayersFromLeague || [];
+    }
 
     const client = generateClient()
     // --- Comments Section ---
@@ -88,8 +110,8 @@ export default function Leagues({ userData, leagueData, playersData }) {
     const [swapPopupVersion, setSwapPopupVersion] = useState('');
 
 
-    // Find current user's player object
-    const Player = AllPlayers?.find(p => p.plEmail?.toLowerCase() === User?.id?.toLowerCase()) || null;
+    // Find current user's player object (guard if playersData is not an array)
+    const Player = Array.isArray(AllPlayers) ? (AllPlayers.find(p => p.plEmail?.toLowerCase() === User?.id?.toLowerCase()) || null) : null;
 
     const isPlayer = !!Player;
 

@@ -109,8 +109,14 @@ export default function PlayerPage({ darkBg, setDarkBg, installPrompt, onInstall
         const subs = [];
 
         const subUpdate = client.graphql({ query: onUpdateUsers }).subscribe({
-            next: ({ value }) => {
-                const updated = value?.data?.onUpdateUsers;
+            next: (payload) => {
+                console.log('onUpdateUsers raw payload:', payload);
+                const updated = payload?.value?.data?.onUpdateUsers
+                    ?? payload?.data?.onUpdateUsers
+                    ?? payload?.data
+                    ?? payload?.value?.onUpdateUsers
+                    ?? payload?.onUpdateUsers
+                    ?? payload;
                 if (updated && updated.id === userID) {
                     setName(updated.name || '');
                     setEmail(updated.email || '');

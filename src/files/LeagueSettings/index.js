@@ -224,9 +224,6 @@ export default function LeagueSettings(props) {
             setEmailSuccess(`Email sent successfully to ${successCount} player${successCount !== 1 ? 's' : ''}!${failCount > 0 ? ` (${failCount} failed)` : ''}`);
             setEmailPopupOpen(false);
             setEmailMessage('');
-            
-            // Refresh page to show updated history
-            setTimeout(() => window.location.reload(), 1000);
         } catch (error) {
             serverLogError('Failed to send announcement from settings', {
                 leagueId: leagueData?.id,
@@ -253,7 +250,6 @@ export default function LeagueSettings(props) {
                 variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending } }
             });
             serverLogInfo('User requested to join league from settings', { leagueId: leagueData.id, userId: userData.id });
-            window.location.reload();
         } catch (err) {
             serverLogError('Request join failed', { error: err.message });
             setErrorMessage('Failed to request to join.');
@@ -278,7 +274,6 @@ export default function LeagueSettings(props) {
             // create player record
             await client.graphql({ query: createPlayer, variables: { input: { leagueId: leagueData.id, plEmail: userData.id, plName: userData.name || '', plStatus: 'Member' } } });
             serverLogInfo('Player created from accepted invite in settings', { leagueId: leagueData.id, playerEmail: userData.id, playerName: userData.name });
-            window.location.reload();
         } catch (err) {
             serverLogError('Accept invite failed', { error: err.message });
             setErrorMessage('Failed to accept invite.');
@@ -298,7 +293,6 @@ export default function LeagueSettings(props) {
             const historyEntry = new Date().toISOString() + '. ' + declinerName + ' declined invite';
             await client.graphql({ query: updateLeague, variables: { input: { id: leagueData.id, lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] } } });
             serverLogInfo('Invite declined from settings', { leagueId: leagueData.id, userId: userData.id, userName: declinerName });
-            window.location.reload();
         } catch (err) {
             serverLogError('Decline invite failed', { error: err.message });
             setErrorMessage('Failed to decline invite.');
@@ -352,8 +346,6 @@ export default function LeagueSettings(props) {
 
 
             setConfirmOpen(false);
-            // Refresh the page to show updated data
-            window.location.reload();
         } catch (error) {
             serverLogError('Error promoting player', { error: error.message });
         } finally {
@@ -399,8 +391,6 @@ export default function LeagueSettings(props) {
 
             setConfirmOpen(false);
             setPrivacyAction(null);
-            // Refresh the page to show updated data
-            window.location.reload();
         } catch (error) {
             serverLogError('Error updating privacy setting', { error: error.message });
         } finally {
@@ -569,8 +559,6 @@ export default function LeagueSettings(props) {
                 });
                 
                 serverLogInfo('Player deleted from settings', { leagueId: leagueData.id, playerId: selectedPlayer.id, playerName: selectedPlayer.plName, action: isCurrentUserLeaving ? 'left' : 'removed' });
-                // reload to refresh players list
-                window.location.reload();
             } catch (err) {
                 serverLogError('Error deleting player', { error: err.message });
                 setErrorMessage('Failed to remove player.');

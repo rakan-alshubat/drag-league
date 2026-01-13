@@ -509,11 +509,6 @@ export default function SubmissionsPopup({
             
             if (typeof onSubmit === "function") try { onSubmit({ version, value: joined, playerUpdates }); } catch {}
             try { safeOnClose(joined); } catch {}
-
-            // Reload page to show updates (skip reload in demo mode)
-            if (!isDemo) {
-                window.location.reload();
-            }
             return;
         }
 
@@ -650,9 +645,6 @@ export default function SubmissionsPopup({
             
             if (typeof onSubmit === "function") try { onSubmit({ version, value: 'final' }); } catch {}
             try { safeOnClose('final'); } catch {}
-
-            // Reload page to show updates
-            window.location.reload();
             return;
         }
 
@@ -792,11 +784,6 @@ export default function SubmissionsPopup({
 
             if (typeof onSubmit === "function") try { onSubmit({ version, value: 'weekly' }); } catch {}
             try { safeOnClose('weekly'); } catch {}
-
-            // Reload page to show updates (skip in demo)
-            if (!isDemo) {
-                window.location.reload();
-            }
         }
     };
 
