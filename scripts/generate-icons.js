@@ -26,19 +26,30 @@ if (sources.length === 0) {
 }
 
 const sizes = [
-    { name: 'apple-touch-icon.png', size: 180 },
+    // iOS home screen sizes
+    { name: 'apple-touch-icon-120.png', size: 120 },
+    { name: 'apple-touch-icon-152.png', size: 152 },
+    { name: 'apple-touch-icon-167.png', size: 167 },
+    { name: 'apple-touch-icon-180.png', size: 180 },
+    // PWA / Android
     { name: 'icon-192.png', size: 192 },
-    { name: 'icon-512.png', size: 512 }
+    { name: 'icon-512.png', size: 512 },
+    // maskable recommended
+    { name: 'icon-512-maskable.png', size: 512 }
 ];
 
 async function renderFrom(source) {
-    for (const s of sizes) {
+        for (const s of sizes) {
         const out = path.join(outputDir, s.name);
         try {
-            await sharp(source.path)
-                .resize(s.size, s.size, { fit: 'cover' })
-                .png({ quality: 90 })
-                .toFile(out);
+            let pipeline = sharp(source.path).resize(s.size, s.size, { fit: 'cover' });
+            // for the maskable icon, ensure we keep alpha channel if source supports it
+            if (s.name.includes('maskable')) {
+                pipeline = pipeline.png({ quality: 90 });
+            } else {
+                pipeline = pipeline.png({ quality: 90 });
+            }
+            await pipeline.toFile(out);
             console.log('Wrote', out);
         } catch (err) {
             console.error('Failed to write', out, err.message || err);
