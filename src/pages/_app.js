@@ -184,14 +184,14 @@ export default function MyApp(props) {
                     <a href="#main-content" style={{ position: 'absolute', left: -9999, top: 'auto', width: 1, height: 1, overflow: 'hidden' }} onFocus={(e)=>{e.currentTarget.style.left='8px';e.currentTarget.style.top='8px';e.currentTarget.style.width='auto';e.currentTarget.style.height='auto';e.currentTarget.style.padding='8px 12px';e.currentTarget.style.background='white';e.currentTarget.style.zIndex=9999;e.currentTarget.style.borderRadius='6px';e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'}} onBlur={(e)=>{e.currentTarget.style.left='-9999px';e.currentTarget.style.top='auto';e.currentTarget.style.width='1px';e.currentTarget.style.height='1px';e.currentTarget.style.padding='0';e.currentTarget.style.background='transparent';e.currentTarget.style.zIndex='auto';e.currentTarget.style.borderRadius='0';e.currentTarget.style.boxShadow='none'}}>Skip to content</a>
                     <NavBar />
                     <Box component="main" id="main-content" sx={{ flex: 1 }}>
-                            <Component
-                               {...pageProps}
-                               installPrompt={installPrompt}
-                               onInstallClick={handleInstallClick}
-                               onShowIosHelp={() => setShowIosHelpDialog(true)}
-                               onRemindLater={handleRemindLater}
-                               onDontShow={handleDontShow}
-                            />
+                        <Component
+                            {...pageProps}
+                            installPrompt={installPrompt}
+                            onInstallClick={handleInstallClick}
+                            onShowIosHelp={() => setShowIosHelpDialog(true)}
+                            onRemindLater={handleRemindLater}
+                            onDontShow={handleDontShow}
+                        />
                     </Box>
                     <Footer />
                 </Box>
@@ -221,7 +221,7 @@ export default function MyApp(props) {
                                 <Box sx={{ ml: 'auto', display: 'flex', gap: 1, mt: { xs: 1, sm: 0 } }}>
                                     <Button color="inherit" size="small" onClick={() => setShowIosHelpDialog(true)} sx={{ background: 'rgba(255,255,255,0.08)' }}>How to</Button>
                                     <Button color="inherit" size="small" onClick={() => handleRemindLater()} sx={{ background: 'rgba(255,255,255,0.06)' }}>Remind</Button>
-                                    <Button color="inherit" size="small" onClick={() => handleDontShow()} sx={{ background: 'rgba(255,255,255,0.02)' }}>Don't show</Button>
+                                    <Button color="inherit" size="small" onClick={() => handleDontShow()} sx={{ background: 'rgba(255,255,255,0.02)' }}>Don&apos;t show</Button>
                                 </Box>
                             </Box>
                         </Alert>
@@ -244,7 +244,7 @@ export default function MyApp(props) {
                                 <Box sx={{ ml: 'auto', display: 'flex', gap: 1, mt: { xs: 1, sm: 0 } }}>
                                     <Button color="inherit" size="small" onClick={handleInstallClick} sx={{ background: 'rgba(255,255,255,0.08)' }}>Install</Button>
                                     <Button color="inherit" size="small" onClick={() => handleRemindLater()} sx={{ background: 'rgba(255,255,255,0.06)' }}>Remind me later</Button>
-                                    <Button color="inherit" size="small" onClick={() => handleDontShow()} sx={{ background: 'rgba(255,255,255,0.02)' }}>Don't show</Button>
+                                    <Button color="inherit" size="small" onClick={() => handleDontShow()} sx={{ background: 'rgba(255,255,255,0.02)' }}>Don&apos;t show</Button>
                                 </Box>
                             </Box>
                         </Alert>
@@ -255,8 +255,8 @@ export default function MyApp(props) {
                     <DialogTitle>Add to Home Screen (iOS)</DialogTitle>
                     <DialogContent>
                         <Typography sx={{ mb: 1 }}>1. Tap the Share button (the square with an up arrow).</Typography>
-                        <Typography sx={{ mb: 1 }}>2. Choose "Add to Home Screen".</Typography>
-                        <Typography sx={{ mb: 1 }}>3. Confirm the name and tap "Add".</Typography>
+                        <Typography sx={{ mb: 1 }}>2. Choose &quot;Add to Home Screen&quot;.</Typography>
+                        <Typography sx={{ mb: 1 }}>3. Confirm the name and tap &quot;Add&quot;.</Typography>
                     </DialogContent>
                     <DialogTitle>Add to Home Screen (Android)</DialogTitle>
                     <DialogContent>
