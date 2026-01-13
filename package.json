@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "generate-sitemap": "next-sitemap"
+    "generate-sitemap": "next-sitemap",
+    "generate-icons": "node scripts/generate-icons.js"
   },
   "dependencies": {
     "@aws-amplify/api-graphql": "^4.7.21",
@@ -38,6 +39,8 @@
   },
   "devDependencies": {
     "@types/node": "20.11.5"
+  ,
+    "sharp": "^0.32.0"
   },
   "peerDependencies": {
     "react": "^17.0.0 || ^18.0.0 || ^19.0.0",
