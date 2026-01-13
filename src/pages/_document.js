@@ -18,6 +18,10 @@ export default function Document() {
                 <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png" />
                 <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon-167.png" />
                 <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
+                {/* Fallback (some iOS versions prefer an unsized apple-touch-icon at the root) */}
+                <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+                {/* Shortcut favicon fallback for browsers that prefer PNG/ICO */}
+                <link rel="shortcut icon" href="/favicon.png" />
                 {/* Fallback favicons for various platforms */}
                 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
                 <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
