@@ -31,7 +31,7 @@ import {
     EmptyStateDescription } from './PlayerPage.styles';
 import { SearchResultCard, SearchResultTitle, SearchResultDescription, SearchResultMeta } from './PlayerPage.styles';
 
-export default function PlayerPage() {
+export default function PlayerPage({ darkBg, setDarkBg, installPrompt, onInstallClick, onShowIosHelp, onRemindLater, onDontShow }) {
     const [loading, setLoading] = useState(true);
     const [errorPopup, setErrorPopup] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
@@ -475,6 +475,19 @@ export default function PlayerPage() {
                                 <Button variant="contained" onClick={handleSaveSettings} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
                                 <Button variant="outlined" onClick={handleSignOut}>Sign Out</Button>
                                 <Button variant="outlined" color="error" onClick={handleDeleteAccount} disabled={deleting}>{deleting ? 'Deleting...' : 'Delete Account'}</Button>
+                            </Box>
+
+                            {/* Install App backup card - always visible in settings */}
+                            <Box sx={{ mt: 1, p: 2, borderRadius: 2, background: '#fff', boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
+                                <Typography sx={{ fontWeight: 700, mb: 1 }}>Install App</Typography>
+                                <Typography sx={{ mb: 1, color: 'text.secondary' }}>Install Drag League to your device for quick access.</Typography>
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                    {installPrompt && !installPrompt.iosFallback ? (
+                                        <Button variant="contained" onClick={() => { if (typeof onInstallClick === 'function') onInstallClick(); else window.dispatchEvent(new Event('dragleagueInstallPrompt')); }}>Install</Button>
+                                    ) : (
+                                        <Button variant="outlined" onClick={() => { if (typeof onShowIosHelp === 'function') onShowIosHelp(); else window.dispatchEvent(new Event('dragleagueShowIosHelp')); }}>How to add</Button>
+                                    )}
+                                </Box>
                             </Box>
                         </Stack>
                     </Box>
