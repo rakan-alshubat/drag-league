@@ -37,17 +37,20 @@ const CommentText = styled(Typography)(({ theme }) => ({
 
 export default function LeagueComments({ comments, onSubmit, isPlayer }) {
     const [comment, setComment] = useState("");
+    const [showAll, setShowAll] = useState(false);
     const handleSubmit = (e) => {
         e.preventDefault();
         if (comment) {
             onSubmit(comment);
             setComment("");
+            setTimeout(() => window.location.reload(), 500);
         }
     };
+    const visibleComments = showAll ? comments : comments.slice(0, 10);
     return (
         <Box sx={{ mt: 4, mb: 2, maxWidth: 700, mx: 'auto' }}>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: 'primary.main', letterSpacing: 0.5 }}>
-        Comments
+                Comments
             </Typography>
             {isPlayer && (
                 <form onSubmit={handleSubmit} style={{ display: "flex", gap: 12, marginBottom: 24, alignItems: "flex-start" }}>
@@ -68,17 +71,17 @@ export default function LeagueComments({ comments, onSubmit, isPlayer }) {
                         }}
                     />
                     <Button type="submit" variant="contained" disabled={!comment} sx={{ height: 40, alignSelf: "flex-start", fontWeight: 700, borderRadius: 2 }}>
-            Submit
+                        Submit
                     </Button>
                 </form>
             )}
             <Box>
                 {comments.length === 0 && (
                     <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 2 }}>
-            No comments yet.
+                        No comments yet.
                     </Typography>
                 )}
-                {comments.map((c, i) => {
+                {visibleComments.map((c, i) => {
                     // Remove seconds from time (e.g., 1/12/2026, 3:45:12 PM -> 1/12/2026, 3:45 PM)
                     let dateDisplay = c.date;
                     if (typeof dateDisplay === 'string') {
@@ -97,6 +100,20 @@ export default function LeagueComments({ comments, onSubmit, isPlayer }) {
                         </CommentBox>
                     );
                 })}
+                {comments.length > 10 && !showAll && (
+                    <Box sx={{ textAlign: 'center', mt: 2 }}>
+                        <Button variant="outlined" onClick={() => setShowAll(true)} sx={{ fontWeight: 700, borderRadius: 2 }}>
+                            See More
+                        </Button>
+                    </Box>
+                )}
+                {comments.length > 10 && showAll && (
+                    <Box sx={{ textAlign: 'center', mt: 2 }}>
+                        <Button variant="text" onClick={() => setShowAll(false)} sx={{ fontWeight: 700, borderRadius: 2 }}>
+                            Show Less
+                        </Button>
+                    </Box>
+                )}
             </Box>
         </Box>
     );
