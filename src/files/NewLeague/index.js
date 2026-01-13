@@ -1787,51 +1787,51 @@ export default function NewLeague( userData ) {
                                     const found = Player.find(p => (String(p.plEmail || p.id || '').toLowerCase()) === String(pickedPlayer || '').toLowerCase());
                                     if (found && found.id) targetPlayerId = found.id;
                                 }
-                                    if (targetPlayerId) {
-                                        // If targetPlayerId looks like an email (no UUID id), try to resolve to real player id
-                                        let resolvedId = targetPlayerId;
-                                        try {
-                                            const looksLikeEmail = String(targetPlayerId || '').includes('@');
-                                            if (looksLikeEmail) {
-                                                const playersRes = await client.graphql({ query: playersByLeagueId, variables: { leagueId: League.id, limit: 1000 } });
-                                                const items = playersRes?.data?.playersByLeagueId?.items || playersRes?.data?.playersByLeagueId || [];
-                                                const found = Array.isArray(items) ? items.find(p => String(p.plEmail || p.id || '').toLowerCase() === String(targetPlayerId || '').toLowerCase()) : null;
-                                                if (found && found.id) resolvedId = found.id;
-                                            }
-                                        } catch (e) {
-                                            // ignore lookup errors and proceed with whatever id we have
+                                if (targetPlayerId) {
+                                    // If targetPlayerId looks like an email (no UUID id), try to resolve to real player id
+                                    let resolvedId = targetPlayerId;
+                                    try {
+                                        const looksLikeEmail = String(targetPlayerId || '').includes('@');
+                                        if (looksLikeEmail) {
+                                            const playersRes = await client.graphql({ query: playersByLeagueId, variables: { leagueId: League.id, limit: 1000 } });
+                                            const items = playersRes?.data?.playersByLeagueId?.items || playersRes?.data?.playersByLeagueId || [];
+                                            const found = Array.isArray(items) ? items.find(p => String(p.plEmail || p.id || '').toLowerCase() === String(targetPlayerId || '').toLowerCase()) : null;
+                                            if (found && found.id) resolvedId = found.id;
                                         }
-
-                                        try {
-                                            await client.graphql({
-                                                query: updatePlayer,
-                                                variables: {
-                                                    input: {
-                                                        id: resolvedId,
-                                                        plStatus: 'Admin'
-                                                    }
-                                                }
-                                            });
-                                            serverLogInfo('Player status updated to Admin', { playerId: resolvedId, leagueId: League.id });
-                                        } catch (errUpdatePlayer) {
-                                            serverLogWarn('Failed to update player status', { error: errUpdatePlayer.message });
-                                        }
-
-                                        // Also update parent/local players list immediately if setter is provided
-                                        try {
-                                            if (typeof userData.setPlayersData === 'function') {
-                                                userData.setPlayersData(prev => {
-                                                    const list = Array.isArray(prev) ? prev.slice() : [];
-                                                    const idx = list.findIndex(p => (p.id === resolvedId) || ((p.plEmail || '').toLowerCase() === String(pickedPlayer || '').toLowerCase()));
-                                                    if (idx >= 0) {
-                                                        const updated = { ...(list[idx] || {}), plStatus: 'Admin' };
-                                                        list[idx] = updated;
-                                                    }
-                                                    return list;
-                                                });
-                                            }
-                                        } catch (e) {}
+                                    } catch (e) {
+                                        // ignore lookup errors and proceed with whatever id we have
                                     }
+
+                                    try {
+                                        await client.graphql({
+                                            query: updatePlayer,
+                                            variables: {
+                                                input: {
+                                                    id: resolvedId,
+                                                    plStatus: 'Admin'
+                                                }
+                                            }
+                                        });
+                                        serverLogInfo('Player status updated to Admin', { playerId: resolvedId, leagueId: League.id });
+                                    } catch (errUpdatePlayer) {
+                                        serverLogWarn('Failed to update player status', { error: errUpdatePlayer.message });
+                                    }
+
+                                    // Also update parent/local players list immediately if setter is provided
+                                    try {
+                                        if (typeof userData.setPlayersData === 'function') {
+                                            userData.setPlayersData(prev => {
+                                                const list = Array.isArray(prev) ? prev.slice() : [];
+                                                const idx = list.findIndex(p => (p.id === resolvedId) || ((p.plEmail || '').toLowerCase() === String(pickedPlayer || '').toLowerCase()));
+                                                if (idx >= 0) {
+                                                    const updated = { ...(list[idx] || {}), plStatus: 'Admin' };
+                                                    list[idx] = updated;
+                                                }
+                                                return list;
+                                            });
+                                        }
+                                    } catch (e) {}
+                                }
                             } catch (errUpdatePlayer) {
                                 serverLogWarn('Failed to update player status', { error: errUpdatePlayer.message });
                             }

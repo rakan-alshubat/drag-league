@@ -309,29 +309,29 @@ export default function League(){
                         ?? payload?.onUpdateLeague
                         ?? payload;
 
-                            if (updated && (String(updated.id) === String(id) || String(updated?.leagueId) === String(id))) {
-                                const normalized = updated?.data ? updated.data : updated;
+                    if (updated && (String(updated.id) === String(id) || String(updated?.leagueId) === String(id))) {
+                        const normalized = updated?.data ? updated.data : updated;
 
-                                // Detect transition from 'not started' -> started/active and refresh so players see the new view
-                                try {
-                                    const prev = prevLeagueFinishedRef.current;
-                                    const next = normalized?.lgFinished;
-                                    if (prev === 'not started' && next && next !== 'not started') {
-                                        try { router.replace(router.asPath); } catch (e) {}
-                                    }
-                                    prevLeagueFinishedRef.current = next;
-                                } catch (e) {}
+                        // Detect transition from 'not started' -> started/active and refresh so players see the new view
+                        try {
+                            const prev = prevLeagueFinishedRef.current;
+                            const next = normalized?.lgFinished;
+                            if (prev === 'not started' && next && next !== 'not started') {
+                                try { router.replace(router.asPath); } catch (e) {}
+                            }
+                            prevLeagueFinishedRef.current = next;
+                        } catch (e) {}
 
-                                setLeagueData(normalized);
-                                try {
-                                    const players = normalized.players || normalized.lgPlayers || normalized.playersByLeagueId || null;
-                                    if (players) {
-                                        const list = normalizeToPlayers(players);
-                                        if (list && list.length > 0) setPlayersData(list);
-                                    }
-                                } catch (e) {
-                                    console.warn('Failed to update playersData from subscription payload', e);
-                                }
+                        setLeagueData(normalized);
+                        try {
+                            const players = normalized.players || normalized.lgPlayers || normalized.playersByLeagueId || null;
+                            if (players) {
+                                const list = normalizeToPlayers(players);
+                                if (list && list.length > 0) setPlayersData(list);
+                            }
+                        } catch (e) {
+                            console.warn('Failed to update playersData from subscription payload', e);
+                        }
                     } else {
                         console.log('onUpdateLeague: no matching object found in payload for id', id, 'payload:', payload);
                     }
@@ -616,7 +616,7 @@ export default function League(){
         subs.push(subUD);
 
         // watch league updates
-            const subLeagueU = client.graphql({ query: onUpdateLeague }).subscribe({
+        const subLeagueU = client.graphql({ query: onUpdateLeague }).subscribe({
             next: (payload) => {
                 console.log('subLeagueU raw payload:', payload);
                 try { localStorage.setItem('dragleague_last_subLeagueU', JSON.stringify(payload)); } catch (e) {}
