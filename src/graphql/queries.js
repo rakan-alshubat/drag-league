@@ -61,6 +61,7 @@ export const getLeague = /* GraphQL */ `
       lgDeadline
       lgRankingDeadline
       lgFinished
+      lgComments
       lgPlayers {
         nextToken
         __typename
@@ -100,6 +101,7 @@ export const listLeagues = /* GraphQL */ `
         lgDeadline
         lgRankingDeadline
         lgFinished
+        lgComments
         createdAt
         updatedAt
         __typename
@@ -135,6 +137,7 @@ export const getPlayer = /* GraphQL */ `
         lgDeadline
         lgRankingDeadline
         lgFinished
+        lgComments
         createdAt
         updatedAt
         __typename

@@ -147,7 +147,7 @@ export default function LeagueSettings(props) {
             }
             
             const leagueUrl = `${window.location.origin}/League/${leagueData?.id}`;
-            const userMessage = emailMessage.trim();
+            const userMessage = emailMessage;
 
             serverLogInfo('Sending announcement email via SES', { playerCount: playerEmails.length, leagueId: leagueData?.id });
             

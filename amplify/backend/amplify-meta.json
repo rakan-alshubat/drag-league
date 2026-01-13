@@ -48,12 +48,12 @@
       },
       "providerPlugin": "awscloudformation",
       "service": "AppSync",
-      "lastPushTimeStamp": "2026-01-06T00:58:34.638Z",
+      "lastPushTimeStamp": "2026-01-13T00:24:45.041Z",
       "providerMetadata": {
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-dragleague-dev-041d3-deployment/amplify-cfn-templates/api/cloudformation-template.json",
         "logicalId": "apidragLeagueDev"
       },
-      "lastPushDirHash": "6ebFO0R+/M6793cT6IoFY9tWUjI="
+      "lastPushDirHash": "iD/yBiSwo+aEkK5E1Zo/sgLxQbQ="
     }
   },
   "auth": {
@@ -91,7 +91,7 @@
         "IdentityPoolName": "dragleaguedf3b00a0_identitypool_df3b00a0__dev",
         "UserPoolName": "dragleaguedf3b00a0_userpool_df3b00a0"
       },
-      "lastPushTimeStamp": "2026-01-06T00:58:34.651Z",
+      "lastPushTimeStamp": "2026-01-13T00:24:43.572Z",
       "providerMetadata": {
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-dragleague-dev-041d3-deployment/amplify-cfn-templates/auth/dragleaguedf3b00a0-cloudformation-template.json",
         "logicalId": "authdragleaguedf3b00a0"

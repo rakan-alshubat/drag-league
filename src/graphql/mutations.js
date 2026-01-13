@@ -79,6 +79,7 @@ export const createLeague = /* GraphQL */ `
       lgDeadline
       lgRankingDeadline
       lgFinished
+      lgComments
       lgPlayers {
         nextToken
         __typename
@@ -116,6 +117,7 @@ export const updateLeague = /* GraphQL */ `
       lgDeadline
       lgRankingDeadline
       lgFinished
+      lgComments
       lgPlayers {
         nextToken
         __typename
@@ -153,6 +155,7 @@ export const deleteLeague = /* GraphQL */ `
       lgDeadline
       lgRankingDeadline
       lgFinished
+      lgComments
       lgPlayers {
         nextToken
         __typename
@@ -192,6 +195,7 @@ export const createPlayer = /* GraphQL */ `
         lgDeadline
         lgRankingDeadline
         lgFinished
+        lgComments
         createdAt
         updatedAt
         __typename
@@ -240,6 +244,7 @@ export const updatePlayer = /* GraphQL */ `
         lgDeadline
         lgRankingDeadline
         lgFinished
+        lgComments
         createdAt
         updatedAt
         __typename
@@ -288,6 +293,7 @@ export const deletePlayer = /* GraphQL */ `
         lgDeadline
         lgRankingDeadline
         lgFinished
+        lgComments
         createdAt
         updatedAt
         __typename
