@@ -1,20 +1,38 @@
 const fs = require('fs')
 const path = require('path')
 
-const src = path.join(__dirname, '..', 'public', 'icons', 'apple-touch-icon.png')
-const dest = path.join(__dirname, '..', 'public', 'apple-touch-icon.png')
+const iconsDir = path.join(__dirname, '..', 'public', 'icons')
+const destDir = path.join(__dirname, '..', 'public')
 
-fs.access(src, fs.constants.R_OK, (err) => {
-  if (err) {
-    console.error('Source icon not found:', src)
-    process.exit(2)
+const filesToCopy = [
+  'apple-touch-icon.png',
+  'apple-touch-icon-120.png',
+  'apple-touch-icon-152.png',
+  'apple-touch-icon-167.png',
+  'apple-touch-icon-180.png',
+  'icon-192.png',
+  'icon-512.png',
+  'icon-512-maskable.png'
+]
+
+let failed = false
+
+filesToCopy.forEach((file) => {
+  const src = path.join(iconsDir, file)
+  const dest = path.join(destDir, file)
+
+  try {
+    fs.copyFileSync(src, dest)
+    console.log('Copied', src, '->', dest)
+  } catch (err) {
+    console.warn('Skipped (not found) or failed to copy:', src)
+    failed = true
   }
-
-  fs.copyFile(src, dest, (copyErr) => {
-    if (copyErr) {
-      console.error('Failed to copy icon:', copyErr)
-      process.exit(1)
-    }
-    console.log('Copied', src, 'to', dest)
-  })
 })
+
+if (failed) {
+  process.exitCode = 1
+} else {
+  process.exitCode = 0
+}
+
