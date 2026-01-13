@@ -5,7 +5,8 @@ export default function Document() {
         <Html lang="en">
             <Head>
                 {/* PWA Manifest */}
-                <link rel="manifest" href="/manifest.json" />
+                {/* Cache-busted manifest to force clients to fetch latest on deploy */}
+                <link rel="manifest" href={`/manifest.json?v=${process.env.NEXT_PUBLIC_MANIFEST_VERSION || process.env.npm_package_version || Date.now()}`} />
                 <meta name="theme-color" content="#FF1493" />
                 
                 {/* iOS PWA Support */}
