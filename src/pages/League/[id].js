@@ -132,6 +132,17 @@ export default function League(){
 
     useEffect(() => { 
         if (!router.isReady) return;
+
+        // Listen for manual league update events dispatched after mutations
+        const manualHandler = (ev) => {
+            try {
+                const payload = ev?.detail || null;
+                if (payload && (String(payload.id) === String(id) || String(payload.leagueId) === String(id))) {
+                    setLeagueData(payload);
+                }
+            } catch (e) {}
+        };
+        window.addEventListener('dragleague:leagueUpdated', manualHandler);
         
         // First, check if league is public using API key (unauthenticated)
         async function checkLeagueAccess() {
@@ -350,6 +361,10 @@ export default function League(){
         }
 
         checkLeagueAccess();
+
+        return () => {
+            try { window.removeEventListener('dragleague:leagueUpdated', (ev) => {}); } catch (e) {}
+        };
     }, [router.isReady, id]);
 
     // Update leagueNotStarted when leagueData changes
@@ -612,19 +627,30 @@ export default function League(){
             client,
             query: onUpdateLeague,
             onNext: (payload) => {
-                try { localStorage.setItem('dragleague_last_subLeagueU', JSON.stringify(payload)); } catch (e) {}
-                const updated = payload?.value?.data?.onUpdateLeague
+                // Normalize many possible payload shapes to the league object
+                let updated = payload?.value?.data?.onUpdateLeague
                     ?? payload?.data?.onUpdateLeague
                     ?? payload?.data
                     ?? payload?.value?.onUpdateLeague
                     ?? payload?.onUpdateLeague
                     ?? payload;
+
+                // If payload comes from a different subscription that nests a `league` object
+                if (!updated?.id && updated?.league && (typeof updated.league === 'object')) {
+                    updated = updated.league;
+                }
+
+                // Some payloads wrap the actual data in `.data` again
+                if (updated && updated.data && updated.data.id) {
+                    updated = updated.data;
+                }
+
+
                 if (updated && (String(updated.id) === String(id) || String(updated?.leagueId) === String(id))) {
                     const normalized = updated?.data ? updated.data : updated;
                     setLeagueData(normalized);
                 }
             },
-            onError: err => serverLogWarn('league update sub error', { error: err?.message })
         });
         subs.push(subLeagueU);
 
@@ -636,7 +662,6 @@ export default function League(){
                 const created = value?.data?.onCreateLeague ?? value?.data ?? value;
                 if (created && created.id === id) setLeagueData(created);
             },
-            onError: err => serverLogWarn('league create sub error', { error: err?.message })
         });
         subs.push(subLeagueC);
 

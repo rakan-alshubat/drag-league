@@ -7,6 +7,7 @@ import PlayerRankings from "../PlayerRankings";
 import PlayerSubmissions from "../PlayerSubmissions";
 import LeagueSettings from "../LeagueSettings";
 import SeasonInfo from "../SeasonInfo";
+import SeasonalStats from "../SeasonalStats";
 import SubmissionsPopup from '../SubmissionsPopUp';
 import Countdown from "../Countdown";
 import History from "../History";
@@ -104,7 +105,7 @@ export default function Leagues({ userData, leagueData, playersData }) {
     }
     const [tabIndex, setTabIndex] = useState(0);
     
-    const tabs = ["Player Rankings", "Player Submissions", "Season Info", "History", "League Settings"];
+    const tabs = ["Player Rankings", "Player Submissions", "Season Info", "Seasonal Stats", "History", "League Settings"];
 
     const [showSwapPopup, setShowSwapPopup] = useState(false);
     const [swapPopupVersion, setSwapPopupVersion] = useState('');
@@ -623,11 +624,15 @@ export default function Leagues({ userData, leagueData, playersData }) {
                 </Panel>
 
                 <Panel role="tabpanel" hidden={tabIndex !== 3} aria-hidden={tabIndex !== 3}>
-                    {tabIndex === 3 && <History leagueData={League} />}
+                    {tabIndex === 3 && <SeasonalStats leagueData={League} playersData={AllPlayers} />}
                 </Panel>
 
                 <Panel role="tabpanel" hidden={tabIndex !== 4} aria-hidden={tabIndex !== 4}>
-                    {tabIndex === 4 && <LeagueSettings userData={User} leagueData={League} playersData={AllPlayers} />}
+                    {tabIndex === 4 && <History leagueData={League} />}
+                </Panel>
+
+                <Panel role="tabpanel" hidden={tabIndex !== 5} aria-hidden={tabIndex !== 5}>
+                    {tabIndex === 5 && <LeagueSettings userData={User} leagueData={League} playersData={AllPlayers} />}
                 </Panel>
             </MainContent>
             {/* Comments Section: visible under all tabs */}

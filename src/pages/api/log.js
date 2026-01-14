@@ -25,24 +25,23 @@ export default async function handler(req, res) {
         const timestamp = new Date().toISOString();
         const logMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
         
-        // Log to CloudWatch (via console)
         switch (level.toLowerCase()) {
         case 'error':
-            serverLogError(logMessage, data || '');
+            console.error(logMessage, data || '');
             break;
         case 'warn':
-            serverLogWarn(logMessage, data || '');
+            console.warn(logMessage, data || '');
             break;
         case 'debug':
-            serverLogDebug(logMessage, data || '');
+            console.debug(logMessage, data || '');
             break;
         default:
-            serverLogInfo(logMessage, data || '');
+            console.info(logMessage, data || '');
         }
         
         return res.status(200).json({ success: true, logged: true });
     } catch (error) {
-        serverLogError('Logging API error:', error);
+        console.error('Logging API error:', error);
         return res.status(500).json({ error: 'Failed to log' });
     }
 }
