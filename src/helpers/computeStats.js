@@ -240,14 +240,15 @@ export default function computeLeagueStats(leagueData, playersData = []){
     }
     const mostIncorrectPlayer = mostIncorrectPlayers.length > 0 ? mostIncorrectPlayers[0] : null;
 
-    // Compute best swap (point gain) by simulating swaps per player — allow ties
-    // Improved: match swap targets against player's current rankings case-insensitively
+    // Compute best swap (point gain) by comparing current (after-swap) points
+    // vs a reverted (pre-swap) state. Treat `plSwap` as the swap that already occurred.
+    // Also match swap targets inside tied ranking entries (e.g. 'Queen1|Queen2').
     let bestSwapPlayers = [];
     let bestSwapGain = -Infinity;
     try {
         for (const player of (playersData || [])) {
             try {
-                const before = Number(calculatePoints(player, leagueData) || 0);
+                const currentRankings = Array.isArray(player.plRankings) ? [...player.plRankings] : [];
                 const swapRaw = String(player.plSwap || '').trim();
                 if (!swapRaw) continue;
                 const parts = swapRaw.split('|').map(s => (s || '').trim()).filter(Boolean);
@@ -255,27 +256,46 @@ export default function computeLeagueStats(leagueData, playersData = []){
                 const nameA = parts[0];
                 const nameB = parts[1];
 
-                const currentRankings = Array.isArray(player.plRankings) ? [...player.plRankings] : [];
                 const nameALower = String(nameA).trim().toLowerCase();
                 const nameBLower = String(nameB).trim().toLowerCase();
 
-                const i = currentRankings.findIndex(r => String(r || '').trim().toLowerCase() === nameALower);
-                const j = currentRankings.findIndex(r => String(r || '').trim().toLowerCase() === nameBLower);
+                const findIndexFlexible = (arr, targetLower) => {
+                    const idxExact = arr.findIndex(r => String(r || '').trim().toLowerCase() === targetLower);
+                    if (idxExact !== -1) return idxExact;
+                    // try to find inside pipe-separated ties
+                    for (let k = 0; k < arr.length; k++) {
+                        const entry = String(arr[k] || '').trim();
+                        if (!entry) continue;
+                        const parts = entry.split('|').map(s => s.trim().toLowerCase()).filter(Boolean);
+                        if (parts.includes(targetLower)) return k;
+                    }
+                    return -1;
+                };
+
+                const i = findIndexFlexible(currentRankings, nameALower);
+                const j = findIndexFlexible(currentRankings, nameBLower);
+                console.log('[bestSwap] player=', player.id, player.plName, 'plSwap=', swapRaw, 'foundIndices=', i, j);
                 if (i === -1 || j === -1) continue;
 
-                // preserve original formatting from the player's rankings when swapping
-                const swapped = [...currentRankings];
+                // build reverted (pre-swap) rankings by swapping the two entries back
+                const reverted = [...currentRankings];
                 const valA = currentRankings[i];
                 const valB = currentRankings[j];
-                swapped[i] = valB;
-                swapped[j] = valA;
+                reverted[i] = valB;
+                reverted[j] = valA;
+                console.log('[bestSwap] player=', player.plName, 'valA=', valA, 'valB=', valB, 'currentRankings=', currentRankings, 'reverted(pre-swap)=', reverted);
 
-                const playerAfter = { ...player, plRankings: swapped };
-                const after = Number(calculatePoints(playerAfter, leagueData) || 0);
+                // before = points in reverted (pre-swap) state
+                const before = Number(calculatePoints({ ...player, plRankings: reverted }, leagueData) || 0);
+                // after = current points (post-swap)
+                const after = Number(calculatePoints(player, leagueData) || 0);
                 const gain = after - before;
+                console.log('[bestSwap] player=', player.id, 'before=', before, 'after=', after, 'gain=', gain);
+
                 if (gain > 0) {
                     const swapLabel = `${valA} | ${valB}`;
                     if (gain > bestSwapGain) {
+                        console.log('[bestSwap] new best for player=', player.id, 'gain=', gain);
                         bestSwapGain = gain;
                         bestSwapPlayers = [{
                             playerId: player.id || null,
@@ -286,6 +306,7 @@ export default function computeLeagueStats(leagueData, playersData = []){
                             gain
                         }];
                     } else if (gain === bestSwapGain) {
+                        console.log('[bestSwap] tie candidate player=', player.id, 'gain=', gain);
                         bestSwapPlayers.push({
                             playerId: player.id || null,
                             playerName: player.plName || player.plEmail || player.id || 'unknown',
