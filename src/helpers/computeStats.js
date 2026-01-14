@@ -241,6 +241,7 @@ export default function computeLeagueStats(leagueData, playersData = []){
     const mostIncorrectPlayer = mostIncorrectPlayers.length > 0 ? mostIncorrectPlayers[0] : null;
 
     // Compute best swap (point gain) by simulating swaps per player — allow ties
+    // Improved: match swap targets against player's current rankings case-insensitively
     let bestSwapPlayers = [];
     let bestSwapGain = -Infinity;
     try {
@@ -255,24 +256,31 @@ export default function computeLeagueStats(leagueData, playersData = []){
                 const nameB = parts[1];
 
                 const currentRankings = Array.isArray(player.plRankings) ? [...player.plRankings] : [];
-                const i = currentRankings.indexOf(nameA);
-                const j = currentRankings.indexOf(nameB);
+                const nameALower = String(nameA).trim().toLowerCase();
+                const nameBLower = String(nameB).trim().toLowerCase();
+
+                const i = currentRankings.findIndex(r => String(r || '').trim().toLowerCase() === nameALower);
+                const j = currentRankings.findIndex(r => String(r || '').trim().toLowerCase() === nameBLower);
                 if (i === -1 || j === -1) continue;
 
+                // preserve original formatting from the player's rankings when swapping
                 const swapped = [...currentRankings];
-                swapped[i] = nameB;
-                swapped[j] = nameA;
+                const valA = currentRankings[i];
+                const valB = currentRankings[j];
+                swapped[i] = valB;
+                swapped[j] = valA;
 
                 const playerAfter = { ...player, plRankings: swapped };
                 const after = Number(calculatePoints(playerAfter, leagueData) || 0);
                 const gain = after - before;
                 if (gain > 0) {
+                    const swapLabel = `${valA} | ${valB}`;
                     if (gain > bestSwapGain) {
                         bestSwapGain = gain;
                         bestSwapPlayers = [{
                             playerId: player.id || null,
                             playerName: player.plName || player.plEmail || player.id || 'unknown',
-                            swap: `${nameA} | ${nameB}`,
+                            swap: swapLabel,
                             before,
                             after,
                             gain
@@ -281,7 +289,7 @@ export default function computeLeagueStats(leagueData, playersData = []){
                         bestSwapPlayers.push({
                             playerId: player.id || null,
                             playerName: player.plName || player.plEmail || player.id || 'unknown',
-                            swap: `${nameA} | ${nameB}`,
+                            swap: swapLabel,
                             before,
                             after,
                             gain

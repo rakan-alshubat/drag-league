@@ -294,44 +294,44 @@ export default function SeasonalStats({ leagueData, playersData = [] }){
                                         <Box sx={{ flex: 1 }}>
                                             <Typography sx={{ fontWeight: 700 }}>Weekly Point Changes</Typography>
                                             <Box sx={{ mt: 1 }}>
-                                                                        {stats?.weeklyPointChanges && stats.weeklyPointChanges.length > 0 ? (
-                                                                            // sort by final position (afterRank) ascending: 1 === top
-                                                                            stats.weeklyPointChanges.slice().sort((a,b) => {
-                                                                                const ar = (a.afterRank == null) ? 9999 : Number(a.afterRank);
-                                                                                const br = (b.afterRank == null) ? 9999 : Number(b.afterRank);
-                                                                                return ar - br;
-                                                                            }).map(w => {
-                                                                                const deltaPts = (w.after || 0) - (w.before || 0);
-                                                                                const rankChange = Number(w.rankChange || 0);
-                                                                                const afterRank = w.afterRank != null ? w.afterRank : '-';
-                                                                                return (
-                                                                                    <Box key={w.id || w.name} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 0.75, overflow: 'visible' }}>
-                                                                                        <Box sx={{ width: 36, textAlign: 'center' }}>
-                                                                                            <Typography sx={{ fontWeight: 800 }}>{afterRank}</Typography>
-                                                                                        </Box>
-                                                                                        <Box sx={{ flex: 1 }}>
-                                                                                            <Typography variant="body2" sx={{ fontWeight: 700 }}>{w.name}</Typography>
-                                                                                            <Typography variant="caption" color="text.secondary">{`${w.before} → ${w.after} pts`}</Typography>
-                                                                                        </Box>
-                                                                                        {(() => {
-                                                                                            const label = `${rankChange > 0 ? '+' : ''}${rankChange} spots`;
-                                                                                            return (
-                                                                                                <Tooltip title={label} arrow>
-                                                                                                    <Chip
-                                                                                                        size="small"
-                                                                                                        icon={rankChange > 0 ? <ArrowUpwardIcon sx={{ color: 'white' }} /> : (rankChange < 0 ? <ArrowDownwardIcon sx={{ color: 'white' }} /> : null)}
-                                                                                                        label={<Box sx={{ whiteSpace: 'normal', lineHeight: 1.1 }}>{label}</Box>}
-                                                                                                        sx={{ flexShrink: 0, bgcolor: rankChange > 0 ? 'success.main' : (rankChange < 0 ? 'error.main' : 'grey.300'), color: rankChange !== 0 ? 'common.white' : 'text.primary', minWidth: 96 }}
-                                                                                                    />
-                                                                                                </Tooltip>
-                                                                                            );
-                                                                                        })()}
-                                                                                    </Box>
-                                                                                );
-                                                                            })
-                                                                        ) : (
-                                                                            <Typography variant="body2">No weekly changes available.</Typography>
-                                                                        )}
+                                                {stats?.weeklyPointChanges && stats.weeklyPointChanges.length > 0 ? (
+                                                // sort by final position (afterRank) ascending: 1 === top
+                                                    stats.weeklyPointChanges.slice().sort((a,b) => {
+                                                        const ar = (a.afterRank == null) ? 9999 : Number(a.afterRank);
+                                                        const br = (b.afterRank == null) ? 9999 : Number(b.afterRank);
+                                                        return ar - br;
+                                                    }).map(w => {
+                                                        const deltaPts = (w.after || 0) - (w.before || 0);
+                                                        const rankChange = Number(w.rankChange || 0);
+                                                        const afterRank = w.afterRank != null ? w.afterRank : '-';
+                                                        return (
+                                                            <Box key={w.id || w.name} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 0.75, overflow: 'visible' }}>
+                                                                <Box sx={{ width: 36, textAlign: 'center' }}>
+                                                                    <Typography sx={{ fontWeight: 800 }}>{afterRank}</Typography>
+                                                                </Box>
+                                                                <Box sx={{ flex: 1 }}>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{w.name}</Typography>
+                                                                    <Typography variant="caption" color="text.secondary">{`${w.before} → ${w.after} pts`}</Typography>
+                                                                </Box>
+                                                                {(() => {
+                                                                    const label = `${rankChange > 0 ? '+' : ''}${rankChange} spots`;
+                                                                    return (
+                                                                        <Tooltip title={label} arrow>
+                                                                            <Chip
+                                                                                size="small"
+                                                                                icon={rankChange > 0 ? <ArrowUpwardIcon sx={{ color: 'white' }} /> : (rankChange < 0 ? <ArrowDownwardIcon sx={{ color: 'white' }} /> : null)}
+                                                                                label={<Box sx={{ whiteSpace: 'normal', lineHeight: 1.1 }}>{label}</Box>}
+                                                                                sx={{ flexShrink: 0, bgcolor: rankChange > 0 ? 'success.main' : (rankChange < 0 ? 'error.main' : 'grey.300'), color: rankChange !== 0 ? 'common.white' : 'text.primary', minWidth: 96 }}
+                                                                            />
+                                                                        </Tooltip>
+                                                                    );
+                                                                })()}
+                                                            </Box>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <Typography variant="body2">No weekly changes available.</Typography>
+                                                )}
                                             </Box>
                                         </Box>
                                     </Box>
@@ -345,24 +345,24 @@ export default function SeasonalStats({ leagueData, playersData = [] }){
                     </>
                 )}
 
-            <Popover
-                open={Boolean(anchorEl)}
-                anchorEl={anchorEl}
-                onClose={() => setAnchorEl(null)}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-                <Box sx={{ width: 320, p: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                        <Typography sx={{ fontWeight: 800 }}>{popoverContent.title}</Typography>
-                        <IconButton size="small" onClick={() => setAnchorEl(null)}><CloseIcon fontSize="small" /></IconButton>
+                <Popover
+                    open={Boolean(anchorEl)}
+                    anchorEl={anchorEl}
+                    onClose={() => setAnchorEl(null)}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                >
+                    <Box sx={{ width: 320, p: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                            <Typography sx={{ fontWeight: 800 }}>{popoverContent.title}</Typography>
+                            <IconButton size="small" onClick={() => setAnchorEl(null)}><CloseIcon fontSize="small" /></IconButton>
+                        </Box>
+                        <List dense>
+                            {popoverContent.items && popoverContent.items.length > 0 ? popoverContent.items.map((it, i) => (
+                                <ListItem key={i}><ListItemText primary={it} /></ListItem>
+                            )) : <ListItem><ListItemText primary="No details available." /></ListItem>}
+                        </List>
                     </Box>
-                    <List dense>
-                        {popoverContent.items && popoverContent.items.length > 0 ? popoverContent.items.map((it, i) => (
-                            <ListItem key={i}><ListItemText primary={it} /></ListItem>
-                        )) : <ListItem><ListItemText primary="No details available." /></ListItem>}
-                    </List>
-                </Box>
-            </Popover>
+                </Popover>
             </Grid>
         </Root>
     );
