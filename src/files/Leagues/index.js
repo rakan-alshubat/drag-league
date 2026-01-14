@@ -460,36 +460,6 @@ export default function Leagues({ userData, leagueData, playersData }) {
                 </Box>
             )}
 
-            {isAdmin && Number(League?.lgChallengePoints || 0) > 0 && (() => {
-                const challengeWeeksCount = Array.isArray(League?.lgChallengeWinners) ? League.lgChallengeWinners.length : 0;
-                if (challengeWeeksCount === 0) return null;
-                
-                const playersWithMissingPicks = (AllPlayers || []).filter(player => {
-                    const playerWinnersCount = Array.isArray(player.plWinners) ? player.plWinners.length : 0;
-                    return playerWinnersCount < challengeWeeksCount;
-                });
-
-                if (playersWithMissingPicks.length === 0) return null;
-
-                const playerNames = playersWithMissingPicks
-                    .map(p => p.plName || 'Unknown Player')
-                    .slice(0, 5)
-                    .join(', ');
-
-                return (
-                    <Box sx={{ mt: 1, mb: 2 }}>
-                        <Alert severity="warning">
-                            <Typography sx={{ fontWeight: 600, mb: 0.5 }}>
-                                {playersWithMissingPicks.length} player{playersWithMissingPicks.length > 1 ? 's have' : ' has'} incomplete weekly predictions
-                            </Typography>
-                            <Typography variant="body2">
-                                {playerNames}{playersWithMissingPicks.length > 5 ? ', ...' : ''} {playersWithMissingPicks.length > 1 ? 'have' : 'has'} fewer weekly picks than the league has challenge weeks ({challengeWeeksCount} week{challengeWeeksCount > 1 ? 's' : ''}). You can add missing or blank entries in the Admin Edit page in the settings.
-                            </Typography>
-                        </Alert>
-                    </Box>
-                );
-            })()}
-
             {isFinished && winnerDisplay && (
                 <>
                     <div style={{ textAlign: 'center', marginBottom: 8 }}>

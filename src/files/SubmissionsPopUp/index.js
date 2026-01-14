@@ -641,6 +641,8 @@ export default function SubmissionsPopup({
             } catch (error) {
                 serverLogError('Error processing final episode', { error: error.message, leagueId: leagueData.id });
                 setErrorMessage('Error processing final episode.');
+            }finally {
+                window.location.reload();
             }
             
             if (typeof onSubmit === "function") try { onSubmit({ version, value: 'final' }); } catch {}

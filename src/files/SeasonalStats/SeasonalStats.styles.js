@@ -2,9 +2,9 @@ import { styled } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 
 export const Root = styled('div')(({ theme }) => ({
-    maxWidth: 820,
-    margin: '16px auto',
-    padding: 16,
+    maxWidth: 960,
+    margin: '18px auto',
+    padding: 20,
     fontFamily: [
         'system-ui',
         '-apple-system',
@@ -18,9 +18,9 @@ export const Root = styled('div')(({ theme }) => ({
 
 export const Title = styled(Typography)(({ theme }) => ({
     margin: 0,
-    marginBottom: 12,
-    fontSize: '1.25rem',
-    fontWeight: 700,
+    marginBottom: 14,
+    fontSize: '1.35rem',
+    fontWeight: 800,
     color: theme?.palette?.text?.primary ?? '#222',
 }));
 
