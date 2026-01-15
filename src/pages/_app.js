@@ -221,7 +221,7 @@ export default function MyApp(props) {
                                 <Typography sx={{ opacity: 0.95 }}>Tap Share → Add to Home Screen</Typography>
                                 <Box sx={{ ml: 'auto', display: 'flex', gap: 1, mt: { xs: 1, sm: 0 } }}>
                                     <Button color="inherit" size="small" onClick={() => setShowIosHelpDialog(true)} sx={{ background: 'rgba(255,255,255,0.08)' }}>How to</Button>
-                                    <Button color="inherit" size="small" onClick={() => handleRemindLater()} sx={{ background: 'rgba(255,255,255,0.06)' }}>Remind</Button>
+                                    <Button color="inherit" size="small" onClick={() => handleRemindLater()} sx={{ background: 'rgba(255,255,255,0.06)' }}>Remind Me Later</Button>
                                     <Button color="inherit" size="small" onClick={() => handleDontShow()} sx={{ background: 'rgba(255,255,255,0.02)' }}>Don&apos;t show</Button>
                                 </Box>
                             </Box>
@@ -244,7 +244,7 @@ export default function MyApp(props) {
                                 <Typography sx={{ opacity: 0.95 }}>Add Drag League to your device for quick access</Typography>
                                 <Box sx={{ ml: 'auto', display: 'flex', gap: 1, mt: { xs: 1, sm: 0 } }}>
                                     <Button color="inherit" size="small" onClick={handleInstallClick} sx={{ background: 'rgba(255,255,255,0.08)' }}>Install</Button>
-                                    <Button color="inherit" size="small" onClick={() => handleRemindLater()} sx={{ background: 'rgba(255,255,255,0.06)' }}>Remind me later</Button>
+                                    <Button color="inherit" size="small" onClick={() => handleRemindLater()} sx={{ background: 'rgba(255,255,255,0.06)' }}>Remind Me Later</Button>
                                     <Button color="inherit" size="small" onClick={() => handleDontShow()} sx={{ background: 'rgba(255,255,255,0.02)' }}>Don&apos;t show</Button>
                                 </Box>
                             </Box>
