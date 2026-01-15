@@ -141,10 +141,10 @@ export default function computeLeagueStats(leagueData, playersData = []){
             if (predRaw && String(predRaw).trim() !== '') nonEmptyPreds += 1;
         }
         p.missedChallengeCount = totalWeeks > 0 ? (totalWeeks - nonEmptyPreds) : 0;
-        // incorrect = non-empty predictions that did not match the actual winner
-        const incorrect = Math.max(0, (nonEmptyPreds - correct));
+        // Treat blank/missing predictions as losses: count all non-correct weeks as incorrect
+        const incorrect = Math.max(0, (totalWeeks - correct));
         p.challengeIncorrectCount = incorrect;
-        p.challengeIncorrectPercent = nonEmptyPreds > 0 ? Number(((incorrect / nonEmptyPreds) * 100).toFixed(2)) : null;
+        p.challengeIncorrectPercent = totalWeeks > 0 ? Number(((incorrect / totalWeeks) * 100).toFixed(2)) : null;
 
         // compute longest consecutive correct streak for this player (across the season)
         let longest = 0;
@@ -240,15 +240,14 @@ export default function computeLeagueStats(leagueData, playersData = []){
     }
     const mostIncorrectPlayer = mostIncorrectPlayers.length > 0 ? mostIncorrectPlayers[0] : null;
 
-    // Compute best swap (point gain) by comparing current (after-swap) points
-    // vs a reverted (pre-swap) state. Treat `plSwap` as the swap that already occurred.
-    // Also match swap targets inside tied ranking entries (e.g. 'Queen1|Queen2').
+    // Compute best swap (point gain) by simulating swaps per player — allow ties
+    // Improved: match swap targets against player's current rankings case-insensitively
     let bestSwapPlayers = [];
     let bestSwapGain = -Infinity;
     try {
         for (const player of (playersData || [])) {
             try {
-                const currentRankings = Array.isArray(player.plRankings) ? [...player.plRankings] : [];
+                const before = Number(calculatePoints(player, leagueData) || 0);
                 const swapRaw = String(player.plSwap || '').trim();
                 if (!swapRaw) continue;
                 const parts = swapRaw.split('|').map(s => (s || '').trim()).filter(Boolean);
@@ -256,46 +255,27 @@ export default function computeLeagueStats(leagueData, playersData = []){
                 const nameA = parts[0];
                 const nameB = parts[1];
 
+                const currentRankings = Array.isArray(player.plRankings) ? [...player.plRankings] : [];
                 const nameALower = String(nameA).trim().toLowerCase();
                 const nameBLower = String(nameB).trim().toLowerCase();
 
-                const findIndexFlexible = (arr, targetLower) => {
-                    const idxExact = arr.findIndex(r => String(r || '').trim().toLowerCase() === targetLower);
-                    if (idxExact !== -1) return idxExact;
-                    // try to find inside pipe-separated ties
-                    for (let k = 0; k < arr.length; k++) {
-                        const entry = String(arr[k] || '').trim();
-                        if (!entry) continue;
-                        const parts = entry.split('|').map(s => s.trim().toLowerCase()).filter(Boolean);
-                        if (parts.includes(targetLower)) return k;
-                    }
-                    return -1;
-                };
-
-                const i = findIndexFlexible(currentRankings, nameALower);
-                const j = findIndexFlexible(currentRankings, nameBLower);
-                console.log('[bestSwap] player=', player.id, player.plName, 'plSwap=', swapRaw, 'foundIndices=', i, j);
+                const i = currentRankings.findIndex(r => String(r || '').trim().toLowerCase() === nameALower);
+                const j = currentRankings.findIndex(r => String(r || '').trim().toLowerCase() === nameBLower);
                 if (i === -1 || j === -1) continue;
 
-                // build reverted (pre-swap) rankings by swapping the two entries back
-                const reverted = [...currentRankings];
+                // preserve original formatting from the player's rankings when swapping
+                const swapped = [...currentRankings];
                 const valA = currentRankings[i];
                 const valB = currentRankings[j];
-                reverted[i] = valB;
-                reverted[j] = valA;
-                console.log('[bestSwap] player=', player.plName, 'valA=', valA, 'valB=', valB, 'currentRankings=', currentRankings, 'reverted(pre-swap)=', reverted);
+                swapped[i] = valB;
+                swapped[j] = valA;
 
-                // before = points in reverted (pre-swap) state
-                const before = Number(calculatePoints({ ...player, plRankings: reverted }, leagueData) || 0);
-                // after = current points (post-swap)
-                const after = Number(calculatePoints(player, leagueData) || 0);
+                const playerAfter = { ...player, plRankings: swapped };
+                const after = Number(calculatePoints(playerAfter, leagueData) || 0);
                 const gain = after - before;
-                console.log('[bestSwap] player=', player.id, 'before=', before, 'after=', after, 'gain=', gain);
-
                 if (gain > 0) {
                     const swapLabel = `${valA} | ${valB}`;
                     if (gain > bestSwapGain) {
-                        console.log('[bestSwap] new best for player=', player.id, 'gain=', gain);
                         bestSwapGain = gain;
                         bestSwapPlayers = [{
                             playerId: player.id || null,
@@ -306,7 +286,6 @@ export default function computeLeagueStats(leagueData, playersData = []){
                             gain
                         }];
                     } else if (gain === bestSwapGain) {
-                        console.log('[bestSwap] tie candidate player=', player.id, 'gain=', gain);
                         bestSwapPlayers.push({
                             playerId: player.id || null,
                             playerName: player.plName || player.plEmail || player.id || 'unknown',
@@ -326,7 +305,7 @@ export default function computeLeagueStats(leagueData, playersData = []){
     }
     const bestSwap = bestSwapPlayers.length > 0 ? bestSwapPlayers[0] : null;
 
-    // Determine most-picked challenge winner overall
+    // Determine most-picked queen by player submissions (counting across all players' `plWinners`)
     const counts = new Map();
     const displayMap = new Map();
 
@@ -343,14 +322,19 @@ export default function computeLeagueStats(leagueData, playersData = []){
         return str.split(/\s*(?:\||,|&|and)\s*/i).map(s => s.trim()).filter(Boolean);
     };
 
-    for (const entry of challengeWinnersRaw) {
-        const namesPreserve = splitNamesPreserveCase(entry);
-        for (const n of namesPreserve) {
-            const lc = (n || '').toLowerCase();
-            counts.set(lc, (counts.get(lc) || 0) + 1);
-            if (!displayMap.has(lc)) displayMap.set(lc, canonicalMap.get(lc) || n);
+    for (const pl of (playersData || [])) {
+        const plWinners = Array.isArray(pl.plWinners) ? pl.plWinners : [];
+        for (const entry of plWinners) {
+            if (!entry) continue;
+            const namesPreserve = splitNamesPreserveCase(entry);
+            for (const n of namesPreserve) {
+                const lc = (n || '').toLowerCase();
+                counts.set(lc, (counts.get(lc) || 0) + 1);
+                if (!displayMap.has(lc)) displayMap.set(lc, canonicalMap.get(lc) || n);
+            }
         }
     }
+
     let maxCount = 0;
     const mostPicked = [];
     for (const [lc, c] of counts.entries()) {
@@ -485,6 +469,104 @@ export default function computeLeagueStats(leagueData, playersData = []){
 
     const earliestSurprise = earliestSurprises.length > 0 ? earliestSurprises[0] : null;
     const latestSurprise = latestSurprises.length > 0 ? latestSurprises[0] : null;
+
+    
+    const history = Array.isArray(leagueData.lgHistory) ? leagueData.lgHistory : [];
+    const submissionPattern = /submitted weekly pick|resubmitted weekly pick/i;
+    const weekSegments = [];
+    let curSegment = [];
+    for (const raw of history) {
+        const entry = String(raw || '');
+        const parts = entry.split('. ');
+        const tsStr = parts[0] || '';
+        const msg = parts.slice(1).join('. ') || '';
+        const isResult = msg.toLowerCase().startsWith('weekly results:');
+        curSegment.push({ raw: entry, ts: tsStr, msg });
+        if (isResult) {
+            weekSegments.push(curSegment.slice());
+            curSegment = [];
+        }
+    }
+
+    const playerRanks = new Map(); // name -> { ranks: [], leadMs: [] }
+
+    for (const seg of weekSegments) {
+        if (!seg || seg.length === 0) continue;
+        const last = seg[seg.length - 1];
+        const resultTs = Number(new Date(last.ts).getTime());
+        if (!resultTs) continue;
+        const subs = [];
+        for (const e of seg.slice(0, -1)) {
+            if (!e.msg) continue;
+            if (submissionPattern.test(e.msg)) {
+                const submitTs = Number(new Date(e.ts).getTime());
+                if (isNaN(submitTs)) continue;
+                const m = e.msg.match(/^(?:\s*)([^.\n]+?)\s+(?:submitted|resubmitted) weekly pick/i);
+                const name = (m && m[1]) ? m[1].trim() : e.msg;
+                const isResub = /resubmitted weekly pick/i.test(e.msg);
+                subs.push({ name, ts: submitTs });
+                // increment resubmission count on the player record for this week
+                if (isResub) {
+                    const key = name || 'unknown';
+                    if (!playerRanks.has(key)) playerRanks.set(key, { ranks: [], leadMs: [], resubCount: 0 });
+                    const rec = playerRanks.get(key);
+                    rec.resubCount = (rec.resubCount || 0) + 1;
+                }
+            }
+        }
+        const beforeSubs = subs.filter(s => s.ts <= resultTs).sort((a,b) => a.ts - b.ts);
+        if (beforeSubs.length === 0) continue;
+        for (let i = 0; i < beforeSubs.length; i++) {
+            const s = beforeSubs[i];
+            const key = s.name || 'unknown';
+            if (!playerRanks.has(key)) playerRanks.set(key, { ranks: [], leadMs: [] });
+            const rec = playerRanks.get(key);
+            rec.ranks.push(i + 1);
+            rec.leadMs.push(resultTs - s.ts);
+        }
+    }
+
+    const avgRankMap = new Map();
+    for (const [k, v] of playerRanks.entries()) {
+        const avgRank = v.ranks.reduce((a,b) => a+b, 0) / v.ranks.length;
+        const avgLead = v.leadMs.reduce((a,b) => a+b, 0) / v.leadMs.length;
+        avgRankMap.set(k, { avgRank, avgLead, count: v.ranks.length, resubCount: v.resubCount || 0 });
+    }
+
+    // Select earliest/latest by average lead time (ms before weekly result)
+    // Higher avgLead => submitted earlier (more lead time). Lower avgLead => submitted later.
+    let minAvgLead = Infinity, maxAvgLead = -Infinity;
+    for (const v of avgRankMap.values()) {
+        if (v.avgLead < minAvgLead) minAvgLead = v.avgLead;
+        if (v.avgLead > maxAvgLead) maxAvgLead = v.avgLead;
+    }
+    const earliestSubmitters = [];
+    const latestSubmitters = [];
+    for (const [k, v] of avgRankMap.entries()) {
+        if (Math.abs(v.avgLead - maxAvgLead) < 1e-9) earliestSubmitters.push({ name: k, avgRank: v.avgRank, weeks: v.count, avgLead: v.avgLead });
+        if (Math.abs(v.avgLead - minAvgLead) < 1e-9) latestSubmitters.push({ name: k, avgRank: v.avgRank, weeks: v.count, avgLead: v.avgLead });
+    }
+
+    // Determine who resubmitted the most (count of 'resubmitted' events), allow ties
+    let maxResub = -Infinity;
+    const resubmissionPlayers = [];
+    for (const [k, v] of avgRankMap.entries()) {
+        const c = typeof v.resubCount === 'number' ? v.resubCount : 0;
+        if (c > maxResub) {
+            maxResub = c;
+            resubmissionPlayers.length = 0;
+            if (c > 0) resubmissionPlayers.push({ name: k, count: c });
+        } else if (c === maxResub && c > 0) {
+            resubmissionPlayers.push({ name: k, count: c });
+        }
+    }
+
+    const resubmissionPlayersFormatted = (() => {
+        if (!resubmissionPlayers || resubmissionPlayers.length === 0) return null;
+        if (resubmissionPlayers.length === 1) return `${resubmissionPlayers[0].name} (${resubmissionPlayers[0].count} resubmissions)`;
+        if (resubmissionPlayers.length === 2) return `${resubmissionPlayers[0].name} & ${resubmissionPlayers[1].name} (${resubmissionPlayers[0].count} resubmissions)`;
+        return `${resubmissionPlayers.map(p => `${p.name} (${p.count})`).slice(0, -1).join(', ')}, & ${resubmissionPlayers[resubmissionPlayers.length - 1].name} (${resubmissionPlayers[resubmissionPlayers.length - 1].count})`;
+    })();
 
     // Compute bonus points per player (based on lgBonusPoints results)
     const bonusDefs = Array.isArray(leagueData.lgBonusPoints) ? leagueData.lgBonusPoints : [];
@@ -655,6 +737,60 @@ export default function computeLeagueStats(leagueData, playersData = []){
     const biggestRankGainer = biggestRankGainers.length > 0 ? biggestRankGainers[0] : null;
     const biggestRankLoser = biggestRankLosers.length > 0 ? biggestRankLosers[0] : null;
 
+    // helper to format arrays of player objects (or name strings) into 'A, B, & C' strings
+    const formatNames = (arr, nameKey = 'name') => {
+        if (!arr || !Array.isArray(arr) || arr.length === 0) return null;
+        const names = arr.map(a => {
+            if (!a) return 'unknown';
+            if (typeof a === 'string') return a;
+            return (a[nameKey] || a.plName || a.playerName || a.name || 'unknown');
+        }).filter(Boolean);
+        if (names.length === 0) return null;
+        if (names.length === 1) return names[0];
+        if (names.length === 2) return `${names[0]} & ${names[1]}`;
+        return `${names.slice(0, -1).join(', ')}, & ${names[names.length - 1]}`;
+    };
+
+    // formatted tie-aware strings for convenience
+    const bestRankingFormatted = formatNames(bestRankingPlayers);
+    const bestChallengeFormatted = formatNames(bestChallengePlayers);
+    const mostWinsFormatted = formatNames(mostWinsPlayers);
+    const longestStreakFormatted = formatNames(longestStreakPlayers);
+    const mostMissedFormatted = formatNames(mostMissedPlayers);
+    const mostIncorrectFormatted = formatNames(mostIncorrectPlayers);
+    const mostRepeatedFormatted = formatNames(mostRepeatedPlayers, 'mostRepeatedPickQueen');
+    const bestSwapFormatted = formatNames(bestSwapPlayers, 'playerName');
+    const bestLipSyncFormatted = formatNames(bestLipSyncPlayers);
+    const bestBonusFormatted = formatNames(bestBonusPlayers);
+    const biggestRankGainersFormatted = formatNames(biggestRankGainers, 'name');
+    const biggestRankLosersFormatted = formatNames(biggestRankLosers, 'name');
+    const worstPredictionsFormatted = formatNames(worstPredictions, 'playerName');
+
+    // humanize ms to days/hours/minutes
+    const humanizeMs = (ms) => {
+        const totalMins = Math.round((Number(ms) || 0) / 60000);
+        const days = Math.floor(totalMins / 1440);
+        const hrs = Math.floor((totalMins % 1440) / 60);
+        const mins = Math.abs(totalMins % 60);
+        const parts = [];
+        if (days) parts.push(`${days}d`);
+        if (hrs) parts.push(`${hrs}h`);
+        if (mins || parts.length === 0) parts.push(`${mins}m`);
+        return parts.join(' ');
+    };
+
+    const formatLeadNames = (arr) => {
+        if (!arr || !Array.isArray(arr) || arr.length === 0) return null;
+        const strs = arr.map(a => {
+            const name = (typeof a === 'string') ? a : (a && (a.name || a.plName || a.playerName)) || 'unknown';
+            const lead = (a && typeof a.avgLead === 'number') ? a.avgLead : 0;
+            return `${name} (${humanizeMs(lead)} before the weekly deadline on average)`;
+        });
+        if (strs.length === 1) return strs[0];
+        if (strs.length === 2) return `${strs[0]} & ${strs[1]}`;
+        return `${strs.slice(0, -1).join(', ')}, & ${strs[strs.length - 1]}`;
+    };
+
     return {
         players,
         // arrays for ties
@@ -703,6 +839,14 @@ export default function computeLeagueStats(leagueData, playersData = []){
         // worst single ranking prediction(s)
         worstPredictions,
         worstPrediction,
+        // submission timing: earliest/latest weekly submitters (tie-aware arrays)
+        earliestSubmitters,
+        latestSubmitters,
+        earliestSubmittersFormatted: formatLeadNames(earliestSubmitters),
+        latestSubmittersFormatted: formatLeadNames(latestSubmitters),
+        // resubmission stats
+        resubmissionPlayers,
+        resubmissionPlayersFormatted,
         meta: {
             totalQueens,
             eliminatedWeeks: eliminatedPlayers.length,
