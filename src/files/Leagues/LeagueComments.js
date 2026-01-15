@@ -43,7 +43,6 @@ export default function LeagueComments({ comments, onSubmit, isPlayer }) {
         if (comment) {
             onSubmit(comment);
             setComment("");
-            setTimeout(() => window.location.reload(), 500);
         }
     };
     const visibleComments = showAll ? comments : comments.slice(0, 10);
