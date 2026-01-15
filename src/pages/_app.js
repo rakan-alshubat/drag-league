@@ -175,8 +175,10 @@ export default function MyApp(props) {
             <Head>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />
                 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-                <link rel="icon" href="/favicon-32.png" sizes="32x32" />
+                <link rel="icon" href="/favicon.png" type="image/png" sizes="any" />
                 <link rel="alternate icon" href="/favicon.ico" />
+                <link rel="mask-icon" href="/favicon.svg" color="#FF1493" />
+                <meta name="theme-color" content="#FF1493" />
             </Head>
             <ThemeProvider theme={theme}>
                 <DefaultSeo {...SEO} />

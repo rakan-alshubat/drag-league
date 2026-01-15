@@ -16,7 +16,10 @@ export default function DefaultSeo() {
     return (
         <Head>
             <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+            <link rel="icon" href="/favicon.png" type="image/png" sizes="any" />
             <link rel="alternate icon" href="/favicon.ico" />
+            <link rel="mask-icon" href="/favicon.svg" color="#FF1493" />
+            <meta name="theme-color" content="#FF1493" />
             <title>{renderTitle()}</title>
             {description && <meta name="description" content={description} />}
             {title && <meta property="og:title" content={title} />}
