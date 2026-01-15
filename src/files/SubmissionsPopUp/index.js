@@ -790,7 +790,6 @@ export default function SubmissionsPopup({
                     leagueData.lgSubmissions = leagueUpdates.lgSubmissions;
                     leagueData.lgDeadline = leagueUpdates.lgDeadline;
                     leagueData.lgHistory = [...(leagueData.lgHistory || []), historyEntry];
-                    try { console.log('demo league updated locally', { leagueData }); } catch (e) {}
                 }
 
             } catch (error) {

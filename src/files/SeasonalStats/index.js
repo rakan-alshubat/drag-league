@@ -86,9 +86,6 @@ export default function SeasonalStats({ leagueData, playersData = [] }){
                     try {
                         const result = computeLeagueStats(freshLeague || {}, freshPlayers || playersData || []);
                         setStats(result);
-                        // also expose for debugging
-                        try { window.__seasonal_last_stats = result; window.__seasonal_last_league = freshLeague; window.__seasonal_last_playersCount = (freshPlayers || playersData || []).length; } catch (e) {}
-                        console.log('SeasonalStats: recomputed stats from manual event', { leagueId: leagueData.id, players: (freshPlayers || playersData || []).length });
                     } catch (e) {
                         console.warn('SeasonalStats: failed to recompute from manual event', e);
                     }
@@ -244,7 +241,6 @@ export default function SeasonalStats({ leagueData, playersData = [] }){
             }
             const h = hueMap[String(pl.id || '')];
             const col = { border: hslToHex(h, 62, 48, 1), fill: hslToHex(h, 62, 48, 1) };
-            try { console.log('SeasonalStats color:', pl.plName || pl.plEmail || pl.id || 'unknown', col); } catch (e) {}
             return {
                 label: pl.plName || pl.plEmail || pl.id || 'unknown',
                 data,
