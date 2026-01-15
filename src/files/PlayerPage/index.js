@@ -485,7 +485,7 @@ export default function PlayerPage({ darkBg, setDarkBg, installPrompt, onInstall
 
                             {/* Install App backup card - always visible in settings */}
                             <Box sx={{ mt: 1, p: 2, borderRadius: 2, background: '#fff', boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
-                                <Typography sx={{ fontWeight: 700, mb: 1 }}>Install App</Typography>
+                                <Typography sx={{ fontWeight: 700, mb: 1 }}>Install Web App</Typography>
                                 <Typography sx={{ mb: 1, color: 'text.secondary' }}>Install Drag League to your device for quick access.</Typography>
                                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                                     {installPrompt && !installPrompt.iosFallback ? (
