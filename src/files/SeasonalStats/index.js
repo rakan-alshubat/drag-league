@@ -366,7 +366,7 @@ export default function SeasonalStats({ leagueData, playersData = [] }){
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent'
                         }}>
-                                💫 Weekly Point Changes
+                                Weekly Point Changes
                         </Typography>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             {stats?.weeklyPointChanges && stats.weeklyPointChanges.length > 0 ? (

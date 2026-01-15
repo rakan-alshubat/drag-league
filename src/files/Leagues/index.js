@@ -564,6 +564,16 @@ export default function Leagues({ userData, leagueData, playersData }) {
                 </Box>
             )}
 
+            {isFinished && (
+                <Box sx={{ mb: 2, p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, background: 'linear-gradient(135deg, rgba(155,48,255,0.06) 0%, rgba(74,144,226,0.04) 100%)', border: '1px solid rgba(155,48,255,0.12)' }}>
+                    <Box>
+                        <Typography sx={{ fontWeight: 800 }}>Congratulations! The season is complete.</Typography>
+                        <Typography variant="body2" sx={{ color: '#555' }}>Check out the real TEA on the season&apos;s stats!</Typography>
+                    </Box>
+                    <Button size="small" variant="contained" onClick={() => setTabIndex(3)} sx={{ textTransform: 'none', minWidth: 160 }}>View Season Stats</Button>
+                </Box>
+            )}
+
             <TabsContainer
                 value={tabIndex}
                 onChange={(e, v) => setTabIndex(v)}
