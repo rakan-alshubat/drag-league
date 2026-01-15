@@ -283,23 +283,43 @@ export default function SeasonalStats({ leagueData, playersData = [] }){
         // chart instance at a time (prevents Chart.js from sizing to the
         // wrong hidden container). When `isPortraitMobile` is true we render
         // the rotated chart; otherwise render the normal horizontal chart.
-        if (isPortraitMobile) {
-            chart = (
-                <Box sx={{ width: '100%', mt: 2, overflow: 'hidden', height: `${minChartWidth}px`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Box sx={{ transform: 'rotate(90deg)', transformOrigin: 'center center', width: `${minChartWidth}px`, height: { xs: 240, md: 400 } }}>
-                        <Line data={chartData} options={options} />
-                    </Box>
+    if (isPortraitMobile) {
+        const chartHeight = 240;
+        chart = (
+            <Box sx={{ 
+                width: '100%', 
+                mt: 2, 
+                overflow: 'hidden', 
+                height: `${minChartWidth}px`, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                position: 'relative'
+            }}>
+                <Box sx={{ 
+                    transform: 'rotate(90deg)', 
+                    transformOrigin: 'center center', 
+                    width: `${minChartWidth}px`, 
+                    height: `${chartHeight}px`,
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    marginLeft: `-${minChartWidth / 2}px`,
+                    marginTop: `-${chartHeight / 2}px`
+                }}>
+                    <Line key={`portrait-${isPortraitMobile}`} data={chartData} options={options} />
                 </Box>
-            );
-        } else {
-            chart = (
-                <Box sx={{ width: '100%', mt: 2, overflowX: 'auto' }}>
-                    <Box sx={{ minWidth: `${minChartWidth}px`, height: { xs: 240, md: 400 } }}>
-                        <Line data={chartData} options={options} />
-                    </Box>
+            </Box>
+        );
+    } else {
+        chart = (
+            <Box sx={{ width: '100%', mt: 2, overflowX: 'auto' }}>
+                <Box sx={{ minWidth: `${minChartWidth}px`, height: { xs: 240, md: 400 } }}>
+                    <Line key={`landscape-${isPortraitMobile}`} data={chartData} options={options} />
                 </Box>
-            );
-        }
+            </Box>
+        );
+    }
     }
 
     // build stat cards for grid
