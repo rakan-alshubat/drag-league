@@ -427,7 +427,6 @@ function PlayerItem({ item, leagueData, currentWeekSubmission }) {
                                             />
                                         </Box>
 
-                                        {/* Weekly predictions list */}
                                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                             {(Array.isArray(item.plWinners) ? item.plWinners : []).map((prediction, i) => {
                                                 const challengeWinners = leagueData?.lgChallengeWinners || [];

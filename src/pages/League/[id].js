@@ -25,6 +25,67 @@ import {
     onDeleteUsers
 } from "@/graphql/subscriptions";
 
+// Helper: subscribe with exponential backoff + jitter and safe unsubscribe
+function subscribeWithReconnect({
+    client,
+    query,
+    variables = {},
+    authMode,
+    onNext = () => {},
+    onError = () => {},
+    maxRetries = 8,
+    baseDelay = 1000,
+    maxDelay = 30000
+}) {
+    let attempt = 0;
+    let sub = null;
+    let stopped = false;
+
+    const jitter = (n) => n + Math.floor(Math.random() * 300);
+
+    const scheduleReconnect = (err) => {
+        if (stopped) return;
+        if (maxRetries && attempt >= maxRetries) {
+            serverLogWarn('subscribeWithReconnect: max retries reached', { attempt, err });
+            return;
+        }
+        const delay = Math.min(baseDelay * Math.pow(2, Math.max(0, attempt - 1)), maxDelay);
+        const wait = jitter(delay);
+        setTimeout(() => {
+            if (!stopped) start();
+        }, wait);
+    };
+
+    const start = () => {
+        if (stopped) return;
+        attempt++;
+        try {
+            sub = client.graphql({ query, variables, authMode }).subscribe({
+                next(payload) {
+                    // treat any successful message as connection success and reset attempts
+                    attempt = 0;
+                    try { onNext(payload); } catch (e) { serverLogError('onNext handler error', e); }
+                },
+                error(err) {
+                    try { onError(err); } catch (e) {}
+                    scheduleReconnect(err);
+                }
+            });
+        } catch (err) {
+            try { onError(err); } catch (e) {}
+            scheduleReconnect(err);
+        }
+    };
+
+    const unsubscribe = () => {
+        stopped = true;
+        try { if (sub && typeof sub.unsubscribe === 'function') sub.unsubscribe(); } catch (e) {}
+    };
+
+    start();
+    return { unsubscribe };
+}
+
 export default function League(){
 
     const [loading, setLoading] = useState(true);
@@ -33,6 +94,7 @@ export default function League(){
     const [userData, setUserData] = useState(null);
     const [leagueData, setLeagueData] = useState(null);
     const [playersData, setPlayersData] = useState(null);
+    const lastNonEmptyPlayersRef = useRef(null);
     const [leagueNotStarted, setLeagueNotStarted] = useState(false);
     const [isPrivate, setIsPrivate] = useState(false);
     const [isPlayerOrAdmin, setIsPlayerOrAdmin] = useState(false);
@@ -48,11 +110,39 @@ export default function League(){
     const router = useRouter();
     const client = generateClient()
     const timeoutRef = useRef(null);
+    const prevLeagueFinishedRef = useRef(null);
+
+    // Normalize various payload shapes to an array of players
+    const normalizeToPlayers = (val) => {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        if (typeof val === 'object') {
+            // GraphQL connection shape
+            if (Array.isArray(val.items)) return val.items;
+            // Amplify sometimes returns a ModelPlayerConnection object with nextToken/__typename and no items
+            if (String(val.__typename || '').includes('Model') && !val.id && !val.plEmail) return [];
+            // single player object (has id or email)
+            if (val.id || val.plEmail) return [val];
+            return [];
+        }
+        return [];
+    };
 
     const { id } = router.query;
 
     useEffect(() => { 
         if (!router.isReady) return;
+
+        // Listen for manual league update events dispatched after mutations
+        const manualHandler = (ev) => {
+            try {
+                const payload = ev?.detail || null;
+                if (payload && (String(payload.id) === String(id) || String(payload.leagueId) === String(id))) {
+                    setLeagueData(payload);
+                }
+            } catch (e) {}
+        };
+        window.addEventListener('dragleague:leagueUpdated', manualHandler);
         
         // First, check if league is public using API key (unauthenticated)
         async function checkLeagueAccess() {
@@ -69,6 +159,7 @@ export default function League(){
                     setErrorMessage('League not found.');
                     setErrorPopup(true);
                     setLoading(false);
+                    router.replace('/404');
                     return;
                 }
 
@@ -125,7 +216,7 @@ export default function League(){
                     const players = playersResults?.data?.playersByLeagueId?.items
                     ?? playersResults?.data?.playersByLeagueId
                     ?? [];
-                    setPlayersData(players);
+                    setPlayersData(normalizeToPlayers(players));
 
                     const league = leagueResults.data.getLeague;
                     const userEmail = user.signInDetails.loginId.toLowerCase();
@@ -215,7 +306,7 @@ export default function League(){
                 const players = playersResults?.data?.playersByLeagueId?.items
                 ?? playersResults?.data?.playersByLeagueId
                 ?? [];
-                setPlayersData(players);
+                setPlayersData(normalizeToPlayers(players));
 
                 // Check if league is private (should be false for public leagues)
                 const leagueIsPrivate = !league.lgPublic;
@@ -252,7 +343,7 @@ export default function League(){
                 const players = playersResults?.data?.playersByLeagueId?.items
                 ?? playersResults?.data?.playersByLeagueId
                 ?? [];
-                setPlayersData(players);
+                setPlayersData(normalizeToPlayers(players));
 
                 if(league.lgFinished === 'not started'){
                     setLeagueNotStarted(true);
@@ -270,6 +361,10 @@ export default function League(){
         }
 
         checkLeagueAccess();
+
+        return () => {
+            try { window.removeEventListener('dragleague:leagueUpdated', (ev) => {}); } catch (e) {}
+        };
     }, [router.isReady, id]);
 
     // Update leagueNotStarted when leagueData changes
@@ -287,6 +382,18 @@ export default function League(){
             }
         };
     }, []);
+
+    // Persist last non-empty players list so transient subscription updates
+    // (e.g. lgPendingPlayers changes) don't cause the UI to flash an empty list.
+    useEffect(() => {
+        try {
+            serverLogInfo('playersData changed:', playersData);
+            localStorage.setItem('dragleague_last_playersData', JSON.stringify(playersData));
+        } catch (e) {}
+        if (Array.isArray(playersData) && playersData.length > 0) {
+            lastNonEmptyPlayersRef.current = playersData;
+        }
+    }, [playersData]);
 
     const handleRequestClose = () => {
         setShowRequestPopup(false);
@@ -324,7 +431,7 @@ export default function League(){
             });
 
             // Create player record (let backend generate id; store email in plEmail)
-            await client.graphql({
+            const createRes = await client.graphql({
                 query: createPlayer,
                 variables: {
                     input: {
@@ -335,15 +442,16 @@ export default function League(){
                     }
                 }
             });
+            const createdPlayer = createRes?.data?.createPlayer || createRes?.data?.onCreatePlayer || null;
 
             // Add league to user's leagues array
             const leagueEntry = `${new Date().toISOString()}|${leagueData.id}|${leagueData.lgName}`;
-            const updatedUserLeagues = [...(userData.leagues || []), leagueEntry];
+            const updatedUserLeagues = [...(userData?.leagues || []), leagueEntry];
 
             // Remove from user's pending leagues
-            const updatedPendingLeagues = (userData.pendingLeagues || []).filter(id => id !== leagueData.id);
+            const updatedPendingLeagues = (userData?.pendingLeagues || []).filter(id => id !== leagueData.id);
 
-            // Update user data
+            // Update user data on backend
             await client.graphql({
                 query: updateUsers,
                 variables: {
@@ -354,6 +462,23 @@ export default function League(){
                     }
                 }
             });
+
+            // Update local user state so UI no longer treats this user as pending
+            try {
+                setUserData(prev => ({ ...(prev || {}), leagues: updatedUserLeagues, pendingLeagues: updatedPendingLeagues }));
+                setIsPlayerOrAdmin(true);
+            } catch (e) {}
+
+            // Add created player locally so UI shows immediately (subscriptions will also deliver this)
+            try {
+                if (createdPlayer && (createdPlayer.id || createdPlayer.plEmail)) {
+                    setPlayersData(prev => {
+                        const list = Array.isArray(prev) ? prev.slice() : [];
+                        if (!list.find(p => p.id === createdPlayer.id)) list.unshift(createdPlayer);
+                        return list;
+                    });
+                }
+            } catch (e) {}
 
             // Update league history
             const currentHistory = leagueData.lgHistory || [];
@@ -371,8 +496,16 @@ export default function League(){
             });
             serverLogInfo('Invitation accepted on league page', { leagueId: leagueData.id, userId: userEmail, userName: userName });
 
-            // Reload the page to show the league content
-            window.location.reload();
+            // Update local leagueData immediately so pending list is removed without needing a refresh
+            try {
+                setLeagueData(prev => ({ ...(prev || {}), lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] }));
+            } catch (e) {}
+
+            // Ensure loading is cleared and refresh the page so subscriptions / data pick up the new player
+            setLoading(false);
+            setShowRequestPopup(false);
+            try { router.replace(router.asPath); } catch (e) {}
+
         } catch (error) {
             serverLogError('Error accepting invitation', { error: error.message });
             setErrorMessage('Failed to accept invitation.');
@@ -423,6 +556,11 @@ export default function League(){
             });
             serverLogInfo('Invitation declined on league page', { leagueId: leagueData.id, userId: userEmail, userName: userName });
 
+            // Update local leagueData immediately so pending list is removed without needing a refresh
+            try {
+                setLeagueData(prev => ({ ...(prev || {}), lgPendingPlayers: updatedPending, lgHistory: [...currentHistory, historyEntry] }));
+            } catch (e) {}
+
             // Redirect to player page
             router.push('/Player');
         } catch (error) {
@@ -443,85 +581,139 @@ export default function League(){
         
         const subs = [];
 
-        // watch current user updates
-        const subU = client.graphql({ query: onUpdateUsers }).subscribe({
-            next: ({ value }) => {
-                const updated = value?.data?.onUpdateUsers;
+        // watch current user updates (with reconnect/backoff)
+        const subU = subscribeWithReconnect({
+            client,
+            query: onUpdateUsers,
+            onNext: (payload) => {
+                const value = payload?.value || payload;
+                const updated = value?.data?.onUpdateUsers ?? value?.data ?? value;
                 if (updated && updated.id === userData.id) {
                     setUserData(updated);
                 }
             },
-            error: err => serverLogWarn('user sub error', { error: err?.message })
+            onError: err => serverLogWarn('user sub error', { error: err?.message })
         });
         subs.push(subU);
 
-        const subUC = client.graphql({ query: onCreateUsers }).subscribe({
-            next: ({ value }) => {
-                const created = value?.data?.onCreateUsers;
+        const subUC = subscribeWithReconnect({
+            client,
+            query: onCreateUsers,
+            onNext: (payload) => {
+                const value = payload?.value || payload;
+                const created = value?.data?.onCreateUsers ?? value?.data ?? value;
                 if (created && created.id === userData.id) setUserData(created);
-            }
+            },
+            onError: err => serverLogWarn('user create sub error', { error: err?.message })
         });
         subs.push(subUC);
 
-        const subUD = client.graphql({ query: onDeleteUsers }).subscribe({
-            next: ({ value }) => {
-                const deleted = value?.data?.onDeleteUsers;
+        const subUD = subscribeWithReconnect({
+            client,
+            query: onDeleteUsers,
+            onNext: (payload) => {
+                const value = payload?.value || payload;
+                const deleted = value?.data?.onDeleteUsers ?? value?.data ?? value;
                 if (deleted && deleted.id === userData.id) {
-                    // user deleted — navigate to sign in or handle appropriately
                     router.push('/SignIn');
                 }
-            }
+            },
+            onError: err => serverLogWarn('user delete sub error', { error: err?.message })
         });
         subs.push(subUD);
 
-        // watch league updates
-        const subLeagueU = client.graphql({ query: onUpdateLeague }).subscribe({
-            next: ({ value }) => {
-                const updated = value?.data?.onUpdateLeague;
-                if (updated && updated.id === id) setLeagueData(updated);
+        // watch league updates (with reconnect/backoff)
+        const subLeagueU = subscribeWithReconnect({
+            client,
+            query: onUpdateLeague,
+            onNext: (payload) => {
+                // Normalize many possible payload shapes to the league object
+                let updated = payload?.value?.data?.onUpdateLeague
+                    ?? payload?.data?.onUpdateLeague
+                    ?? payload?.data
+                    ?? payload?.value?.onUpdateLeague
+                    ?? payload?.onUpdateLeague
+                    ?? payload;
+
+                // If payload comes from a different subscription that nests a `league` object
+                if (!updated?.id && updated?.league && (typeof updated.league === 'object')) {
+                    updated = updated.league;
+                }
+
+                // Some payloads wrap the actual data in `.data` again
+                if (updated && updated.data && updated.data.id) {
+                    updated = updated.data;
+                }
+
+
+                if (updated && (String(updated.id) === String(id) || String(updated?.leagueId) === String(id))) {
+                    const normalized = updated?.data ? updated.data : updated;
+                    setLeagueData(normalized);
+                }
             },
-            error: err => serverLogWarn('league update sub error', { error: err?.message })
         });
         subs.push(subLeagueU);
 
-        const subLeagueC = client.graphql({ query: onCreateLeague }).subscribe({
-            next: ({ value }) => {
-                const created = value?.data?.onCreateLeague;
+        const subLeagueC = subscribeWithReconnect({
+            client,
+            query: onCreateLeague,
+            onNext: (payload) => {
+                const value = payload?.value || payload;
+                const created = value?.data?.onCreateLeague ?? value?.data ?? value;
                 if (created && created.id === id) setLeagueData(created);
-            }
+            },
         });
         subs.push(subLeagueC);
 
-        const subLeagueD = client.graphql({ query: onDeleteLeague }).subscribe({
-            next: ({ value }) => {
-                const deleted = value?.data?.onDeleteLeague;
+        const subLeagueD = subscribeWithReconnect({
+            client,
+            query: onDeleteLeague,
+            onNext: (payload) => {
+                const value = payload?.value || payload;
+                const deleted = value?.data?.onDeleteLeague ?? value?.data ?? value;
                 if (deleted && deleted.id === id) {
-                    // league removed — redirect or show message
                     router.push('/');
                 }
-            }
+            },
+            onError: err => serverLogWarn('league delete sub error', { error: err?.message })
         });
         subs.push(subLeagueD);
 
         // watch players (create, update, delete)
-        const subPlayerC = client.graphql({ query: onCreatePlayer }).subscribe({
-            next: ({ value }) => {
-                const created = value?.data?.onCreatePlayer;
+        const subPlayerC = subscribeWithReconnect({
+            client,
+            query: onCreatePlayer,
+            onNext: (payload) => {
+                const created = payload?.value?.data?.onCreatePlayer
+                    ?? payload?.data?.onCreatePlayer
+                    ?? payload?.data
+                    ?? payload?.value?.onCreatePlayer
+                    ?? payload?.onCreatePlayer
+                    ?? payload;
                 if (created && String(created.leagueId) === String(id)) {
                     setPlayersData(prev => {
                         const list = Array.isArray(prev) ? prev.slice() : [];
-                        // avoid duplicates
                         if (!list.find(p => p.id === created.id)) list.unshift(created);
                         return list;
                     });
                 }
+            },
+            onError: err => {
+                serverLogWarn('onCreatePlayer sub error', { error: err?.message || err });
             }
         });
         subs.push(subPlayerC);
 
-        const subPlayerU = client.graphql({ query: onUpdatePlayer }).subscribe({
-            next: ({ value }) => {
-                const updated = value?.data?.onUpdatePlayer;
+        const subPlayerU = subscribeWithReconnect({
+            client,
+            query: onUpdatePlayer,
+            onNext: (payload) => {
+                const updated = payload?.value?.data?.onUpdatePlayer
+                    ?? payload?.data?.onUpdatePlayer
+                    ?? payload?.data
+                    ?? payload?.value?.onUpdatePlayer
+                    ?? payload?.onUpdatePlayer
+                    ?? payload;
                 if (updated && String(updated.leagueId) === String(id)) {
                     setPlayersData(prev => {
                         const list = Array.isArray(prev) ? prev.slice() : [];
@@ -534,18 +726,45 @@ export default function League(){
                         return list;
                     });
                 }
+            },
+            onError: err => {
+                serverLogWarn('onUpdatePlayer sub error', { error: err?.message || err });
             }
         });
         subs.push(subPlayerU);
 
-        const subPlayerD = client.graphql({ query: onDeletePlayer }).subscribe({
-            next: ({ value }) => {
-                const deleted = value?.data?.onDeletePlayer;
+        const subPlayerD = subscribeWithReconnect({
+            client,
+            query: onDeletePlayer,
+            onNext: (payload) => {
+                serverLogInfo('subPlayerD raw payload:', payload);
+                try { localStorage.setItem('dragleague_last_subPlayerD', JSON.stringify(payload)); } catch (e) {}
+                const deleted = payload?.value?.data?.onDeletePlayer
+                    ?? payload?.data?.onDeletePlayer
+                    ?? payload?.data
+                    ?? payload?.value?.onDeletePlayer
+                    ?? payload?.onDeletePlayer
+                    ?? payload;
                 if (deleted && String(deleted.leagueId) === String(id)) {
+                    const deletedId = deleted.id;
+                    const deletedEmail = String(deleted.plEmail || deleted.id || '').toLowerCase();
                     setPlayersData(prev => {
-                        return (Array.isArray(prev) ? prev.filter(p => p.id !== deleted.id) : prev);
+                        const list = Array.isArray(prev) ? prev.slice() : [];
+                        return list.filter(p => p.id !== deletedId);
                     });
+
+                    try {
+                        const currentUserEmail = String(userData?.id || '').toLowerCase();
+                        if (currentUserEmail && deletedEmail === currentUserEmail) {
+                            router.push('/Player');
+                        }
+                    } catch (e) {
+                        // ignore routing errors
+                    }
                 }
+            },
+            onError: err => {
+                serverLogWarn('onDeletePlayer sub error', { error: err?.message || err });
             }
         });
         subs.push(subPlayerD);
@@ -896,7 +1115,7 @@ export default function League(){
                     description={leagueData?.lgDescription || 'League details, players, and standings on Drag League.'}
                     canonical={typeof window !== 'undefined' && window.location ? window.location.href : `https://dr91fo3klsf8b.amplifyapp.com/League/${id}`}
                 />
-                <Leagues userData={userData} leagueData={leagueData} playersData={playersData}  />
+                <Leagues userData={userData} leagueData={leagueData} playersData={(Array.isArray(playersData) && playersData.length > 0) ? playersData : (Array.isArray(lastNonEmptyPlayersRef.current) ? lastNonEmptyPlayersRef.current : playersData)}  />
             </>
         )
     }else{
@@ -907,7 +1126,7 @@ export default function League(){
                     description={leagueData?.lgDescription || 'League details, players, and standings on Drag League.'}
                     canonical={typeof window !== 'undefined' && window.location ? window.location.href : `https://dr91fo3klsf8b.amplifyapp.com/League/${id}`}
                 />
-                <NewLeague userData={userData} leagueData={leagueData} playersData={playersData} />
+                <NewLeague userData={userData} leagueData={leagueData} playersData={(Array.isArray(playersData) && playersData.length > 0) ? playersData : (Array.isArray(lastNonEmptyPlayersRef.current) ? lastNonEmptyPlayersRef.current : playersData)} setPlayersData={setPlayersData} />
             </>
         )
     }

@@ -7,6 +7,7 @@ import PlayerRankings from "../PlayerRankings";
 import PlayerSubmissions from "../PlayerSubmissions";
 import LeagueSettings from "../LeagueSettings";
 import SeasonInfo from "../SeasonInfo";
+import SeasonalStats from "../SeasonalStats";
 import SubmissionsPopup from '../SubmissionsPopUp';
 import Countdown from "../Countdown";
 import History from "../History";
@@ -33,7 +34,29 @@ import {
 export default function Leagues({ userData, leagueData, playersData }) {
     const League = leagueData
     const User = userData
-    const AllPlayers = playersData
+
+    // Build the displayed players list by merging `playersData` (live subscription state)
+    // with any players embedded on the `League` object. Prefer `playersData` when it
+    // has entries, but fall back to `League`'s players when `playersData` is empty.
+    const leaguePlayersFromLeague = Array.isArray(League?.lgPlayers)
+        ? League.lgPlayers
+        : (Array.isArray(League?.playersByLeagueId?.items) ? League.playersByLeagueId.items : (Array.isArray(League?.playersByLeagueId) ? League.playersByLeagueId : []));
+
+    // Always merge both sources so the UI doesn't flash empty when one source is temporarily empty.
+    // Entries from `playersData` override the ones embedded on `League` when IDs collide.
+    let AllPlayers = [];
+    try {
+        const map = new Map();
+        for (const p of leaguePlayersFromLeague || []) {
+            if (p && p.id) map.set(String(p.id), p);
+        }
+        for (const p of (Array.isArray(playersData) ? playersData : []) ) {
+            if (p && p.id) map.set(String(p.id), p);
+        }
+        AllPlayers = Array.from(map.values());
+    } catch (e) {
+        AllPlayers = leaguePlayersFromLeague || [];
+    }
 
     const client = generateClient()
     // --- Comments Section ---
@@ -82,14 +105,14 @@ export default function Leagues({ userData, leagueData, playersData }) {
     }
     const [tabIndex, setTabIndex] = useState(0);
     
-    const tabs = ["Player Rankings", "Player Submissions", "Season Info", "History", "League Settings"];
+    const tabs = ["Player Rankings", "Player Submissions", "Season Info", "Seasonal Stats", "History", "League Settings"];
 
     const [showSwapPopup, setShowSwapPopup] = useState(false);
     const [swapPopupVersion, setSwapPopupVersion] = useState('');
 
 
-    // Find current user's player object
-    const Player = AllPlayers?.find(p => p.plEmail?.toLowerCase() === User?.id?.toLowerCase()) || null;
+    // Find current user's player object (guard if playersData is not an array)
+    const Player = Array.isArray(AllPlayers) ? (AllPlayers.find(p => p.plEmail?.toLowerCase() === User?.id?.toLowerCase()) || null) : null;
 
     const isPlayer = !!Player;
 
@@ -138,8 +161,8 @@ export default function Leagues({ userData, leagueData, playersData }) {
             const history = League?.lgHistory || [];
             if (!history || history.length === 0) return { hasUpdates: false, count: 0, types: [] };
 
-            // Calculate one week ago from deadline, or from today if no deadline
-            const endDate = League?.lgDeadline ? new Date(League.lgDeadline) : new Date();
+            // Calculate one week ago from now (use current time so "recent" means last 7 days)
+            const endDate = new Date();
             const startDate = new Date(endDate);
             startDate.setDate(startDate.getDate() - 7);
 
@@ -437,36 +460,6 @@ export default function Leagues({ userData, leagueData, playersData }) {
                 </Box>
             )}
 
-            {isAdmin && Number(League?.lgChallengePoints || 0) > 0 && (() => {
-                const challengeWeeksCount = Array.isArray(League?.lgChallengeWinners) ? League.lgChallengeWinners.length : 0;
-                if (challengeWeeksCount === 0) return null;
-                
-                const playersWithMissingPicks = (AllPlayers || []).filter(player => {
-                    const playerWinnersCount = Array.isArray(player.plWinners) ? player.plWinners.length : 0;
-                    return playerWinnersCount < challengeWeeksCount;
-                });
-
-                if (playersWithMissingPicks.length === 0) return null;
-
-                const playerNames = playersWithMissingPicks
-                    .map(p => p.plName || 'Unknown Player')
-                    .slice(0, 5)
-                    .join(', ');
-
-                return (
-                    <Box sx={{ mt: 1, mb: 2 }}>
-                        <Alert severity="warning">
-                            <Typography sx={{ fontWeight: 600, mb: 0.5 }}>
-                                {playersWithMissingPicks.length} player{playersWithMissingPicks.length > 1 ? 's have' : ' has'} incomplete weekly predictions
-                            </Typography>
-                            <Typography variant="body2">
-                                {playerNames}{playersWithMissingPicks.length > 5 ? ', ...' : ''} {playersWithMissingPicks.length > 1 ? 'have' : 'has'} fewer weekly picks than the league has challenge weeks ({challengeWeeksCount} week{challengeWeeksCount > 1 ? 's' : ''}). You can add missing or blank entries in the Admin Edit page in the settings.
-                            </Typography>
-                        </Alert>
-                    </Box>
-                );
-            })()}
-
             {isFinished && winnerDisplay && (
                 <>
                     <div style={{ textAlign: 'center', marginBottom: 8 }}>
@@ -571,6 +564,16 @@ export default function Leagues({ userData, leagueData, playersData }) {
                 </Box>
             )}
 
+            {isFinished && (
+                <Box sx={{ mb: 2, p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, background: 'linear-gradient(135deg, rgba(155,48,255,0.06) 0%, rgba(74,144,226,0.04) 100%)', border: '1px solid rgba(155,48,255,0.12)' }}>
+                    <Box>
+                        <Typography sx={{ fontWeight: 800 }}>Congratulations! The season is complete.</Typography>
+                        <Typography variant="body2" sx={{ color: '#555' }}>Check out the real TEA on the season&apos;s stats!</Typography>
+                    </Box>
+                    <Button size="small" variant="contained" onClick={() => setTabIndex(3)} sx={{ textTransform: 'none', minWidth: 160 }}>View Season Stats</Button>
+                </Box>
+            )}
+
             <TabsContainer
                 value={tabIndex}
                 onChange={(e, v) => setTabIndex(v)}
@@ -601,20 +604,15 @@ export default function Leagues({ userData, leagueData, playersData }) {
                 </Panel>
 
                 <Panel role="tabpanel" hidden={tabIndex !== 3} aria-hidden={tabIndex !== 3}>
-                    {tabIndex === 3 && <History leagueData={League} />}
+                    {tabIndex === 3 && <SeasonalStats leagueData={League} playersData={AllPlayers} />}
                 </Panel>
 
                 <Panel role="tabpanel" hidden={tabIndex !== 4} aria-hidden={tabIndex !== 4}>
-                    {tabIndex === 4 && (
-                        isAdmin
-                            ? <LeagueSettings userData={User} leagueData={League} playersData={AllPlayers} />
-                            : (
-                                <EmptyState>
-                                    <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>Admins only</Typography>
-                                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>League settings are only visible to admins. Contact an admin to manage this league.</Typography>
-                                </EmptyState>
-                            )
-                    )}
+                    {tabIndex === 4 && <History leagueData={League} />}
+                </Panel>
+
+                <Panel role="tabpanel" hidden={tabIndex !== 5} aria-hidden={tabIndex !== 5}>
+                    {tabIndex === 5 && <LeagueSettings userData={User} leagueData={League} playersData={AllPlayers} />}
                 </Panel>
             </MainContent>
             {/* Comments Section: visible under all tabs */}

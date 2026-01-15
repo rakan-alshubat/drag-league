@@ -1,3 +1,5 @@
+import { serverLogError } from "@/helpers/serverLog";
+
 export default async function handler(req, res) {
     // Set CORS headers
     const origin = req.headers.origin;
@@ -23,7 +25,6 @@ export default async function handler(req, res) {
         const timestamp = new Date().toISOString();
         const logMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
         
-        // Log to CloudWatch (via console)
         switch (level.toLowerCase()) {
         case 'error':
             console.error(logMessage, data || '');
@@ -35,7 +36,7 @@ export default async function handler(req, res) {
             console.debug(logMessage, data || '');
             break;
         default:
-            console.log(logMessage, data || '');
+            console.info(logMessage, data || '');
         }
         
         return res.status(200).json({ success: true, logged: true });

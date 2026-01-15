@@ -509,11 +509,6 @@ export default function SubmissionsPopup({
             
             if (typeof onSubmit === "function") try { onSubmit({ version, value: joined, playerUpdates }); } catch {}
             try { safeOnClose(joined); } catch {}
-
-            // Reload page to show updates (skip reload in demo mode)
-            if (!isDemo) {
-                window.location.reload();
-            }
             return;
         }
 
@@ -646,13 +641,12 @@ export default function SubmissionsPopup({
             } catch (error) {
                 serverLogError('Error processing final episode', { error: error.message, leagueId: leagueData.id });
                 setErrorMessage('Error processing final episode.');
+            }finally {
+                window.location.reload();
             }
             
             if (typeof onSubmit === "function") try { onSubmit({ version, value: 'final' }); } catch {}
             try { safeOnClose('final'); } catch {}
-
-            // Reload page to show updates
-            window.location.reload();
             return;
         }
 
@@ -722,7 +716,9 @@ export default function SubmissionsPopup({
                 const effectiveLipSyncWinners = (() => {
                     try {
                         const base = Array.isArray(lipSyncWinners) ? [...lipSyncWinners] : [];
-                        if (lipSyncSelected && String(lipSyncSelected).trim() !== '' && !base.includes(lipSyncSelected) && !eliminatedQueens.includes(lipSyncSelected)) {
+                        // Always include the currently selected lip sync entry (if any),
+                        // even if the admin didn't press the + button.
+                        if (lipSyncSelected && String(lipSyncSelected).trim() !== '' && !base.includes(lipSyncSelected)) {
                             base.push(lipSyncSelected);
                         }
                         return base;
@@ -760,7 +756,7 @@ export default function SubmissionsPopup({
                 };
 
                 const currentHistory = leagueData.lgHistory || [];
-                const historyEntry = new Date().toISOString() + '. Weekly results: Challenge Winner: ' + (challengeWinners.join(' & ') || 'None') + ', Lip Sync Winner: ' + (lipSyncWinners.join(' & ') || 'None') + ', Eliminated: ' + (eliminatedQueens.join(' & ') || 'None');
+                const historyEntry = new Date().toISOString() + '. Weekly results: Challenge Winner: ' + (challengeWinners.join(' & ') || 'None') + ', Lip Sync Winner: ' + ((effectiveLipSyncWinners || []).join(' & ') || 'None') + ', Eliminated: ' + (eliminatedQueens.join(' & ') || 'None');
                 leagueUpdates.lgHistory = [...currentHistory, historyEntry];
 
                 const leagueInput = {
@@ -769,11 +765,23 @@ export default function SubmissionsPopup({
                 };
 
                 if (!isDemo) {
-                    await client.graphql({
+                    const leagueResult = await client.graphql({
                         query: updateLeague,
                         variables: { input: leagueInput }
                     });
+
                     serverLogInfo('Weekly results submitted to league', { leagueId: leagueData.id, challengeWinners: challengeWinners.join(' & '), lipSyncWinners: (effectiveLipSyncWinners || []).join(' & '), eliminated: eliminatedQueens.join(' & '), nextDeadline: nextWeekDeadline });
+
+                    // Fallback: fetch latest league and broadcast an event so pages can update even
+                    // if subscriptions are not delivering updates reliably.
+                    try {
+                        const fresh = await client.graphql({ query: getLeague, variables: { id: leagueData.id } });
+                        const freshLeague = fresh?.data?.getLeague ?? fresh?.data ?? fresh;
+                        try { window.__dragleague_last_manualFetch = freshLeague; } catch (e) {}
+                        try { window.dispatchEvent(new CustomEvent('dragleague:leagueUpdated', { detail: freshLeague })); } catch (e) {}
+                    } catch (e) {
+                        serverLogWarn('Failed to fetch league after updateLeague mutation', { error: e.message, leagueId: leagueData.id });
+                    }
                 } else {
                     // Demo: apply updates locally
                     leagueData.lgChallengeWinners = leagueUpdates.lgChallengeWinners;
@@ -792,11 +800,6 @@ export default function SubmissionsPopup({
 
             if (typeof onSubmit === "function") try { onSubmit({ version, value: 'weekly' }); } catch {}
             try { safeOnClose('weekly'); } catch {}
-
-            // Reload page to show updates (skip in demo)
-            if (!isDemo) {
-                window.location.reload();
-            }
         }
     };
 
