@@ -105,6 +105,47 @@ export default function MyApp(props) {
         return ('standalone' in navigator) && (navigator.standalone === true);
     };
 
+    // Pull-to-refresh functionality for PWA
+    React.useEffect(() => {
+        let touchStartY = 0;
+        let isRefreshing = false;
+        const REFRESH_THRESHOLD = 80; // pixels to pull before refresh
+
+        const handleTouchStart = (e) => {
+            if (window.scrollY === 0) {
+                touchStartY = e.touches[0].clientY;
+            }
+        };
+
+        const handleTouchMove = (e) => {
+            if (window.scrollY === 0 && touchStartY > 0 && !isRefreshing) {
+                const pullDistance = e.touches[0].clientY - touchStartY;
+                if (pullDistance > REFRESH_THRESHOLD) {
+                    isRefreshing = true;
+                    window.location.reload();
+                }
+            }
+        };
+
+        const handleTouchEnd = () => {
+            touchStartY = 0;
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('touchstart', handleTouchStart, { passive: true });
+            window.addEventListener('touchmove', handleTouchMove, { passive: true });
+            window.addEventListener('touchend', handleTouchEnd, { passive: true });
+        }
+
+        return () => {
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('touchstart', handleTouchStart);
+                window.removeEventListener('touchmove', handleTouchMove);
+                window.removeEventListener('touchend', handleTouchEnd);
+            }
+        };
+    }, []);
+
     React.useEffect(() => {
         // PWA Install Prompt
         const handleBeforeInstallPrompt = (e) => {
